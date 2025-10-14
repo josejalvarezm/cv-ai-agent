@@ -1,0 +1,501 @@
+{
+  "technologyCategories": [
+    {
+      "name": "Architecture & Design",
+      "icon": "nodes",
+      "technologies": [
+        {
+          "name": "Full-Stack Service Decomposition",
+          "experience": "5+ years (CCHQ)",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Service-Oriented Architecture",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 88,
+          "level": "Advanced"
+        },
+        {
+          "name": "RESTful APIs",
+          "experience": "10+ years",
+          "experienceYears": 10,
+          "proficiencyPercent": 90,
+          "level": "Expert"
+        },
+        {
+          "name": "Component-Based Architecture",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Independent Deployment",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Message Queue Patterns",
+          "experience": "8+ years (MSMQ, SQL-based)",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Edge Architectures",
+          "experience": "1+ years",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "Microservices Principles",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        }
+      ]
+    },
+    {
+      "name": "Frontend Development",
+      "icon": "display",
+      "technologies": [
+        {
+          "name": "Angular",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "RxJS",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "TypeScript",
+          "experience": "6+ years",
+          "experienceYears": 6,
+          "proficiencyPercent": 88,
+          "level": "Advanced"
+        },
+        {
+          "name": "JavaScript",
+          "experience": "19 years",
+          "experienceYears": 19,
+          "proficiencyPercent": 95,
+          "level": "Expert"
+        },
+        {
+          "name": "AngularJS",
+          "experience": "10 years",
+          "experienceYears": 10,
+          "proficiencyPercent": 90,
+          "level": "Expert"
+        },
+        {
+          "name": "Bootstrap",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Clarity Design",
+          "experience": "2025-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "Playwright",
+          "experience": "2024-Present",
+          "experienceYears": 2,
+          "proficiencyPercent": 40,
+          "level": "Intermediate"
+        },
+        {
+          "name": "React with TypeScript",
+          "experience": "Development/Research",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        }
+      ]
+    },
+    {
+      "name": "Backend Development",
+      "icon": "nodes",
+      "technologies": [
+        {
+          "name": "C#",
+          "experience": "19 years",
+          "experienceYears": 19,
+          "proficiencyPercent": 95,
+          "level": "Expert"
+        },
+        {
+          "name": "ASP.NET Core",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 90,
+          "level": "Expert"
+        },
+        {
+          "name": ".NET 6+",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "RESTful APIs",
+          "experience": "10+ years",
+          "experienceYears": 10,
+          "proficiencyPercent": 90,
+          "level": "Expert"
+        },
+        {
+          "name": "Full-Stack Service Architecture",
+          "experience": "5+ years (CCHQ)",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Windows Services",
+          "experience": "8+ years (thousands records/sec)",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "MSMQ & SQL-based Queues",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Node.js",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure Functions (Node.js/TypeScript)",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        }
+      ]
+    },
+    {
+      "name": "Database & Performance",
+      "icon": "data-cluster",
+      "technologies": [
+        {
+          "name": "SQL Server",
+          "experience": "20+ years",
+          "experienceYears": 20,
+          "proficiencyPercent": 95,
+          "level": "Expert"
+        },
+        {
+          "name": "T-SQL Performance Tuning",
+          "experience": "20+ years",
+          "experienceYears": 20,
+          "proficiencyPercent": 95,
+          "level": "Expert"
+        },
+        {
+          "name": "DAAB/Enterprise Library",
+          "experience": "11+ years",
+          "experienceYears": 11,
+          "proficiencyPercent": 90,
+          "level": "Expert"
+        },
+        {
+          "name": "Entity Framework 4",
+          "experience": "5 years total (discontinued after 2)",
+          "experienceYears": 5,
+          "proficiencyPercent": 70,
+          "level": "Intermediate"
+        },
+        {
+          "name": "Oracle",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure Cosmos DB",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "MongoDB API",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        }
+      ]
+    },
+    {
+      "name": "Cloud & DevOps",
+      "icon": "cloud",
+      "technologies": [
+        {
+          "name": "Azure DevOps",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure Blob Storage",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure Cognitive Services",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure Static Web Apps",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure CDN",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        },
+        {
+          "name": "Git",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "CI/CD Pipelines",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "AppDynamics",
+          "experience": "9+ years",
+          "experienceYears": 9,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "Terraform",
+          "experience": "1+ years",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "Cloudflare DNS/CDN",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        },
+        {
+          "name": "Cloudflare Workers",
+          "experience": "2024-Present (Production)",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Cloudflare Pages",
+          "experience": "2024-Present (Production)",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure Functions (Node.js/TypeScript)",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Playwright Testing",
+          "experience": "2024-Present",
+          "experienceYears": 2,
+          "proficiencyPercent": 40,
+          "level": "Intermediate"
+        }
+      ]
+    },
+    {
+      "name": "Modern Development Practices",
+      "icon": "crown",
+      "technologies": [
+        {
+          "name": "Serverless Architecture",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        }
+        ,
+        {
+          "name": "Low-Cost Infrastructure Design",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Azure Static Web Apps",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Cloudflare DNS/CDN",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced"
+        }
+      ]
+    },
+    {
+      "name": "Technical Research & Prototyping",
+      "icon": "nodes",
+      "technologies": [
+        {
+          "name": "Containerization & Orchestration",
+          "experience": "Docker, Kubernetes (pod replicas, self-healing)",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        },
+        {
+          "name": "Message Brokers & Patterns",
+          "experience": "RabbitMQ (pub/sub patterns)",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        },
+        {
+          "name": "Distributed Caching",
+          "experience": "Redis",
+          "experienceYears": 1,
+          "proficiencyPercent": 70,
+          "level": "Advanced"
+        },
+        {
+          "name": "Concurrency Models",
+          "experience": "Akka.NET (Actor Model)",
+          "experienceYears": 1,
+          "proficiencyPercent": 70,
+          "level": "Advanced"
+        },
+        {
+          "name": "Frontend Frameworks",
+          "experience": "React, Bootstrap, Clarity Design",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced"
+        }
+      ]
+    },
+    {
+      "name": "Edge Architectures (Production)",
+      "icon": "cloud",
+      "technologies": [
+        {
+          "name": "Cloudflare Workers",
+          "experience": "Globally distributed, zero‑cost hosting",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Cloudflare Pages",
+          "experience": "Technical blog deployment",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced"
+        },
+        {
+          "name": "Infrastructure as Code",
+          "experience": "Terraform‑based workflows (Exploratory)",
+          "experienceYears": 1,
+          "proficiencyPercent": 65,
+          "level": "Intermediate"
+        }
+      ]
+    },
+    {
+  "name": "Legacy Development",
+  "icon": "history",
+  "technologies": [
+    {
+      "name": "VB.NET",
+      "experience": "8+ years",
+      "experienceYears": 8,
+      "proficiencyPercent": 90,
+      "level": "Expert"
+    },
+    {
+      "name": "WPF",
+      "experience": "8+ years",
+      "experienceYears": 8,
+      "proficiencyPercent": 85,
+      "level": "Advanced"
+    },
+    {
+      "name": "Silverlight",
+      "experience": "5+ years",
+      "experienceYears": 5,
+      "proficiencyPercent": 80,
+      "level": "Advanced"
+    },
+    {
+      "name": "ASP.NET MVC/WebForms",
+      "experience": "8+ years",
+      "experienceYears": 8,
+      "proficiencyPercent": 85,
+      "level": "Advanced"
+    }
+  ]
+}
+
+  ]
+}

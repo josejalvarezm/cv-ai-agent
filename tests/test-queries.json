@@ -1,0 +1,65 @@
+{
+  "description": "Test queries for CV Assistant semantic search",
+  "queries": [
+    {
+      "id": 1,
+      "query": "serverless edge computing",
+      "expected_skills": ["Cloudflare Workers", "Cloudflare CDN", "Cloudflare D1"],
+      "notes": "Should match Cloudflare-related skills"
+    },
+    {
+      "id": 2,
+      "query": "machine learning and neural networks",
+      "expected_skills": ["TensorFlow", "PyTorch", "Cloudflare Workers AI"],
+      "notes": "Should match AI/ML frameworks"
+    },
+    {
+      "id": 3,
+      "query": "database management and SQL",
+      "expected_skills": ["PostgreSQL", "MySQL", "SQL"],
+      "notes": "Should match database skills"
+    },
+    {
+      "id": 4,
+      "query": "container orchestration and microservices",
+      "expected_skills": ["Kubernetes", "Docker", "AWS"],
+      "notes": "Should match container and cloud infrastructure"
+    },
+    {
+      "id": 5,
+      "query": "frontend development and user interfaces",
+      "expected_skills": ["React", "TypeScript", "Next.js"],
+      "notes": "Should match web frontend skills"
+    },
+    {
+      "id": 6,
+      "query": "natural language processing and embeddings",
+      "expected_skills": ["Cloudflare Vectorize", "Hugging Face", "LangChain"],
+      "notes": "Should match NLP and semantic search skills"
+    },
+    {
+      "id": 7,
+      "query": "caching and in-memory storage",
+      "expected_skills": ["Redis", "Cloudflare KV", "Cloudflare Workers"],
+      "notes": "Should match caching technologies"
+    },
+    {
+      "id": 8,
+      "query": "version control and continuous deployment",
+      "expected_skills": ["Git", "CI/CD", "GitHub Actions"],
+      "notes": "Should match DevOps skills"
+    },
+    {
+      "id": 9,
+      "query": "strongly typed programming languages",
+      "expected_skills": ["TypeScript", "Go", "Rust"],
+      "notes": "Should match typed languages"
+    },
+    {
+      "id": 10,
+      "query": "real-time communication and websockets",
+      "expected_skills": ["WebSockets", "Node.js", "REST API"],
+      "notes": "Should match real-time web technologies"
+    }
+  ]
+}

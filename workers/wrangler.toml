@@ -1,0 +1,16 @@
+name = "embedding-generator"
+main = "generate-embeddings.js"
+compatibility_date = "2024-01-01"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "cv_assistant_db"
+database_id = "{AI_AGENT_DATABASE_ID}"
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Secret for authentication (set via: wrangler secret put EMBEDDING_SECRET)
+# This will be set as an environment variable, not in this file

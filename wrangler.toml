@@ -1,0 +1,56 @@
+name = "cv-assistant-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+# `node_compat` was removed in newer Wrangler versions. Use `nodejs_compat` instead
+# to enable Node.js compatibility features when required by the Worker runtime.
+nodejs_compat = true
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "cv_assistant_db"
+database_id = "{AI_AGENT_DATABASE_ID}"
+
+# Vectorize binding
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "cv-skills-index"
+
+# KV namespace for fallback vector storage
+[[kv_namespaces]]
+binding = "KV"
+id = "{KV_NAMESPACE_ID}"
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+CACHE_TTL = "3600"
+VECTORIZE_FALLBACK = "true"
+
+# Development configuration
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Production configuration
+[env.production]
+vars = { ENVIRONMENT = "production", CACHE_TTL = "7200", VECTORIZE_FALLBACK = "true", AI_REPLY_ENABLED = "true" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "cv_assistant_db"
+database_id = "{AI_AGENT_DATABASE_ID}"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "{KV_NAMESPACE_ID}"
+
+[[env.production.vectorize]]
+binding = "VECTORIZE"
+index_name = "cv-skills-index"
+
+[env.production.ai]
+binding = "AI"

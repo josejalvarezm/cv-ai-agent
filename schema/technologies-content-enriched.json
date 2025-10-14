@@ -1,0 +1,833 @@
+{
+  "technologyCategories": [
+    {
+      "name": "Architecture & Design",
+      "icon": "nodes",
+      "technologies": [
+        {
+          "id": "full-stack-service-decomposition-1",
+          "name": "Full-Stack Service Decomposition",
+          "experience": "5+ years (CCHQ)",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Architecture & Design",
+          "summary": "Decomposed monolithic applications into independent full-stack services at CCHQ, enabling team autonomy and faster deployment cycles.",
+          "embedding_text": "Full-Stack Service Decomposition 5 years Advanced Decomposed monolithic applications into independent full-stack services at CCHQ, enabling team autonomy and faster deployment cycles.",
+          "embedding": []
+        },
+        {
+          "id": "service-oriented-architecture-1",
+          "name": "Service-Oriented Architecture",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 88,
+          "level": "Advanced",
+          "category": "Architecture & Design",
+          "summary": "Designed and implemented service-oriented architectures across enterprise systems for 8+ years, improving modularity and integration flexibility.",
+          "embedding_text": "Service-Oriented Architecture 8 years Advanced Designed and implemented service-oriented architectures across enterprise systems for 8+ years, improving modularity and integration flexibility.",
+          "embedding": []
+        },
+        {
+          "id": "restful-apis-1",
+          "name": "RESTful APIs",
+          "experience": "10+ years",
+          "experienceYears": 10,
+          "proficiencyPercent": 90,
+          "level": "Expert",
+          "category": "Architecture & Design",
+          "summary": "Built and maintained RESTful APIs for 10+ years, delivering scalable and well-documented interfaces for client-server communication.",
+          "embedding_text": "RESTful APIs 10 years Expert Built and maintained RESTful APIs for 10+ years, delivering scalable and well-documented interfaces for client-server communication.",
+          "embedding": []
+        },
+        {
+          "id": "component-based-architecture-1",
+          "name": "Component-Based Architecture",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Architecture & Design",
+          "summary": "Developed reusable component-based architectures for 3+ years, improving code maintainability and development velocity.",
+          "embedding_text": "Component-Based Architecture 3 years Advanced Developed reusable component-based architectures for 3+ years, improving code maintainability and development velocity.",
+          "embedding": []
+        },
+        {
+          "id": "independent-deployment-1",
+          "name": "Independent Deployment",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Architecture & Design",
+          "summary": "Enabled independent deployment pipelines for services over 5+ years, reducing release coordination overhead and deployment risk.",
+          "embedding_text": "Independent Deployment 5 years Advanced Enabled independent deployment pipelines for services over 5+ years, reducing release coordination overhead and deployment risk.",
+          "embedding": []
+        },
+        {
+          "id": "message-queue-patterns-1",
+          "name": "Message Queue Patterns",
+          "experience": "8+ years (MSMQ, SQL-based)",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Architecture & Design",
+          "summary": "Implemented message queue patterns using MSMQ and SQL-based queues for 8+ years, ensuring reliable asynchronous processing.",
+          "embedding_text": "Message Queue Patterns 8 years Advanced Implemented message queue patterns using MSMQ and SQL-based queues for 8+ years, ensuring reliable asynchronous processing.",
+          "embedding": []
+        },
+        {
+          "id": "edge-architectures-1",
+          "name": "Edge Architectures",
+          "experience": "1+ years",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Architecture & Design",
+          "recency": "2024–Present",
+          "summary": "Architected edge computing solutions to reduce latency and improve global content delivery performance.",
+          "embedding_text": "Edge Architectures 1 years Advanced Architected edge computing solutions to reduce latency and improve global content delivery performance.",
+          "embedding": []
+        },
+        {
+          "id": "microservices-principles-1",
+          "name": "Microservices Principles",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Architecture & Design",
+          "summary": "Applied microservices principles over 5+ years to decompose systems into independently deployable, loosely-coupled services.",
+          "embedding_text": "Microservices Principles 5 years Advanced Applied microservices principles over 5+ years to decompose systems into independently deployable, loosely-coupled services.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Frontend Development",
+      "icon": "display",
+      "technologies": [
+        {
+          "id": "angular-1",
+          "name": "Angular",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Frontend Development",
+          "summary": "Developed enterprise Angular applications for 3+ years, leveraging reactive patterns and modular component design.",
+          "embedding_text": "Angular 3 years Advanced Developed enterprise Angular applications for 3+ years, leveraging reactive patterns and modular component design.",
+          "embedding": []
+        },
+        {
+          "id": "rxjs-1",
+          "name": "RxJS",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Frontend Development",
+          "summary": "Utilized RxJS for 3+ years to manage asynchronous data streams and event-driven interactions in Angular applications.",
+          "embedding_text": "RxJS 3 years Advanced Utilized RxJS for 3+ years to manage asynchronous data streams and event-driven interactions in Angular applications.",
+          "embedding": []
+        },
+        {
+          "id": "typescript-1",
+          "name": "TypeScript",
+          "experience": "6+ years",
+          "experienceYears": 6,
+          "proficiencyPercent": 88,
+          "level": "Advanced",
+          "category": "Frontend Development",
+          "summary": "Wrote type-safe applications with TypeScript for 6+ years, improving code quality and developer experience.",
+          "embedding_text": "TypeScript 6 years Advanced Wrote type-safe applications with TypeScript for 6+ years, improving code quality and developer experience.",
+          "embedding": []
+        },
+        {
+          "id": "javascript-1",
+          "name": "JavaScript",
+          "experience": "19 years",
+          "experienceYears": 19,
+          "proficiencyPercent": 95,
+          "level": "Expert",
+          "category": "Frontend Development",
+          "summary": "Core JavaScript expertise spanning 19 years, building interactive web applications and modern frontend solutions.",
+          "embedding_text": "JavaScript 19 years Expert Core JavaScript expertise spanning 19 years, building interactive web applications and modern frontend solutions.",
+          "embedding": []
+        },
+        {
+          "id": "angularjs-1",
+          "name": "AngularJS",
+          "experience": "10 years",
+          "experienceYears": 10,
+          "proficiencyPercent": 90,
+          "level": "Expert",
+          "category": "Frontend Development",
+          "summary": "Built and maintained AngularJS applications over 10 years, delivering dynamic SPAs for enterprise clients.",
+          "embedding_text": "AngularJS 10 years Expert Built and maintained AngularJS applications over 10 years, delivering dynamic SPAs for enterprise clients.",
+          "embedding": []
+        },
+        {
+          "id": "bootstrap-1",
+          "name": "Bootstrap",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Frontend Development",
+          "summary": "Designed responsive, mobile-first interfaces with Bootstrap for 8+ years, accelerating UI development.",
+          "embedding_text": "Bootstrap 8 years Advanced Designed responsive, mobile-first interfaces with Bootstrap for 8+ years, accelerating UI development.",
+          "embedding": []
+        },
+        {
+          "id": "clarity-design-1",
+          "name": "Clarity Design",
+          "experience": "2025-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Frontend Development",
+          "recency": "2025–Present",
+          "summary": "Adopted Clarity Design System for modern Angular applications, ensuring consistent and accessible UI patterns.",
+          "embedding_text": "Clarity Design 1 years Advanced Adopted Clarity Design System for modern Angular applications, ensuring consistent and accessible UI patterns.",
+          "embedding": []
+        },
+        {
+          "id": "playwright-1",
+          "name": "Playwright",
+          "experience": "2024-Present",
+          "experienceYears": 2,
+          "proficiencyPercent": 40,
+          "level": "Intermediate",
+          "category": "Frontend Development",
+          "recency": "2024–Present",
+          "summary": "Implemented end-to-end tests with Playwright to validate cross-browser functionality and UI behavior.",
+          "embedding_text": "Playwright 2 years Intermediate Implemented end-to-end tests with Playwright to validate cross-browser functionality and UI behavior.",
+          "embedding": []
+        },
+        {
+          "id": "react-with-typescript-1",
+          "name": "React with TypeScript",
+          "experience": "Development/Research",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Frontend Development",
+          "summary": "Explored React with TypeScript through development and research, building component-based prototypes.",
+          "embedding_text": "React with TypeScript 1 years Advanced Explored React with TypeScript through development and research, building component-based prototypes.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Backend Development",
+      "icon": "nodes",
+      "technologies": [
+        {
+          "id": "csharp-1",
+          "name": "C#",
+          "experience": "19 years",
+          "experienceYears": 19,
+          "proficiencyPercent": 95,
+          "level": "Expert",
+          "category": "Backend Development",
+          "summary": "Deep expertise in C# spanning 19 years, delivering enterprise-grade backend systems and services.",
+          "embedding_text": "C# 19 years Expert Deep expertise in C# spanning 19 years, delivering enterprise-grade backend systems and services.",
+          "embedding": []
+        },
+        {
+          "id": "aspnet-core-1",
+          "name": "ASP.NET Core",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 90,
+          "level": "Expert",
+          "category": "Backend Development",
+          "summary": "Developed high-performance ASP.NET Core APIs and web applications for 5+ years, supporting modern cloud deployments.",
+          "embedding_text": "ASP.NET Core 5 years Expert Developed high-performance ASP.NET Core APIs and web applications for 5+ years, supporting modern cloud deployments.",
+          "embedding": []
+        },
+        {
+          "id": "dotnet-6plus-1",
+          "name": ".NET 6+",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Backend Development",
+          "summary": "Built modern .NET 6+ applications for 3+ years, leveraging latest framework features and performance improvements.",
+          "embedding_text": ".NET 6+ 3 years Advanced Built modern .NET 6+ applications for 3+ years, leveraging latest framework features and performance improvements.",
+          "embedding": []
+        },
+        {
+          "id": "restful-apis-2",
+          "name": "RESTful APIs",
+          "experience": "10+ years",
+          "experienceYears": 10,
+          "proficiencyPercent": 90,
+          "level": "Expert",
+          "category": "Backend Development",
+          "summary": "Built and maintained RESTful APIs for 10+ years, enabling seamless integration and scalable backend architecture.",
+          "embedding_text": "RESTful APIs 10 years Expert Built and maintained RESTful APIs for 10+ years, enabling seamless integration and scalable backend architecture.",
+          "embedding": []
+        },
+        {
+          "id": "full-stack-service-architecture-1",
+          "name": "Full-Stack Service Architecture",
+          "experience": "5+ years (CCHQ)",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Backend Development",
+          "summary": "Architected full-stack services at CCHQ over 5+ years, enabling autonomous teams and streamlined service ownership.",
+          "embedding_text": "Full-Stack Service Architecture 5 years Advanced Architected full-stack services at CCHQ over 5+ years, enabling autonomous teams and streamlined service ownership.",
+          "embedding": []
+        },
+        {
+          "id": "windows-services-1",
+          "name": "Windows Services",
+          "experience": "8+ years (thousands records/sec)",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Backend Development",
+          "summary": "Developed high-throughput Windows Services for 8+ years, processing thousands of records per second reliably.",
+          "embedding_text": "Windows Services 8 years Advanced Developed high-throughput Windows Services for 8+ years, processing thousands of records per second reliably.",
+          "embedding": []
+        },
+        {
+          "id": "msmq-sql-based-queues-1",
+          "name": "MSMQ & SQL-based Queues",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Backend Development",
+          "summary": "Implemented reliable message queuing with MSMQ and SQL-based queues over 8+ years, ensuring fault-tolerant processing.",
+          "embedding_text": "MSMQ & SQL-based Queues 8 years Advanced Implemented reliable message queuing with MSMQ and SQL-based queues over 8+ years, ensuring fault-tolerant processing.",
+          "embedding": []
+        },
+        {
+          "id": "nodejs-1",
+          "name": "Node.js",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Backend Development",
+          "recency": "2025–Present",
+          "summary": "Built serverless and backend services with Node.js, leveraging JavaScript for full-stack development.",
+          "embedding_text": "Node.js 1 years Advanced Built serverless and backend services with Node.js, leveraging JavaScript for full-stack development.",
+          "embedding": []
+        },
+        {
+          "id": "azure-functions-nodejs-typescript-1",
+          "name": "Azure Functions (Node.js/TypeScript)",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Backend Development",
+          "recency": "2025–Present",
+          "summary": "Deployed serverless Azure Functions using Node.js and TypeScript for scalable, event-driven backend processing.",
+          "embedding_text": "Azure Functions (Node.js/TypeScript) 1 years Advanced Deployed serverless Azure Functions using Node.js and TypeScript for scalable, event-driven backend processing.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Database & Performance",
+      "icon": "data-cluster",
+      "technologies": [
+        {
+          "id": "sql-server-1",
+          "name": "SQL Server",
+          "experience": "20+ years",
+          "experienceYears": 20,
+          "proficiencyPercent": 95,
+          "level": "Expert",
+          "category": "Database & Performance",
+          "summary": "Expert-level SQL Server administration and development over 20+ years, supporting mission-critical enterprise databases.",
+          "embedding_text": "SQL Server 20 years Expert Expert-level SQL Server administration and development over 20+ years, supporting mission-critical enterprise databases.",
+          "embedding": []
+        },
+        {
+          "id": "tsql-performance-tuning-1",
+          "name": "T-SQL Performance Tuning",
+          "experience": "20+ years",
+          "experienceYears": 20,
+          "proficiencyPercent": 95,
+          "level": "Expert",
+          "category": "Database & Performance",
+          "summary": "Optimized T-SQL queries and database performance for 20+ years, achieving significant response time and throughput gains.",
+          "embedding_text": "T-SQL Performance Tuning 20 years Expert Optimized T-SQL queries and database performance for 20+ years, achieving significant response time and throughput gains.",
+          "embedding": []
+        },
+        {
+          "id": "daab-enterprise-library-1",
+          "name": "DAAB/Enterprise Library",
+          "experience": "11+ years",
+          "experienceYears": 11,
+          "proficiencyPercent": 90,
+          "level": "Expert",
+          "category": "Database & Performance",
+          "summary": "Utilized Data Access Application Block and Enterprise Library for 11+ years, standardizing enterprise data access patterns.",
+          "embedding_text": "DAAB/Enterprise Library 11 years Expert Utilized Data Access Application Block and Enterprise Library for 11+ years, standardizing enterprise data access patterns.",
+          "embedding": []
+        },
+        {
+          "id": "entity-framework-4-1",
+          "name": "Entity Framework 4",
+          "experience": "5 years total (discontinued after 2)",
+          "experienceYears": 5,
+          "proficiencyPercent": 70,
+          "level": "Intermediate",
+          "category": "Database & Performance",
+          "summary": "Applied Entity Framework 4 for ORM-based data access before discontinuing use after 2 years due to project constraints.",
+          "embedding_text": "Entity Framework 4 5 years Intermediate Applied Entity Framework 4 for ORM-based data access before discontinuing use after 2 years due to project constraints.",
+          "embedding": []
+        },
+        {
+          "id": "oracle-1",
+          "name": "Oracle",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Database & Performance",
+          "summary": "Worked with Oracle databases for 5+ years, managing data storage and complex queries for enterprise applications.",
+          "embedding_text": "Oracle 5 years Advanced Worked with Oracle databases for 5+ years, managing data storage and complex queries for enterprise applications.",
+          "embedding": []
+        },
+        {
+          "id": "azure-cosmos-db-1",
+          "name": "Azure Cosmos DB",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Database & Performance",
+          "recency": "2025–Present",
+          "summary": "Integrated Azure Cosmos DB for globally distributed, low-latency NoSQL data storage in cloud-native applications.",
+          "embedding_text": "Azure Cosmos DB 1 years Advanced Integrated Azure Cosmos DB for globally distributed, low-latency NoSQL data storage in cloud-native applications.",
+          "embedding": []
+        },
+        {
+          "id": "mongodb-api-1",
+          "name": "MongoDB API",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Database & Performance",
+          "recency": "2025–Present",
+          "summary": "Leveraged MongoDB API with Cosmos DB for flexible, document-based data modeling in modern serverless solutions.",
+          "embedding_text": "MongoDB API 1 years Advanced Leveraged MongoDB API with Cosmos DB for flexible, document-based data modeling in modern serverless solutions.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Cloud & DevOps",
+      "icon": "cloud",
+      "technologies": [
+        {
+          "id": "azure-devops-1",
+          "name": "Azure DevOps",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Managed CI/CD pipelines and project workflows with Azure DevOps for 5+ years, streamlining release automation.",
+          "embedding_text": "Azure DevOps 5 years Advanced Managed CI/CD pipelines and project workflows with Azure DevOps for 5+ years, streamlining release automation.",
+          "embedding": []
+        },
+        {
+          "id": "azure-blob-storage-1",
+          "name": "Azure Blob Storage",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Utilized Azure Blob Storage for 5+ years to store and serve large files and media content reliably.",
+          "embedding_text": "Azure Blob Storage 5 years Advanced Utilized Azure Blob Storage for 5+ years to store and serve large files and media content reliably.",
+          "embedding": []
+        },
+        {
+          "id": "azure-cognitive-services-1",
+          "name": "Azure Cognitive Services",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Integrated Azure Cognitive Services for 3+ years, adding AI capabilities like vision and natural language processing.",
+          "embedding_text": "Azure Cognitive Services 3 years Advanced Integrated Azure Cognitive Services for 3+ years, adding AI capabilities like vision and natural language processing.",
+          "embedding": []
+        },
+        {
+          "id": "azure-static-web-apps-1",
+          "name": "Azure Static Web Apps",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "recency": "2024–Present",
+          "summary": "Deployed modern web applications using Azure Static Web Apps, leveraging global CDN and integrated backend APIs.",
+          "embedding_text": "Azure Static Web Apps 1 years Advanced Deployed modern web applications using Azure Static Web Apps, leveraging global CDN and integrated backend APIs.",
+          "embedding": []
+        },
+        {
+          "id": "azure-cdn-1",
+          "name": "Azure CDN",
+          "experience": "3+ years",
+          "experienceYears": 3,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Configured Azure CDN for 3+ years to accelerate content delivery and reduce latency for global users.",
+          "embedding_text": "Azure CDN 3 years Advanced Configured Azure CDN for 3+ years to accelerate content delivery and reduce latency for global users.",
+          "embedding": []
+        },
+        {
+          "id": "git-1",
+          "name": "Git",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Managed source control with Git for 8+ years, supporting collaborative development and branching strategies.",
+          "embedding_text": "Git 8 years Advanced Managed source control with Git for 8+ years, supporting collaborative development and branching strategies.",
+          "embedding": []
+        },
+        {
+          "id": "cicd-pipelines-1",
+          "name": "CI/CD Pipelines",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Designed and maintained CI/CD pipelines for 5+ years, automating build, test, and deployment workflows.",
+          "embedding_text": "CI/CD Pipelines 5 years Advanced Designed and maintained CI/CD pipelines for 5+ years, automating build, test, and deployment workflows.",
+          "embedding": []
+        },
+        {
+          "id": "appdynamics-1",
+          "name": "AppDynamics",
+          "experience": "9+ years",
+          "experienceYears": 9,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Monitored application performance with AppDynamics for 9+ years, identifying bottlenecks and improving user experience.",
+          "embedding_text": "AppDynamics 9 years Advanced Monitored application performance with AppDynamics for 9+ years, identifying bottlenecks and improving user experience.",
+          "embedding": []
+        },
+        {
+          "id": "terraform-1",
+          "name": "Terraform",
+          "experience": "1+ years",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "summary": "Adopted Terraform for infrastructure as code, enabling repeatable and version-controlled cloud provisioning.",
+          "embedding_text": "Terraform 1 years Advanced Adopted Terraform for infrastructure as code, enabling repeatable and version-controlled cloud provisioning.",
+          "embedding": []
+        },
+        {
+          "id": "cloudflare-dns-cdn-1",
+          "name": "Cloudflare DNS/CDN",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "recency": "2024–Present",
+          "summary": "Leveraged Cloudflare DNS and CDN for fast, secure global content delivery with DDoS protection.",
+          "embedding_text": "Cloudflare DNS/CDN 1 years Advanced Leveraged Cloudflare DNS and CDN for fast, secure global content delivery with DDoS protection.",
+          "embedding": []
+        },
+        {
+          "id": "cloudflare-workers-1",
+          "name": "Cloudflare Workers",
+          "experience": "2024-Present (Production)",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "recency": "2024–Present",
+          "summary": "Deployed serverless edge functions with Cloudflare Workers in production, achieving zero-cost hosting and low latency.",
+          "embedding_text": "Cloudflare Workers 1 years Advanced Deployed serverless edge functions with Cloudflare Workers in production, achieving zero-cost hosting and low latency.",
+          "embedding": []
+        },
+        {
+          "id": "cloudflare-pages-1",
+          "name": "Cloudflare Pages",
+          "experience": "2024-Present (Production)",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "recency": "2024–Present",
+          "summary": "Published static sites with Cloudflare Pages in production, integrating seamless Git-based deployments.",
+          "embedding_text": "Cloudflare Pages 1 years Advanced Published static sites with Cloudflare Pages in production, integrating seamless Git-based deployments.",
+          "embedding": []
+        },
+        {
+          "id": "azure-functions-nodejs-typescript-2",
+          "name": "Azure Functions (Node.js/TypeScript)",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Cloud & DevOps",
+          "recency": "2025–Present",
+          "summary": "Deployed serverless Azure Functions with Node.js and TypeScript for event-driven, scalable backend workloads.",
+          "embedding_text": "Azure Functions (Node.js/TypeScript) 1 years Advanced Deployed serverless Azure Functions with Node.js and TypeScript for event-driven, scalable backend workloads.",
+          "embedding": []
+        },
+        {
+          "id": "playwright-testing-1",
+          "name": "Playwright Testing",
+          "experience": "2024-Present",
+          "experienceYears": 2,
+          "proficiencyPercent": 40,
+          "level": "Intermediate",
+          "category": "Cloud & DevOps",
+          "recency": "2024–Present",
+          "summary": "Implemented Playwright for end-to-end testing, validating application behavior across multiple browsers.",
+          "embedding_text": "Playwright Testing 2 years Intermediate Implemented Playwright for end-to-end testing, validating application behavior across multiple browsers.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Modern Development Practices",
+      "icon": "crown",
+      "technologies": [
+        {
+          "id": "serverless-architecture-1",
+          "name": "Serverless Architecture",
+          "experience": "2025",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Modern Development Practices",
+          "recency": "2025–Present",
+          "summary": "Designed serverless architectures to eliminate infrastructure management and reduce operational costs.",
+          "embedding_text": "Serverless Architecture 1 years Advanced Designed serverless architectures to eliminate infrastructure management and reduce operational costs.",
+          "embedding": []
+        },
+        {
+          "id": "low-cost-infrastructure-design-1",
+          "name": "Low-Cost Infrastructure Design",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Modern Development Practices",
+          "recency": "2024–Present",
+          "summary": "Architected cost-efficient infrastructure solutions, minimizing cloud spend while maintaining performance and scalability.",
+          "embedding_text": "Low-Cost Infrastructure Design 1 years Advanced Architected cost-efficient infrastructure solutions, minimizing cloud spend while maintaining performance and scalability.",
+          "embedding": []
+        },
+        {
+          "id": "azure-static-web-apps-2",
+          "name": "Azure Static Web Apps",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Modern Development Practices",
+          "recency": "2024–Present",
+          "summary": "Deployed static web applications using Azure Static Web Apps for simplified hosting and integrated APIs.",
+          "embedding_text": "Azure Static Web Apps 1 years Advanced Deployed static web applications using Azure Static Web Apps for simplified hosting and integrated APIs.",
+          "embedding": []
+        },
+        {
+          "id": "cloudflare-dns-cdn-2",
+          "name": "Cloudflare DNS/CDN",
+          "experience": "2024-Present",
+          "experienceYears": 1,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Modern Development Practices",
+          "recency": "2024–Present",
+          "summary": "Utilized Cloudflare DNS and CDN for secure, high-performance content delivery with built-in security features.",
+          "embedding_text": "Cloudflare DNS/CDN 1 years Advanced Utilized Cloudflare DNS and CDN for secure, high-performance content delivery with built-in security features.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Technical Research & Prototyping",
+      "icon": "nodes",
+      "technologies": [
+        {
+          "id": "containerization-orchestration-1",
+          "name": "Containerization & Orchestration",
+          "experience": "Docker, Kubernetes (pod replicas, self-healing)",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Technical Research & Prototyping",
+          "summary": "Prototyped containerized applications with Docker and Kubernetes, exploring self-healing and scalable pod orchestration.",
+          "embedding_text": "Containerization & Orchestration 1 years Advanced Prototyped containerized applications with Docker and Kubernetes, exploring self-healing and scalable pod orchestration.",
+          "embedding": []
+        },
+        {
+          "id": "message-brokers-patterns-1",
+          "name": "Message Brokers & Patterns",
+          "experience": "RabbitMQ (pub/sub patterns)",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Technical Research & Prototyping",
+          "summary": "Researched RabbitMQ pub/sub patterns for decoupled messaging and event-driven architecture prototypes.",
+          "embedding_text": "Message Brokers & Patterns 1 years Advanced Researched RabbitMQ pub/sub patterns for decoupled messaging and event-driven architecture prototypes.",
+          "embedding": []
+        },
+        {
+          "id": "distributed-caching-1",
+          "name": "Distributed Caching",
+          "experience": "Redis",
+          "experienceYears": 1,
+          "proficiencyPercent": 70,
+          "level": "Advanced",
+          "category": "Technical Research & Prototyping",
+          "summary": "Experimented with Redis for distributed caching to improve application performance and reduce database load.",
+          "embedding_text": "Distributed Caching 1 years Advanced Experimented with Redis for distributed caching to improve application performance and reduce database load.",
+          "embedding": []
+        },
+        {
+          "id": "concurrency-models-1",
+          "name": "Concurrency Models",
+          "experience": "Akka.NET (Actor Model)",
+          "experienceYears": 1,
+          "proficiencyPercent": 70,
+          "level": "Advanced",
+          "category": "Technical Research & Prototyping",
+          "summary": "Explored Akka.NET's actor model for building concurrent, fault-tolerant systems with message-driven architecture.",
+          "embedding_text": "Concurrency Models 1 years Advanced Explored Akka.NET's actor model for building concurrent, fault-tolerant systems with message-driven architecture.",
+          "embedding": []
+        },
+        {
+          "id": "frontend-frameworks-1",
+          "name": "Frontend Frameworks",
+          "experience": "React, Bootstrap, Clarity Design",
+          "experienceYears": 1,
+          "proficiencyPercent": 75,
+          "level": "Advanced",
+          "category": "Technical Research & Prototyping",
+          "summary": "Researched and prototyped with React, Bootstrap, and Clarity Design for modern, component-based UI development.",
+          "embedding_text": "Frontend Frameworks 1 years Advanced Researched and prototyped with React, Bootstrap, and Clarity Design for modern, component-based UI development.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Edge Architectures (Production)",
+      "icon": "cloud",
+      "technologies": [
+        {
+          "id": "cloudflare-workers-2",
+          "name": "Cloudflare Workers",
+          "experience": "Globally distributed, zero‑cost hosting",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Edge Architectures (Production)",
+          "recency": "2024–Present",
+          "summary": "Deployed production Cloudflare Workers for globally distributed, zero-cost edge compute with minimal latency.",
+          "embedding_text": "Cloudflare Workers 1 years Advanced Deployed production Cloudflare Workers for globally distributed, zero-cost edge compute with minimal latency.",
+          "embedding": []
+        },
+        {
+          "id": "cloudflare-pages-2",
+          "name": "Cloudflare Pages",
+          "experience": "Technical blog deployment",
+          "experienceYears": 1,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Edge Architectures (Production)",
+          "recency": "2024–Present",
+          "summary": "Published technical blog using Cloudflare Pages for fast, globally distributed static site hosting.",
+          "embedding_text": "Cloudflare Pages 1 years Advanced Published technical blog using Cloudflare Pages for fast, globally distributed static site hosting.",
+          "embedding": []
+        },
+        {
+          "id": "infrastructure-as-code-1",
+          "name": "Infrastructure as Code",
+          "experience": "Terraform‑based workflows (Exploratory)",
+          "experienceYears": 1,
+          "proficiencyPercent": 65,
+          "level": "Intermediate",
+          "category": "Edge Architectures (Production)",
+          "summary": "Explored Terraform-based infrastructure workflows to automate provisioning and version-control cloud resources.",
+          "embedding_text": "Infrastructure as Code 1 years Intermediate Explored Terraform-based infrastructure workflows to automate provisioning and version-control cloud resources.",
+          "embedding": []
+        }
+      ]
+    },
+    {
+      "name": "Legacy Development",
+      "icon": "history",
+      "technologies": [
+        {
+          "id": "vbnet-1",
+          "name": "VB.NET",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 90,
+          "level": "Expert",
+          "category": "Legacy Development",
+          "summary": "Maintained and extended VB.NET enterprise applications for 8+ years, supporting legacy systems and migrations.",
+          "embedding_text": "VB.NET 8 years Expert Maintained and extended VB.NET enterprise applications for 8+ years, supporting legacy systems and migrations.",
+          "embedding": []
+        },
+        {
+          "id": "wpf-1",
+          "name": "WPF",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Legacy Development",
+          "summary": "Developed Windows Presentation Foundation desktop applications for 8+ years with rich, data-bound UIs.",
+          "embedding_text": "WPF 8 years Advanced Developed Windows Presentation Foundation desktop applications for 8+ years with rich, data-bound UIs.",
+          "embedding": []
+        },
+        {
+          "id": "silverlight-1",
+          "name": "Silverlight",
+          "experience": "5+ years",
+          "experienceYears": 5,
+          "proficiencyPercent": 80,
+          "level": "Advanced",
+          "category": "Legacy Development",
+          "summary": "Built Silverlight-based rich internet applications for 5+ years before platform deprecation.",
+          "embedding_text": "Silverlight 5 years Advanced Built Silverlight-based rich internet applications for 5+ years before platform deprecation.",
+          "embedding": []
+        },
+        {
+          "id": "aspnet-mvc-webforms-1",
+          "name": "ASP.NET MVC/WebForms",
+          "experience": "8+ years",
+          "experienceYears": 8,
+          "proficiencyPercent": 85,
+          "level": "Advanced",
+          "category": "Legacy Development",
+          "summary": "Developed and maintained ASP.NET MVC and WebForms applications for 8+ years, supporting enterprise web solutions.",
+          "embedding_text": "ASP.NET MVC/WebForms 8 years Advanced Developed and maintained ASP.NET MVC and WebForms applications for 8+ years, supporting enterprise web solutions.",
+          "embedding": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "cv-assistant-worker",
+  "version": "1.0.0",
+  "description": "CV Assistant with semantic search using Cloudflare Workers, D1, Vectorize, and Workers AI",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "db:create": "wrangler d1 create cv_assistant_db",
+    "db:migrate": "wrangler d1 execute cv_assistant_db --file=./schema/schema.sql",
+    "db:seed": "wrangler d1 execute cv_assistant_db --file=./schema/seed.sql",
+    "db:migrate:local": "wrangler d1 execute cv_assistant_db --local --file=./schema/schema.sql",
+    "db:seed:local": "wrangler d1 execute cv_assistant_db --local --file=./schema/seed.sql",
+    "kv:create": "wrangler kv:namespace create CV_VECTORS",
+    "vectorize:create": "wrangler vectorize create cv-skills-index --dimensions=768 --metric=cosine",
+    "test": "node tests/run-tests.js",
+    "type-check": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json"
+    ,"gen:build":"tsc -p tsconfig.tools.json"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "d1",
+    "vectorize",
+    "ai",
+    "cv",
+    "semantic-search"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.22.1"
+  },
+  "dependencies": {}
+}

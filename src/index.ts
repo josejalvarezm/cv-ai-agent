@@ -20,6 +20,7 @@ interface Env {
   CACHE_TTL?: string;
   VECTORIZE_FALLBACK?: string;
   AI_REPLY_ENABLED?: string;
+  TURNSTILE_SECRET_KEY?: string; // Turnstile secret for server-side validation
 }
 
 // Skill record from D1
@@ -96,6 +97,45 @@ async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
   }
 
   return null;
+}
+
+/**
+ * Validate Turnstile token with Cloudflare's siteverify API
+ * @param token - Turnstile token from client
+ * @param secretKey - Turnstile secret key
+ * @param clientIp - Optional client IP address
+ * @returns true if token is valid, false otherwise
+ */
+async function validateTurnstileToken(
+  token: string,
+  secretKey: string,
+  clientIp?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('secret', secretKey);
+    formData.append('response', token);
+    if (clientIp) {
+      formData.append('remoteip', clientIp);
+    }
+
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json() as { success: boolean; 'error-codes'?: string[] };
+    
+    if (!result.success) {
+      console.warn('Turnstile validation failed:', result['error-codes']);
+      return { success: false, error: result['error-codes']?.join(', ') || 'Validation failed' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Turnstile validation error:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 // Cache key generator (simple hash)
@@ -579,7 +619,7 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Turnstile-Token',
     };
     
     // Handle CORS preflight
@@ -598,6 +638,36 @@ export default {
       }
       
       if (path === '/query' && (request.method === 'GET' || request.method === 'POST')) {
+        // Validate Turnstile token if provided
+        const turnstileToken = request.headers.get('X-Turnstile-Token');
+        
+        if (env.TURNSTILE_SECRET_KEY) {
+          if (!turnstileToken) {
+            return new Response(JSON.stringify({
+              error: 'Forbidden',
+              message: 'Turnstile verification required. Please complete the human verification.',
+            }), {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          // Validate token
+          const clientIp = request.headers.get('CF-Connecting-IP') || undefined;
+          const validation = await validateTurnstileToken(turnstileToken, env.TURNSTILE_SECRET_KEY, clientIp);
+          
+          if (!validation.success) {
+            return new Response(JSON.stringify({
+              error: 'Forbidden',
+              message: 'Turnstile verification failed. Please refresh and try again.',
+              details: validation.error,
+            }), {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+
         // Use D1 vectors for all queries (replaces old Vectorize implementation)
         const response = await handleD1VectorQuery(request, env);
         Object.entries(corsHeaders).forEach(([key, value]) => {

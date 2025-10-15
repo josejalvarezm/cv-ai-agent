@@ -30,14 +30,17 @@ binding = "AI"
 ENVIRONMENT = "development"
 CACHE_TTL = "3600"
 VECTORIZE_FALLBACK = "true"
+TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"  # Test secret key for development
 
 # Development configuration
 [env.development]
-vars = { ENVIRONMENT = "development" }
+vars = { ENVIRONMENT = "development", TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA" }
 
 # Production configuration
 [env.production]
 vars = { ENVIRONMENT = "production", CACHE_TTL = "7200", VECTORIZE_FALLBACK = "true", AI_REPLY_ENABLED = "true" }
+# Add Turnstile secret key as environment variable or secret:
+# TURNSTILE_SECRET_KEY should be set via `wrangler secret put TURNSTILE_SECRET_KEY` for production
 
 [[env.production.d1_databases]]
 binding = "DB"

@@ -3,9 +3,12 @@
  * This bypasses Vectorize and uses the embeddings stored in your vectors table
  */
 
+import { canUseAI, incrementQuota, getQuotaExceededMessage, type QuotaStatus } from './ai-quota';
+
 interface Env {
   DB: D1Database;
   AI: Ai;
+  KV: KVNamespace;  // Added for quota tracking
   AI_REPLY_ENABLED?: string;
 }
 
@@ -200,7 +203,18 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     // Generate AI reply if enabled
     if (env.AI_REPLY_ENABLED === 'true' && topResults.length > 0) {
       try {
-        const top5 = topResults.slice(0, 5);
+        // Check AI quota circuit breaker
+        const { allowed, status } = await canUseAI(env.KV);
+        
+        if (!allowed) {
+          // Quota exceeded - return friendly fallback message
+          console.log(`AI quota exceeded: ${status.count}/${status.limit} (resets at ${status.resetAt})`);
+          responseData.assistantReply = getQuotaExceededMessage(query, topResults);
+          responseData.quotaExceeded = true;
+          responseData.quotaStatus = status;
+        } else {
+          // Quota available - proceed with AI inference
+          const top5 = topResults.slice(0, 5);
         const topScore = top5[0]?.similarity ?? 0;
 
         // Confidence interpretation: scores above 0.65 are strong matches for broad queries
@@ -296,18 +310,64 @@ CONTEXT FOR ASSESSMENT:
 
 Provide a professional, outcome-driven answer (3-5 sentences maximum):`;
 
-        const aiResponse = await env.AI.run('@cf/meta/llama-3.2-3b-instruct', {
+        const aiResponse = await env.AI.run('@cf/mistral/mistral-7b-instruct' as any, {
           messages: [
             { 
               role: 'system', 
-              content: 'You are an expert CV assistant designed to answer recruiter-style questions. Generate outcome-driven answers that follow the template: Skill → Context → Action → Effect → Outcome → Project. When asked about professional level, classify as Junior (0-3 years), Mid (3-7 years), Senior (7-15 years), or Principal (15+ years) by aggregating across all skills. Never define candidates by single tools—contextualize tools inside broader outcomes. Be concise, avoid fluff, focus on measurable business impact. Never invent data not present in the provided skills.' 
+              content: `You are a recruiter-facing assistant that answers questions about José's professional profile.
+
+Always follow these rules:
+
+1. **Classification**
+   - When asked about professional level, always classify explicitly as Junior, Mid-level, Senior, or Principal/Lead.
+   - Use this mapping:
+     - 0–3 years = Junior
+     - 3–7 years = Mid-level
+     - 7–15 years = Senior
+     - 15+ years = Principal/Lead
+   - If skills vary, return the highest consistent level but note if some newer skills are at lower depth.
+
+2. **Outcome-driven synthesis**
+   - Structure every skill answer as:
+     Skill → Context (years, level) → Action → Effect → Outcome → Project (optional).
+   - Prioritize measurable outcomes (percentages, cycle times, uptime, throughput).
+   - Avoid vague phrases like "delivered business value" or "drove success."
+
+3. **Anti tool-centric**
+   - Never present SQL Server, AppDynamics, or any single tool as the sole definition of the candidate.
+   - Always contextualize tool-specific skills inside broader architectural or engineering outcomes.
+   - Aggregate across categories (database, architecture, cloud, DevOps) when multiple skills are relevant.
+
+4. **Style**
+   - Keep answers concise, clear, and recruiter-friendly.
+   - Always answer the implicit recruiter question: "So what?"
+   - Do not repeat summaries verbatim; reframe into outcome-driven narratives.
+
+### Example transformation:
+
+Input skill:
+- Name: Full-Stack Service Decomposition
+- ExperienceYears: 5
+- Level: Advanced
+- Action: Broke down monolithic applications into modular services
+- Effect: Enabled teams to deploy independently and faster
+- Outcome: Cut release cycles from weeks to days
+- Related_project: CCHQ national campaign platform
+
+Output answer:
+"With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, José broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."`
             },
             { role: 'user', content: prompt }
           ],
           max_tokens: 300
         }) as { response?: string };
 
-        responseData.assistantReply = aiResponse?.response || '';
+          responseData.assistantReply = aiResponse?.response || '';
+          
+          // Increment quota counter after successful inference
+          await incrementQuota(env.KV);
+          console.log(`AI inference successful. Quota: ${status.count + 1}/${status.limit}`);
+        }
       } catch (aiError) {
         console.error('AI reply generation failed:', aiError);
         responseData.assistantReply = '';

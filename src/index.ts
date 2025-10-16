@@ -11,6 +11,7 @@
 
 import { handleD1VectorQuery } from './query-d1-vectors';
 import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
+import { getQuotaStatus, resetQuota } from './ai-quota';
 
 // Environment bindings interface
 interface Env {
@@ -636,9 +637,53 @@ Provide a short 2-3 sentence answer that:
 - Suggests one practical follow-up action
 - Keep it conversational and helpful`;
 
-        const response = await env.AI.run('@cf/meta/llama-3.2-3b-instruct', {
+        const response = await env.AI.run('@cf/mistral/mistral-7b-instruct' as any, {
           messages: [
-            { role: 'system', content: 'You are a helpful technical assistant. Keep responses concise (2-3 sentences).' },
+            { 
+              role: 'system', 
+              content: `You are a recruiter-facing assistant that answers questions about José's professional profile.
+
+Always follow these rules:
+
+1. **Classification**
+   - When asked about professional level, always classify explicitly as Junior, Mid-level, Senior, or Principal/Lead.
+   - Use this mapping:
+     - 0–3 years = Junior
+     - 3–7 years = Mid-level
+     - 7–15 years = Senior
+     - 15+ years = Principal/Lead
+   - If skills vary, return the highest consistent level but note if some newer skills are at lower depth.
+
+2. **Outcome-driven synthesis**
+   - Structure every skill answer as:
+     Skill → Context (years, level) → Action → Effect → Outcome → Project (optional).
+   - Prioritize measurable outcomes (percentages, cycle times, uptime, throughput).
+   - Avoid vague phrases like "delivered business value" or "drove success."
+
+3. **Anti tool-centric**
+   - Never present SQL Server, AppDynamics, or any single tool as the sole definition of the candidate.
+   - Always contextualize tool-specific skills inside broader architectural or engineering outcomes.
+   - Aggregate across categories (database, architecture, cloud, DevOps) when multiple skills are relevant.
+
+4. **Style**
+   - Keep answers concise, clear, and recruiter-friendly.
+   - Always answer the implicit recruiter question: "So what?"
+   - Do not repeat summaries verbatim; reframe into outcome-driven narratives.
+
+### Example transformation:
+
+Input skill:
+- Name: Full-Stack Service Decomposition
+- ExperienceYears: 5
+- Level: Advanced
+- Action: Broke down monolithic applications into modular services
+- Effect: Enabled teams to deploy independently and faster
+- Outcome: Cut release cycles from weeks to days
+- Related_project: CCHQ national campaign platform
+
+Output answer:
+"With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, José broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."`
+            },
             { role: 'user', content: prompt }
           ]
         }) as { response?: string };
@@ -704,11 +749,15 @@ async function handleHealth(env: Env): Promise<Response> {
       'SELECT version, indexed_at, total_skills, status FROM index_metadata ORDER BY version DESC LIMIT 1'
     ).first();
     
+    // Get AI quota status
+    const quotaStatus = await getQuotaStatus(env.KV);
+    
     return new Response(JSON.stringify({
       status: 'healthy',
       database: dbCheck ? 'connected' : 'error',
       total_skills: skillCount?.count || 0,
       last_index: lastIndex || null,
+      ai_quota: quotaStatus,
       timestamp: new Date().toISOString(),
     }), {
       headers: { 'Content-Type': 'application/json' },
@@ -867,6 +916,28 @@ export default {
         }
 
         return Response.json(embeddingInfo);
+      }
+      
+      if (path === '/quota' && request.method === 'GET') {
+        // AI quota status endpoint
+        const quotaStatus = await getQuotaStatus(env.KV);
+        return new Response(JSON.stringify(quotaStatus), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (path === '/quota/reset' && request.method === 'POST') {
+        // Admin endpoint to manually reset quota (requires authentication in production)
+        // TODO: Add proper authentication/authorization
+        await resetQuota(env.KV);
+        const newStatus = await getQuotaStatus(env.KV);
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Quota reset successfully',
+          status: newStatus,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
       
       if (path === '/health' || path === '/') {

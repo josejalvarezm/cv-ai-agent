@@ -7,27 +7,49 @@ A semantic search engine and AI assistant for CV skills built on Cloudflare's ed
 - **Outcome-Driven Responses**: Every answer follows the template: **Skill → Context → Action → Effect → Outcome → Project**
 - **Semantic Search**: Vector-based similarity search using D1 + Workers AI embeddings
 - **Edge-Native**: Runs on Cloudflare Workers with D1 database and Vectorize
-- **AI-Powered Replies**: Optional LLM-generated responses via Workers AI
+- **AI-Powered Replies**: LLM-generated responses via Workers AI (@cf/meta/llama-3.2-3b-instruct)
 - **No Fluff**: Avoids recruiter buzzwords, focuses on measurable results
+- **Fully Automated**: One-command deployment with PowerShell automation
+- **Turnstile Protected**: Cloudflare Turnstile prevents bot abuse
 
-## 📖 Documentation
+## 🚀 Quick Start (Automated)
 
-- **[Outcome-Driven CV Assistant Guide](docs/outcome-driven-cv-assistant.md)** - Complete implementation guide
-- **[Quick Reference](docs/outcome-driven-quick-reference.md)** - Cheat sheet for usage
-- **[Implementation Summary](OUTCOME_DRIVEN_SUMMARY.md)** - What changed and how to use it
+### One-Command Deployment
 
-## 🚀 Quick Start
+```powershell
+# Full automated deployment (recommended)
+npm run deploy:full
+```
 
-### Deploy to Cloudflare
+This single command:
+1. ✅ Builds TypeScript
+2. ✅ Deploys to Cloudflare Workers
+3. ✅ Checks/applies database migrations
+4. ✅ Seeds data if needed
+5. ✅ Generates embeddings (64 records)
+6. ✅ Runs health checks
+7. ✅ Takes ~2-3 minutes total
+
+### Alternative: Manual Setup
 
 ```bash
 # Install dependencies
 npm install
 
-# Create D1 database
-wrangler d1 create cv-assistant-db
+# Build TypeScript
+npm run build
 
-# Apply schema
+# Deploy worker
+npm run deploy
+
+# Apply schema migration
+wrangler d1 execute cv_assistant_db --remote --file=migrations/003_add_outcome_fields.sql
+
+# Seed database
+wrangler d1 execute cv_assistant_db --remote --file=migrations/002_seed_data_tech_only.sql
+
+# Index vectors
+npm run index:remote
 wrangler d1 execute cv-assistant-db --file=migrations/001_initial_schema.sql
 
 # Seed data

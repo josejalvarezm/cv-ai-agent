@@ -12,12 +12,19 @@
     "db:seed": "wrangler d1 execute cv_assistant_db --file=./schema/seed.sql",
     "db:migrate:local": "wrangler d1 execute cv_assistant_db --local --file=./schema/schema.sql",
     "db:seed:local": "wrangler d1 execute cv_assistant_db --local --file=./schema/seed.sql",
+    "db:migrate:outcome": "wrangler d1 execute cv_assistant_db --remote --file=./migrations/003_add_outcome_fields.sql",
+    "db:seed:outcome": "wrangler d1 execute cv_assistant_db --remote --file=./migrations/002_seed_data_tech_only.sql",
+    "db:clear": "wrangler d1 execute cv_assistant_db --remote --command=\"DELETE FROM vectors; DELETE FROM technology;\"",
     "kv:create": "wrangler kv:namespace create CV_VECTORS",
     "vectorize:create": "wrangler vectorize create cv-skills-index --dimensions=768 --metric=cosine",
+    "index:remote": "node scripts/index-vectors.js",
+    "health": "curl https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}/health",
+    "deploy:full": "pwsh -File scripts/deploy-cv-assistant.ps1",
+    "deploy:quick": "npm run build && npm run deploy",
     "test": "node tests/run-tests.js",
     "type-check": "tsc --noEmit",
-    "build": "tsc -p tsconfig.json"
-    ,"gen:build":"tsc -p tsconfig.tools.json"
+    "build": "tsc -p tsconfig.json",
+    "gen:build": "tsc -p tsconfig.tools.json"
   },
   "keywords": [
     "cloudflare",

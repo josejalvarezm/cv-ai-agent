@@ -60,7 +60,8 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     // For large datasets, you'd want to implement approximate nearest neighbor search
     const { results: vectors } = await env.DB.prepare(
       `SELECT v.id, v.item_id, v.embedding, v.metadata, t.name, t.experience, t.experience_years,
-              t.proficiency_percent, t.level, t.summary, t.category, t.recency
+              t.proficiency_percent, t.level, t.summary, t.category, t.recency,
+              t.action, t.effect, t.outcome, t.related_project
        FROM vectors v
        JOIN technology t ON v.item_id = t.id
        WHERE v.item_type = 'technology'`
@@ -150,6 +151,10 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
             summary: vector.summary,
             category: vector.category,
             recency: vector.recency,
+            action: vector.action,
+            effect: vector.effect,
+            outcome: vector.outcome,
+            related_project: vector.related_project,
           },
           metadata,
         });
@@ -177,6 +182,10 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
         summary: r.technology.summary,
         category: r.technology.category,
         recency: r.technology.recency,
+        action: r.technology.action,
+        effect: r.technology.effect,
+        outcome: r.technology.outcome,
+        related_project: r.technology.related_project,
         similarity: r.similarity,
         provenance: {
           source: 'd1-vectors',
@@ -205,43 +214,65 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
         const expertSkills = top5.filter(r => r.technology.level === 'Expert');
         const seniorSkills = top5.filter(r => r.technology.years >= 10);
 
-        const resultsText = top5.map((r, i) =>
-          `${i+1}. ${r.technology.name} — ${r.technology.years} years, ${r.technology.level}${r.technology.recency ? ` (${r.technology.recency})` : ''}
-   Category: ${r.technology.category}
-   ${r.technology.summary}
-   Similarity: ${r.similarity.toFixed(3)}`
-        ).join('\n\n');
+        const resultsText = top5.map((r, i) => {
+          const tech = r.technology;
+          // Build a structured text representation highlighting outcome-driven fields
+          let text = `${i+1}. ${tech.name} — ${tech.years} years, ${tech.level}${tech.recency ? ` (${tech.recency})` : ''}
+   Category: ${tech.category}`;
+          
+          if (tech.action) text += `\n   Action: ${tech.action}`;
+          if (tech.effect) text += `\n   Effect: ${tech.effect}`;
+          if (tech.outcome) text += `\n   Outcome: ${tech.outcome}`;
+          if (tech.related_project) text += `\n   Project: ${tech.related_project}`;
+          if (tech.summary) text += `\n   Summary: ${tech.summary}`;
+          
+          text += `\n   Similarity: ${r.similarity.toFixed(3)}`;
+          return text;
+        }).join('\n\n');
 
-        const prompt = `You are a professional technical recruiter assessing a senior software engineer candidate.
+        const prompt = `You are an expert CV assistant answering recruiter questions about a senior engineer candidate.
 
-User question: "${query}"
+USER QUESTION: "${query}"
 
-Top matching skills (confidence: ${confidence}, score: ${topScore.toFixed(3)}):
+TOP MATCHING SKILLS (confidence: ${confidence}, score: ${topScore.toFixed(3)}):
 ${resultsText}
 
-Context for assessment:
+CONTEXT FOR ASSESSMENT:
 - Categories represented: ${Array.from(categories).join(', ')}
 - Expert-level skills: ${expertSkills.length} (${expertSkills.map(s => s.technology.name).join(', ')})
 - Senior experience (10+ years): ${seniorSkills.length} (${seniorSkills.map(s => s.technology.name).join(', ')})
 - Recent/current skills: ${hasRecent ? 'Yes' : 'No'}
 
-IMPORTANT GUIDELINES:
-1. For breadth/overview queries: Highlight at least one skill from each major category (Frontend, Backend, Database, Architecture)
-2. Emphasize "recency" when present, especially if query mentions "current" or "recent"
-3. Highlight Expert/Advanced levels and 10+ years when query mentions "depth" or "senior"
-4. Use the summary field as narrative anchor - these are outcome-driven descriptions
-5. Scores above 0.65 are STRONG matches for broad queries - do not undersell confidence
-6. Synthesize into a concise, outcome-driven paragraph balancing depth AND breadth
-7. Never rate as "moderate" or "further assessment needed" when scores are 0.65+ with Expert/10+ years experience
+YOUR TASK:
+Generate an outcome-driven answer using this template:
+**Skill → Context (years, level) → Action → Effect → Outcome → Project (optional)**
 
-Provide a professional 3-4 sentence assessment that positions this as a SENIOR/PRINCIPAL level candidate.`;
+CRITICAL GUIDELINES:
+1. ALWAYS follow the template: Start with the skill name and context (years, level), then describe the Action, Effect, Outcome, and optionally the Project
+2. Use the "action", "effect", "outcome", and "related_project" fields when available - these are already structured for recruiter impact
+3. If action/effect/outcome fields are empty, extract them from the summary field
+4. Be CONCISE, CLEAR, and PROFESSIONAL - avoid recruiter fluff like "exceptional engineer" or "proven track record"
+5. Prioritize measurable results and cause-and-effect links (e.g., "Cut release cycles from weeks to days")
+6. When multiple skills are relevant, weave them into a coherent narrative
+7. Always answer the implicit "So what?" question - why does this matter to business outcomes?
+8. For breadth queries: Highlight skills across categories (Frontend, Backend, Database, Architecture)
+9. For depth queries: Emphasize Expert/Advanced levels and 10+ years experience
+10. Scores 0.65+ with Expert/10+ years = HIGH CONFIDENCE senior/principal positioning
+
+EXAMPLE OUTPUT FORMAT:
+"With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, I broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."
+
+Provide a professional, outcome-driven answer (3-5 sentences maximum):`;
 
         const aiResponse = await env.AI.run('@cf/meta/llama-3.2-3b-instruct', {
           messages: [
-            { role: 'system', content: 'You are a senior technical recruiter. Provide confident, outcome-focused assessments that highlight candidate strengths. Never undersell senior expertise.' },
+            { 
+              role: 'system', 
+              content: 'You are an expert CV assistant. Generate outcome-driven answers that follow the template: Skill → Context → Action → Effect → Outcome → Project. Be concise, avoid fluff, focus on measurable business impact. Never invent data not present in the provided skills.' 
+            },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 200
+          max_tokens: 300
         }) as { response?: string };
 
         responseData.assistantReply = aiResponse?.response || '';

@@ -30,7 +30,8 @@ binding = "AI"
 ENVIRONMENT = "development"
 CACHE_TTL = "3600"
 VECTORIZE_FALLBACK = "true"
-TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"  # Test secret key for development
+AI_REPLY_ENABLED = "true"
+TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
 
 # Development configuration
 [env.development]

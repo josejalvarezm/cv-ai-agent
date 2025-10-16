@@ -22,6 +22,10 @@ CREATE TABLE technology (
   category TEXT,
   recency TEXT,
   category_id INTEGER,
+  action TEXT,              -- What was done with this skill
+  effect TEXT,              -- Operational/technical effect
+  outcome TEXT,             -- Business outcome or measurable result
+  related_project TEXT,     -- Optional project/context anchor
   FOREIGN KEY (category_id) REFERENCES technology_category(id)
 );
 

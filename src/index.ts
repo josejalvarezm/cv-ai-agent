@@ -32,6 +32,10 @@ interface Skill {
   category?: string;
   description?: string;
   last_used?: string;
+  action?: string;              // What was done with this skill
+  effect?: string;              // Operational/technical effect
+  outcome?: string;             // Business outcome or measurable result
+  related_project?: string;     // Optional project/context anchor
 }
 
 // Vector metadata
@@ -89,6 +93,10 @@ async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
         years: t.years || 0,
         category: undefined,
         description: t.description || t.experience || undefined,
+        action: t.action,
+        effect: t.effect,
+        outcome: t.outcome,
+        related_project: t.related_project,
       };
       return mapped;
     }
@@ -256,6 +264,7 @@ async function handleIndex(request: Request, env: Env): Promise<Response> {
 
     const vectors: any[] = [];
     const kvPromises: Promise<any>[] = [];
+    const d1Promises: Promise<any>[] = [];
 
     for (const item of items) {
       const text = itemType === 'technology'
@@ -274,11 +283,19 @@ async function handleIndex(request: Request, env: Env): Promise<Response> {
       vectors.push({ id: idKey, values: embedding, metadata });
 
       kvPromises.push(env.KV.put(`vector:${idKey}`, JSON.stringify({ values: embedding, metadata }), { expirationTtl: 86400 * 30 }));
+      
+      // Store embedding in D1 vectors table (id is auto-increment, don't specify it)
+      const embeddingBlob = new Float32Array(embedding).buffer;
+      d1Promises.push(
+        env.DB.prepare(
+          'INSERT INTO vectors (item_type, item_id, embedding, metadata) VALUES (?, ?, ?, ?)'
+        ).bind(itemType, item.id, embeddingBlob, JSON.stringify(metadata)).run()
+      );
     }
 
-    // upsert into Vectorize
+    // upsert into Vectorize, KV, and D1
     await env.VECTORIZE.upsert(vectors as any);
-    await Promise.all(kvPromises);
+    await Promise.all([...kvPromises, ...d1Promises]);
 
     // update metadata: increment total_skills by processed count and mark as in_progress
     await env.DB.prepare('UPDATE index_metadata SET total_skills = COALESCE(total_skills,0) + ?, status = ? WHERE version = ?').bind(items.length, 'in_progress', version).run();

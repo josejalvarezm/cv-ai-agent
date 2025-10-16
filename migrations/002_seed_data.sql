@@ -14,62 +14,82 @@ INSERT INTO technology_category (id, name) VALUES (9, 'Legacy Development');
 -- Insert technologies
 
 -- Architecture & Design
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (1, 'full-stack-service-decomposition-1', 'Full-Stack Service Decomposition', '5+ years (CCHQ)', 5, 85, 'Advanced', 'Decomposed monolithic applications into independent full-stack services at CCHQ, enabling team autonomy and faster deployment cycles.', 'Architecture & Design', NULL, 1);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (2, 'service-oriented-architecture-1', 'Service-Oriented Architecture', '8+ years', 8, 88, 'Advanced', 'Designed and implemented service-oriented architectures across enterprise systems for 8+ years, improving modularity and integration flexibility.', 'Architecture & Design', NULL, 1);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (3, 'restful-apis-1', 'RESTful APIs', '10+ years', 10, 90, 'Expert', 'Built and maintained RESTful APIs for 10+ years, delivering scalable and well-documented interfaces for client-server communication.', 'Architecture & Design', NULL, 1);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (4, 'component-based-architecture-1', 'Component-Based Architecture', '3+ years', 3, 85, 'Advanced', 'Developed reusable component-based architectures for 3+ years, improving code maintainability and development velocity.', 'Architecture & Design', NULL, 1);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (5, 'independent-deployment-1', 'Independent Deployment', '5+ years', 5, 85, 'Advanced', 'Enabled independent deployment pipelines for services over 5+ years, reducing release coordination overhead and deployment risk.', 'Architecture & Design', NULL, 1);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (6, 'message-queue-patterns-1', 'Message Queue Patterns', '8+ years (MSMQ, SQL-based)', 8, 85, 'Advanced', 'Implemented message queue patterns using MSMQ and SQL-based queues for 8+ years, ensuring reliable asynchronous processing.', 'Architecture & Design', NULL, 1);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (7, 'edge-architectures-1', 'Edge Architectures', '1+ years', 1, 80, 'Advanced', 'Architected edge computing solutions to reduce latency and improve global content delivery performance.', 'Architecture & Design', '2024–Present', 1);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (8, 'microservices-principles-1', 'Microservices Principles', '5+ years', 5, 85, 'Advanced', 'Applied microservices principles over 5+ years to decompose systems into independently deployable, loosely-coupled services.', 'Architecture & Design', NULL, 1);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (1, 'full-stack-service-decomposition-1', 'Full-Stack Service Decomposition', '5+ years (CCHQ)', 5, 85, 'Advanced', 
+  'Decomposed monolithic applications into independent full-stack services at CCHQ, enabling team autonomy and faster deployment cycles.', 
+  'Architecture & Design', NULL, 1,
+  'Broke down monolithic applications into modular, independently deployable services',
+  'Enabled teams to deploy independently and faster',
+  'Cut release cycles from weeks to days',
+  'CCHQ national campaign platform');
+
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (2, 'service-oriented-architecture-1', 'Service-Oriented Architecture', '8+ years', 8, 88, 'Advanced', 
+  'Designed and implemented service-oriented architectures across enterprise systems for 8+ years, improving modularity and integration flexibility.', 
+  'Architecture & Design', NULL, 1,
+  'Designed and implemented SOA patterns across 10+ enterprise applications',
+  'Improved system modularity and enabled seamless third-party integrations',
+  'Reduced integration time by 60% and increased system maintainability',
+  NULL);
+
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (3, 'restful-apis-1', 'RESTful APIs', '10+ years', 10, 90, 'Expert', 
+  'Built and maintained RESTful APIs for 10+ years, delivering scalable and well-documented interfaces for client-server communication.', 
+  'Architecture & Design', NULL, 1,
+  'Architected and maintained 50+ RESTful APIs with comprehensive OpenAPI documentation',
+  'Enabled rapid client integration and self-service API adoption',
+  'Reduced integration support tickets by 80% and enabled 100+ external integrations',
+  NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (4, 'component-based-architecture-1', 'Component-Based Architecture', '3+ years', 3, 85, 'Advanced', 'Developed reusable component-based architectures for 3+ years, improving code maintainability and development velocity.', 'Architecture & Design', NULL, 1, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (5, 'independent-deployment-1', 'Independent Deployment', '5+ years', 5, 85, 'Advanced', 'Enabled independent deployment pipelines for services over 5+ years, reducing release coordination overhead and deployment risk.', 'Architecture & Design', NULL, 1, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (6, 'message-queue-patterns-1', 'Message Queue Patterns', '8+ years (MSMQ, SQL-based)', 8, 85, 'Advanced', 'Implemented message queue patterns using MSMQ and SQL-based queues for 8+ years, ensuring reliable asynchronous processing.', 'Architecture & Design', NULL, 1, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (7, 'edge-architectures-1', 'Edge Architectures', '1+ years', 1, 80, 'Advanced', 'Architected edge computing solutions to reduce latency and improve global content delivery performance.', 'Architecture & Design', '2024–Present', 1, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (8, 'microservices-principles-1', 'Microservices Principles', '5+ years', 5, 85, 'Advanced', 'Applied microservices principles over 5+ years to decompose systems into independently deployable, loosely-coupled services.', 'Architecture & Design', NULL, 1, NULL, NULL, NULL, NULL);
 
 -- Frontend Development
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (9, 'angular-1', 'Angular', '3+ years', 3, 85, 'Advanced', 'Developed enterprise Angular applications for 3+ years, leveraging reactive patterns and modular component design.', 'Frontend Development', NULL, 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (10, 'rxjs-1', 'RxJS', '3+ years', 3, 85, 'Advanced', 'Utilized RxJS for 3+ years to manage asynchronous data streams and event-driven interactions in Angular applications.', 'Frontend Development', NULL, 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (11, 'typescript-1', 'TypeScript', '6+ years', 6, 88, 'Advanced', 'Wrote type-safe applications with TypeScript for 6+ years, improving code quality and developer experience.', 'Frontend Development', NULL, 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (12, 'javascript-1', 'JavaScript', '19 years', 19, 95, 'Expert', 'Core JavaScript expertise spanning 19 years, building interactive web applications and modern frontend solutions.', 'Frontend Development', NULL, 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (13, 'angularjs-1', 'AngularJS', '10 years', 10, 90, 'Expert', 'Built and maintained AngularJS applications over 10 years, delivering dynamic SPAs for enterprise clients.', 'Frontend Development', NULL, 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (14, 'bootstrap-1', 'Bootstrap', '8+ years', 8, 85, 'Advanced', 'Designed responsive, mobile-first interfaces with Bootstrap for 8+ years, accelerating UI development.', 'Frontend Development', NULL, 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (15, 'clarity-design-1', 'Clarity Design', '2025-Present', 1, 80, 'Advanced', 'Adopted Clarity Design System for modern Angular applications, ensuring consistent and accessible UI patterns.', 'Frontend Development', '2025–Present', 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (16, 'playwright-1', 'Playwright', '2024-Present', 2, 40, 'Intermediate', 'Implemented end-to-end tests with Playwright to validate cross-browser functionality and UI behavior.', 'Frontend Development', '2024–Present', 2);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (17, 'react-with-typescript-1', 'React with TypeScript', 'Development/Research', 1, 75, 'Advanced', 'Explored React with TypeScript through development and research, building component-based prototypes.', 'Frontend Development', NULL, 2);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (9, 'angular-1', 'Angular', '3+ years', 3, 85, 'Advanced', 'Developed enterprise Angular applications for 3+ years, leveraging reactive patterns and modular component design.', 'Frontend Development', NULL, 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (10, 'rxjs-1', 'RxJS', '3+ years', 3, 85, 'Advanced', 'Utilized RxJS for 3+ years to manage asynchronous data streams and event-driven interactions in Angular applications.', 'Frontend Development', NULL, 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (11, 'typescript-1', 'TypeScript', '6+ years', 6, 88, 'Advanced', 'Wrote type-safe applications with TypeScript for 6+ years, improving code quality and developer experience.', 'Frontend Development', NULL, 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (12, 'javascript-1', 'JavaScript', '19 years', 19, 95, 'Expert', 'Core JavaScript expertise spanning 19 years, building interactive web applications and modern frontend solutions.', 'Frontend Development', NULL, 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (13, 'angularjs-1', 'AngularJS', '10 years', 10, 90, 'Expert', 'Built and maintained AngularJS applications over 10 years, delivering dynamic SPAs for enterprise clients.', 'Frontend Development', NULL, 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (14, 'bootstrap-1', 'Bootstrap', '8+ years', 8, 85, 'Advanced', 'Designed responsive, mobile-first interfaces with Bootstrap for 8+ years, accelerating UI development.', 'Frontend Development', NULL, 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (15, 'clarity-design-1', 'Clarity Design', '2025-Present', 1, 80, 'Advanced', 'Adopted Clarity Design System for modern Angular applications, ensuring consistent and accessible UI patterns.', 'Frontend Development', '2025–Present', 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (16, 'playwright-1', 'Playwright', '2024-Present', 2, 40, 'Intermediate', 'Implemented end-to-end tests with Playwright to validate cross-browser functionality and UI behavior.', 'Frontend Development', '2024–Present', 2, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (17, 'react-with-typescript-1', 'React with TypeScript', 'Development/Research', 1, 75, 'Advanced', 'Explored React with TypeScript through development and research, building component-based prototypes.', 'Frontend Development', NULL, 2, NULL, NULL, NULL, NULL);
 
 -- Backend Development
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (18, 'csharp-1', 'C#', '19 years', 19, 95, 'Expert', 'Deep expertise in C# spanning 19 years, delivering enterprise-grade backend systems and services.', 'Backend Development', NULL, 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (19, 'aspnet-core-1', 'ASP.NET Core', '5+ years', 5, 90, 'Expert', 'Developed high-performance ASP.NET Core APIs and web applications for 5+ years, supporting modern cloud deployments.', 'Backend Development', NULL, 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (20, 'dotnet-6plus-1', '.NET 6+', '3+ years', 3, 85, 'Advanced', 'Built modern .NET 6+ applications for 3+ years, leveraging latest framework features and performance improvements.', 'Backend Development', NULL, 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (21, 'restful-apis-2', 'RESTful APIs', '10+ years', 10, 90, 'Expert', 'Built and maintained RESTful APIs for 10+ years, enabling seamless integration and scalable backend architecture.', 'Backend Development', NULL, 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (22, 'full-stack-service-architecture-1', 'Full-Stack Service Architecture', '5+ years (CCHQ)', 5, 85, 'Advanced', 'Architected full-stack services at CCHQ over 5+ years, enabling autonomous teams and streamlined service ownership.', 'Backend Development', NULL, 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (23, 'windows-services-1', 'Windows Services', '8+ years (thousands records/sec)', 8, 85, 'Advanced', 'Developed high-throughput Windows Services for 8+ years, processing thousands of records per second reliably.', 'Backend Development', NULL, 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (24, 'msmq-sql-based-queues-1', 'MSMQ & SQL-based Queues', '8+ years', 8, 85, 'Advanced', 'Implemented reliable message queuing with MSMQ and SQL-based queues over 8+ years, ensuring fault-tolerant processing.', 'Backend Development', NULL, 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (25, 'nodejs-1', 'Node.js', '2025', 1, 80, 'Advanced', 'Built serverless and backend services with Node.js, leveraging JavaScript for full-stack development.', 'Backend Development', '2025–Present', 3);
-INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)
-VALUES (26, 'azure-functions-nodejs-typescript-1', 'Azure Functions (Node.js/TypeScript)', '2025', 1, 85, 'Advanced', 'Deployed serverless Azure Functions using Node.js and TypeScript for scalable, event-driven backend processing.', 'Backend Development', '2025–Present', 3);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (18, 'csharp-1', 'C#', '19 years', 19, 95, 'Expert', 'Deep expertise in C# spanning 19 years, delivering enterprise-grade backend systems and services.', 'Backend Development', NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (19, 'aspnet-core-1', 'ASP.NET Core', '5+ years', 5, 90, 'Expert', 'Developed high-performance ASP.NET Core APIs and web applications for 5+ years, supporting modern cloud deployments.', 'Backend Development', NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (20, 'dotnet-6plus-1', '.NET 6+', '3+ years', 3, 85, 'Advanced', 'Built modern .NET 6+ applications for 3+ years, leveraging latest framework features and performance improvements.', 'Backend Development', NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (21, 'restful-apis-2', 'RESTful APIs', '10+ years', 10, 90, 'Expert', 'Built and maintained RESTful APIs for 10+ years, enabling seamless integration and scalable backend architecture.', 'Backend Development', NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (22, 'full-stack-service-architecture-1', 'Full-Stack Service Architecture', '5+ years (CCHQ)', 5, 85, 'Advanced', 'Architected full-stack services at CCHQ over 5+ years, enabling autonomous teams and streamlined service ownership.', 'Backend Development', NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (23, 'windows-services-1', 'Windows Services', '8+ years (thousands records/sec)', 8, 85, 'Advanced', 'Developed high-throughput Windows Services for 8+ years, processing thousands of records per second reliably.', 'Backend Development', NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (24, 'msmq-sql-based-queues-1', 'MSMQ & SQL-based Queues', '8+ years', 8, 85, 'Advanced', 'Implemented reliable message queuing with MSMQ and SQL-based queues over 8+ years, ensuring fault-tolerant processing.', 'Backend Development', NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (25, 'nodejs-1', 'Node.js', '2025', 1, 80, 'Advanced', 'Built serverless and backend services with Node.js, leveraging JavaScript for full-stack development.', 'Backend Development', '2025–Present', 3, NULL, NULL, NULL, NULL);
+INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project)
+VALUES (26, 'azure-functions-nodejs-typescript-1', 'Azure Functions (Node.js/TypeScript)', '2025', 1, 85, 'Advanced', 'Deployed serverless Azure Functions using Node.js and TypeScript for scalable, event-driven backend processing.', 'Backend Development', '2025–Present', 3, NULL, NULL, NULL, NULL);
 
 -- Database & Performance
 INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)

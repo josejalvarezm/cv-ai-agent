@@ -1,9 +1,7 @@
 name = "cv-assistant-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
-# `node_compat` was removed in newer Wrangler versions. Use `nodejs_compat` instead
-# to enable Node.js compatibility features when required by the Worker runtime.
-nodejs_compat = true
+compatibility_flags = ["nodejs_compat"]
 
 # D1 Database binding
 [[d1_databases]]
@@ -40,8 +38,9 @@ vars = { ENVIRONMENT = "development", TURNSTILE_SECRET_KEY = "1x0000000000000000
 # Production configuration
 [env.production]
 vars = { ENVIRONMENT = "production", CACHE_TTL = "7200", VECTORIZE_FALLBACK = "true", AI_REPLY_ENABLED = "true" }
-# Add Turnstile secret key as environment variable or secret:
-# TURNSTILE_SECRET_KEY should be set via `wrangler secret put TURNSTILE_SECRET_KEY` for production
+# Note: TURNSTILE_SECRET_KEY and JWT_SECRET are set via wrangler secrets (not in vars):
+# wrangler secret put TURNSTILE_SECRET_KEY --env production
+# wrangler secret put JWT_SECRET --env production
 
 [[env.production.d1_databases]]
 binding = "DB"

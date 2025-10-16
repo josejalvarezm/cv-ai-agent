@@ -10,6 +10,7 @@
  */
 
 import { handleD1VectorQuery } from './query-d1-vectors';
+import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
 
 // Environment bindings interface
 interface Env {
@@ -21,6 +22,7 @@ interface Env {
   VECTORIZE_FALLBACK?: string;
   AI_REPLY_ENABLED?: string;
   TURNSTILE_SECRET_KEY?: string; // Turnstile secret for server-side validation
+  JWT_SECRET?: string;            // Secret for signing session JWTs
 }
 
 // Skill record from D1
@@ -347,6 +349,104 @@ async function handleIndex(request: Request, env: Env): Promise<Response> {
 }
 
 /**
+ * /session endpoint: Exchange Turnstile token for session JWT
+ * 
+ * 1. Validates Turnstile token (single-use, 5-minute TTL)
+ * 2. Issues a signed JWT with 15-minute expiry
+ * 3. Returns JWT to client for subsequent requests
+ */
+async function handleSession(request: Request, env: Env): Promise<Response> {
+  const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Turnstile-Token',
+  };
+
+  try {
+    // Get Turnstile token from header
+    const turnstileToken = request.headers.get('X-Turnstile-Token');
+    
+    if (!turnstileToken) {
+      return new Response(JSON.stringify({
+        error: 'Forbidden',
+        message: 'Turnstile token required',
+      }), {
+        status: 403,
+        headers: corsHeaders,
+      });
+    }
+
+    // Validate Turnstile token
+    if (!env.TURNSTILE_SECRET_KEY) {
+      return new Response(JSON.stringify({
+        error: 'Server configuration error',
+        message: 'Turnstile not configured',
+      }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+    const clientIp = request.headers.get('CF-Connecting-IP') || undefined;
+    const validation = await validateTurnstileToken(turnstileToken, env.TURNSTILE_SECRET_KEY, clientIp);
+    
+    if (!validation.success) {
+      return new Response(JSON.stringify({
+        error: 'Forbidden',
+        message: 'Turnstile verification failed. Please refresh and try again.',
+        details: validation.error,
+      }), {
+        status: 403,
+        headers: corsHeaders,
+      });
+    }
+
+    // Issue JWT
+    if (!env.JWT_SECRET) {
+      return new Response(JSON.stringify({
+        error: 'Server configuration error',
+        message: 'JWT not configured',
+      }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const sessionId = generateSessionId();
+    const payload: JWTPayload = {
+      sub: 'cv-chat-session',
+      iat: now,
+      exp: now + (15 * 60), // 15 minutes
+      sessionId,
+    };
+
+    const jwt = await signJWT(payload, env.JWT_SECRET);
+
+    console.log(`Session created: ${sessionId}, expires in 15 minutes`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      token: jwt,
+      expiresIn: 900, // 15 minutes in seconds
+      expiresAt: new Date((now + 900) * 1000).toISOString(),
+    }), {
+      headers: corsHeaders,
+    });
+  } catch (error) {
+    console.error('Session creation error:', error);
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      message: 'Failed to create session',
+    }), {
+      status: 500,
+      headers: corsHeaders,
+    });
+  }
+}
+
+/**
  * /query endpoint: Semantic search over skills
  * 
  * 1. Checks cache for existing results
@@ -636,7 +736,7 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Turnstile-Token',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Turnstile-Token, Authorization',
     };
     
     // Handle CORS preflight
@@ -646,6 +746,14 @@ export default {
     
     try {
       // Route handling
+      if (path === '/session' && request.method === 'POST') {
+        const response = await handleSession(request, env);
+        Object.entries(corsHeaders).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
+        return response;
+      }
+      
       if (path === '/index' && request.method === 'POST') {
         const response = await handleIndex(request, env);
         Object.entries(corsHeaders).forEach(([key, value]) => {
@@ -655,33 +763,57 @@ export default {
       }
       
       if (path === '/query' && (request.method === 'GET' || request.method === 'POST')) {
-        // Validate Turnstile token if provided
-        const turnstileToken = request.headers.get('X-Turnstile-Token');
+        // Check for JWT in Authorization header first, then fall back to Turnstile token
+        const authHeader = request.headers.get('Authorization');
+        const hasJWT = authHeader && authHeader.startsWith('Bearer ');
         
-        if (env.TURNSTILE_SECRET_KEY) {
-          if (!turnstileToken) {
+        if (hasJWT && env.JWT_SECRET) {
+          // Verify JWT
+          const token = authHeader!.substring(7); // Remove 'Bearer ' prefix
+          const payload = await verifyJWT(token, env.JWT_SECRET);
+          
+          if (!payload) {
             return new Response(JSON.stringify({
-              error: 'Forbidden',
-              message: 'Turnstile verification required. Please complete the human verification.',
+              error: 'Unauthorized',
+              message: 'Invalid or expired session token. Please refresh the page.',
             }), {
-              status: 403,
+              status: 401,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
-
-          // Validate token
-          const clientIp = request.headers.get('CF-Connecting-IP') || undefined;
-          const validation = await validateTurnstileToken(turnstileToken, env.TURNSTILE_SECRET_KEY, clientIp);
           
-          if (!validation.success) {
-            return new Response(JSON.stringify({
-              error: 'Forbidden',
-              message: 'Turnstile verification failed. Please refresh and try again.',
-              details: validation.error,
-            }), {
-              status: 403,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+          console.log(`Query authorized with JWT session: ${payload.sessionId}`);
+        } else {
+          // Fall back to Turnstile token validation (backward compatibility)
+          const turnstileToken = request.headers.get('X-Turnstile-Token');
+          
+          if (env.TURNSTILE_SECRET_KEY) {
+            if (!turnstileToken) {
+              return new Response(JSON.stringify({
+                error: 'Forbidden',
+                message: 'Turnstile verification required. Please complete the human verification.',
+              }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+
+            // Validate token
+            const clientIp = request.headers.get('CF-Connecting-IP') || undefined;
+            const validation = await validateTurnstileToken(turnstileToken, env.TURNSTILE_SECRET_KEY, clientIp);
+            
+            if (!validation.success) {
+              return new Response(JSON.stringify({
+                error: 'Forbidden',
+                message: 'Turnstile verification failed. Please refresh and try again.',
+                details: validation.error,
+              }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            
+            console.log('Query authorized with Turnstile token');
           }
         }
 

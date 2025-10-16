@@ -11,7 +11,7 @@
 
 import { handleD1VectorQuery } from './query-d1-vectors';
 import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
-import { getQuotaStatus, resetQuota } from './ai-quota';
+import { getQuotaStatus, resetQuota, syncQuotaFromDashboard } from './ai-quota';
 
 // Environment bindings interface
 interface Env {
@@ -938,6 +938,43 @@ export default {
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+      
+      if (path === '/quota/sync' && request.method === 'POST') {
+        // Admin endpoint to manually sync quota from dashboard
+        // Usage: POST /quota/sync with body: { "neurons": 137.42 }
+        // TODO: Add proper authentication/authorization
+        try {
+          const body = await request.json() as any;
+          const neurons = parseFloat(body.neurons);
+          
+          if (isNaN(neurons) || neurons < 0) {
+            return new Response(JSON.stringify({
+              error: 'Invalid neurons value. Must be a positive number.',
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          await syncQuotaFromDashboard(env.KV, neurons);
+          const newStatus = await getQuotaStatus(env.KV);
+          
+          return new Response(JSON.stringify({
+            success: true,
+            message: `Quota synced successfully. Updated to ${neurons} neurons.`,
+            status: newStatus,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (e) {
+          return new Response(JSON.stringify({
+            error: 'Failed to parse request body. Expected: { "neurons": <number> }',
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
       
       if (path === '/health' || path === '/') {

@@ -3,7 +3,7 @@
  * This bypasses Vectorize and uses the embeddings stored in your vectors table
  */
 
-import { canUseAI, incrementQuota, getQuotaExceededMessage, type QuotaStatus } from './ai-quota';
+import { canUseAI, incrementQuota, getQuotaExceededMessage, NEURON_COSTS, type QuotaStatus } from './ai-quota';
 
 interface Env {
   DB: D1Database;
@@ -208,7 +208,7 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
         
         if (!allowed) {
           // Quota exceeded - return friendly fallback message
-          console.log(`AI quota exceeded: ${status.count}/${status.limit} (resets at ${status.resetAt})`);
+          console.log(`AI quota exceeded: ${status.neuronsUsed}/${status.neuronsLimit} neurons (resets at ${status.resetAt})`);
           responseData.assistantReply = getQuotaExceededMessage(query, topResults);
           responseData.quotaExceeded = true;
           responseData.quotaStatus = status;
@@ -365,8 +365,9 @@ Output answer:
           responseData.assistantReply = aiResponse?.response || '';
           
           // Increment quota counter after successful inference
-          await incrementQuota(env.KV);
-          console.log(`AI inference successful. Quota: ${status.count + 1}/${status.limit}`);
+          // Mistral 7B estimated cost: 75 neurons per inference
+          await incrementQuota(env.KV, NEURON_COSTS['mistral-7b-instruct']);
+          console.log(`AI inference successful. Quota: ${(status.neuronsUsed + NEURON_COSTS['mistral-7b-instruct']).toFixed(2)}/${status.neuronsLimit} neurons`);
         }
       } catch (aiError) {
         console.error('AI reply generation failed:', aiError);

@@ -3,18 +3,38 @@
  * 
  * Tracks daily AI model inference calls and implements circuit breaker pattern
  * to prevent quota exhaustion (10,000 neurons/day free tier)
+ * 
+ * Since Cloudflare doesn't provide real-time API access to neuron usage,
+ * we estimate neurons based on official pricing page:
+ * https://developers.cloudflare.com/workers-ai/platform/pricing/
  */
 
 export interface QuotaStatus {
   date: string;
-  count: number;
-  limit: number;
-  remaining: number;
+  neuronsUsed: number;
+  neuronsLimit: number;
+  neuronsRemaining: number;
   isExceeded: boolean;
   resetAt: string;
+  inferenceCount: number;
 }
 
-const DAILY_QUOTA_LIMIT = 9500; // Set slightly below 10k for safety margin
+// Neuron costs per model (from Cloudflare pricing page)
+// https://developers.cloudflare.com/workers-ai/platform/pricing/
+export const NEURON_COSTS = {
+  // Mistral 7B: 10,000 neurons per M input tokens, 17,300 per M output tokens
+  // Estimated average per call: ~50-100 neurons (depends on input/output length)
+  'mistral-7b-instruct': 75, // Conservative estimate: 75 neurons per inference
+  
+  // Embeddings: bge-base-en-v1.5: 6,058 neurons per M input tokens
+  // Typical CV skill text: ~50-100 tokens = ~0.3-0.6 neurons per call
+  'bge-base-en-v1.5': 0.6, // Conservative estimate
+  
+  // llama 3.2-3b (if we fall back): 4,625 input, 30,475 output neurons per M tokens
+  'llama-3.2-3b-instruct': 35,
+};
+
+const DAILY_NEURON_LIMIT = 9500; // Set below 10k for safety margin (500 buffer)
 const CIRCUIT_BREAKER_KEY = 'ai:quota:daily';
 
 /**
@@ -25,7 +45,11 @@ export async function getQuotaStatus(kv: KVNamespace): Promise<QuotaStatus> {
   const key = `${CIRCUIT_BREAKER_KEY}:${today}`;
   
   const data = await kv.get(key);
-  const count = data ? parseInt(data, 10) : 0;
+  const neuronsUsed = data ? parseFloat(data) : 0;
+  
+  // Also get inference count for monitoring
+  const countData = await kv.get(`${key}:count`);
+  const inferenceCount = countData ? parseInt(countData, 10) : 0;
   
   const tomorrow = new Date();
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
@@ -33,24 +57,33 @@ export async function getQuotaStatus(kv: KVNamespace): Promise<QuotaStatus> {
   
   return {
     date: today,
-    count,
-    limit: DAILY_QUOTA_LIMIT,
-    remaining: Math.max(0, DAILY_QUOTA_LIMIT - count),
-    isExceeded: count >= DAILY_QUOTA_LIMIT,
+    neuronsUsed,
+    neuronsLimit: DAILY_NEURON_LIMIT,
+    neuronsRemaining: Math.max(0, DAILY_NEURON_LIMIT - neuronsUsed),
+    isExceeded: neuronsUsed >= DAILY_NEURON_LIMIT,
     resetAt: tomorrow.toISOString(),
+    inferenceCount,
   };
 }
 
 /**
- * Increment quota counter (call AFTER successful AI inference)
+ * Increment quota counter with neuron cost
+ * @param kv KV namespace
+ * @param neurons Number of neurons to add (default: Mistral 7B cost)
  */
-export async function incrementQuota(kv: KVNamespace): Promise<void> {
+export async function incrementQuota(kv: KVNamespace, neurons: number = NEURON_COSTS['mistral-7b-instruct']): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
   const key = `${CIRCUIT_BREAKER_KEY}:${today}`;
+  const countKey = `${key}:count`;
   
-  // Get current count
+  // Get current neuron count
   const data = await kv.get(key);
-  const currentCount = data ? parseInt(data, 10) : 0;
+  const currentNeurons = data ? parseFloat(data) : 0;
+  const newNeurons = currentNeurons + neurons;
+  
+  // Get current inference count
+  const countData = await kv.get(countKey);
+  const currentCount = countData ? parseInt(countData, 10) : 0;
   const newCount = currentCount + 1;
   
   // Store with expiration at end of day (UTC)
@@ -59,7 +92,10 @@ export async function incrementQuota(kv: KVNamespace): Promise<void> {
   tomorrow.setUTCHours(0, 0, 0, 0);
   const expirationTtl = Math.floor((tomorrow.getTime() - Date.now()) / 1000);
   
-  await kv.put(key, newCount.toString(), { expirationTtl });
+  await Promise.all([
+    kv.put(key, newNeurons.toFixed(2), { expirationTtl }),
+    kv.put(countKey, newCount.toString(), { expirationTtl }),
+  ]);
 }
 
 /**
@@ -78,13 +114,29 @@ export async function canUseAI(kv: KVNamespace): Promise<{ allowed: boolean; sta
  */
 export function getQuotaExceededMessage(query: string, topResults: any[]): string {
   if (topResults.length === 0) {
-    return "I found relevant skills in the database, but I've reached my daily AI response limit. The system will reset at midnight UTC. You can still see the raw skill matches above.";
+    return "I found relevant skills in the database, but I've reached my daily AI response limit (10,000 neurons). The system will reset at midnight UTC. You can still see the raw skill matches above.";
   }
   
   const topSkill = topResults[0];
   const skillNames = topResults.slice(0, 3).map((r: any) => r.technology?.name || r.name).join(', ');
   
-  return `I've found highly relevant skills matching your query: ${skillNames}. However, I've reached my daily AI response limit (10,000 inferences). The system will reset at midnight UTC. In the meantime, you can review the detailed skill information provided above, including years of experience, proficiency levels, and specific outcomes.`;
+  return `I've found highly relevant skills matching your query: **${skillNames}**. However, I've reached my daily AI response limit (10,000 neurons/day). The system will reset at midnight UTC. In the meantime, you can review the detailed skill information provided above, including years of experience, proficiency levels, and specific outcomes.`;
+}
+
+/**
+ * Manually sync quota from dashboard (admin function)
+ * Use this to update the counter if dashboard shows different usage
+ */
+export async function syncQuotaFromDashboard(kv: KVNamespace, actualNeurons: number): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `${CIRCUIT_BREAKER_KEY}:${today}`;
+  
+  const tomorrow = new Date();
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  tomorrow.setUTCHours(0, 0, 0, 0);
+  const expirationTtl = Math.floor((tomorrow.getTime() - Date.now()) / 1000);
+  
+  await kv.put(key, actualNeurons.toFixed(2), { expirationTtl });
 }
 
 /**
@@ -93,5 +145,9 @@ export function getQuotaExceededMessage(query: string, topResults: any[]): strin
 export async function resetQuota(kv: KVNamespace): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
   const key = `${CIRCUIT_BREAKER_KEY}:${today}`;
-  await kv.delete(key);
+  const countKey = `${key}:count`;
+  await Promise.all([
+    kv.delete(key),
+    kv.delete(countKey),
+  ]);
 }

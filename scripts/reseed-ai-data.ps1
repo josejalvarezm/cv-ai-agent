@@ -371,22 +371,45 @@ if (-not $SkipIndex -and $Environment -eq 'remote') {
         Write-Info "[DRY RUN] Would run: npm run index:remote"
     } else {
         try {
+            # First verify vectors table and clear if needed
+            $existingVectors = Get-RecordCount "vectors"
+            if ($existingVectors -gt 0) {
+                Write-Info "Clearing existing $existingVectors vectors..."
+                Invoke-D1Command -Command "DELETE FROM vectors;" -SuppressOutput | Out-Null
+            }
+            
+            Write-Info "Generating embeddings (this may take 1-2 minutes)..."
             $indexOutput = npm run index:remote 2>&1 | Out-String
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Vector indexing failed with exit code $LASTEXITCODE"
+            }
             
             if ($indexOutput -match "Total records processed:\s*(\d+)") {
                 $indexedCount = [int]$Matches[1]
                 Write-Success "Indexed $indexedCount vectors"
+            } elseif ($indexOutput -match "INDEXING COMPLETE") {
+                Write-Success "Vector indexing completed successfully"
             } else {
-                Write-Success "Vector indexing completed"
+                Write-Warning "Could not parse indexing results. Full output:"
+                Write-Info "$indexOutput"
             }
+            
+            # Verify vectors were actually created
+            $vectorCount = Get-RecordCount "vectors"
+            if ($vectorCount -eq 0) {
+                throw "Vector indexing completed but 0 vectors found in database!"
+            }
+            Write-Success "Verified: $vectorCount vectors in database"
         }
         catch {
-            Write-Warning "Vector indexing failed: $_"
-            Write-Info "Try running 'npm run index:remote' manually"
+            Write-Error-Custom "Vector indexing failed: $_"
+            exit 1
         }
     }
 } elseif ($SkipIndex) {
     Write-Step "Skipping vector indexing (--SkipIndex)"
+    Write-Warning "Note: Semantic search will not work without vectors!"
 } elseif ($Environment -eq 'local') {
     Write-Step "Skipping vector indexing (local environment)"
 }

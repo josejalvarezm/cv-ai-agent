@@ -638,7 +638,7 @@ Provide a short 2-3 sentence answer that:
 - Suggests one practical follow-up action
 - Keep it conversational and helpful`;
 
-        const response = await env.AI.run('@cf/mistral/mistral-7b-instruct' as any, {
+        const response = await env.AI.run('@cf/mistral/mistral-7b-instruct-v0.2' as any, {
           messages: [
             { 
               role: 'system', 

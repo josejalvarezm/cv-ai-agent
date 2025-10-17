@@ -200,8 +200,12 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
 
     console.log(`Top result: ${topResults[0]?.technology.name} (${topResults[0]?.similarity.toFixed(4)})`);
 
-    // Prepare response
-    const responseData: any = {
+    // Check if verbose mode is requested (reuse existing url from top of function)
+    const isVerbose = url.searchParams.get('verbose') === 'true';
+
+    // Prepare response - minimal by default, verbose with ?verbose=true
+    const responseData: any = isVerbose ? {
+      // VERBOSE MODE: Full details for debugging
       query,
       results: topResults.map(r => ({
         id: r.technology.id,
@@ -225,6 +229,10 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
       source: 'd1-vectors',
       total_compared: vectors.length,
       timestamp: new Date().toISOString(),
+    } : {
+      // MINIMAL MODE: Only essential data for production
+      query,
+      assistantReply: '', // Will be populated by AI if available
     };
 
     // Generate AI reply if enabled
@@ -337,7 +345,7 @@ CONTEXT FOR ASSESSMENT:
 
 Provide a professional, outcome-driven answer (3-5 sentences maximum):`;
 
-        const aiResponse = await env.AI.run('@cf/mistral/mistral-7b-instruct' as any, {
+        const aiResponse = await env.AI.run('@cf/mistral/mistral-7b-instruct-v0.2' as any, {
           messages: [
             { 
               role: 'system', 
@@ -387,18 +395,35 @@ Output answer:
             { role: 'user', content: prompt }
           ],
           max_tokens: 300
-        }) as { response?: string };
+        }) as any;
 
-          responseData.assistantReply = aiResponse?.response || '';
+          // Extract AI response - handle multiple formats
+          let aiReply = '';
+          if (typeof aiResponse === 'string') {
+            aiReply = aiResponse;
+          } else if (aiResponse?.response) {
+            aiReply = aiResponse.response;
+          } else if (aiResponse?.result?.response) {
+            aiReply = aiResponse.result.response;
+          } else if (Array.isArray(aiResponse?.choices) && aiResponse.choices[0]?.message?.content) {
+            aiReply = aiResponse.choices[0].message.content;
+          }
+          
+          console.log('AI response format:', JSON.stringify(aiResponse).substring(0, 200));
+          console.log('Extracted AI reply length:', aiReply.length);
+          
+          responseData.assistantReply = aiReply;
           
           // Increment quota counter after successful inference
           // Mistral 7B estimated cost: 75 neurons per inference
           await incrementQuota(env.KV, NEURON_COSTS['mistral-7b-instruct']);
           console.log(`AI inference successful. Quota: ${(status.neuronsUsed + NEURON_COSTS['mistral-7b-instruct']).toFixed(2)}/${status.neuronsLimit} neurons`);
         }
-      } catch (aiError) {
+      } catch (aiError: any) {
         console.error('AI reply generation failed:', aiError);
+        console.error('AI error details:', aiError.message, aiError.stack);
         responseData.assistantReply = '';
+        responseData.aiError = aiError.message;
       }
     }
 

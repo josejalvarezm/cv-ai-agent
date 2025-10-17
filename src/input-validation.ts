@@ -6,8 +6,8 @@
 
 const MAX_INPUT_LENGTH = 500;
 const MIN_INPUT_LENGTH = 3;
-const BUSINESS_HOURS_START = 9;  // 09:00 CET/CEST
-const BUSINESS_HOURS_END = 19;   // 19:00 CET/CEST
+const BUSINESS_HOURS_START = 8;  // 08:00 UK (GMT/BST)
+const BUSINESS_HOURS_END = 20;   // 20:00 UK (GMT/BST)
 
 // Consolidated common-word set used for lightweight English checks.
 // We keep a single set `COMMON_WORDS` to avoid duplication.
@@ -84,31 +84,30 @@ export function isWithinBusinessHours(bypassPhrase?: string): BusinessHoursCheck
     return {
       isWithinHours: true,
       currentTime: new Date().toISOString(),
-      timezone: 'CET/CEST (bypass active)',
+      timezone: 'GMT/BST (bypass active)',
     };
   }
 
   const now = new Date();
   
-  // Convert to CET/CEST (Europe/Paris timezone)
-  // Note: This is approximate. For production, use a proper timezone library
-  // CET is UTC+1, CEST (summer time) is UTC+2
+  // Convert to UK time (GMT in winter, BST in summer)
+  // Note: This is approximate. For production, use a proper timezone library.
+  // GMT is UTC+0, BST (British Summer Time) is UTC+1 (roughly March-October).
   const utcHour = now.getUTCHours();
   const utcMonth = now.getUTCMonth(); // 0-11
-  
-  // Approximate DST: Last Sunday of March to last Sunday of October
-  // For simplicity, we'll use March-October as DST period
-  const isDST = utcMonth >= 2 && utcMonth <= 9; // March (2) to October (9)
-  const cetOffset = isDST ? 2 : 1; // CEST=UTC+2, CET=UTC+1
-  
-  const cetHour = (utcHour + cetOffset) % 24;
-  
-  const isWithinHours = cetHour >= BUSINESS_HOURS_START && cetHour < BUSINESS_HOURS_END;
-  
+
+  // Approximate DST: March-October (inclusive)
+  const isBST = utcMonth >= 2 && utcMonth <= 9; // March (2) to October (9)
+  const ukOffset = isBST ? 1 : 0; // BST=UTC+1, GMT=UTC+0
+
+  const ukHour = (utcHour + ukOffset) % 24;
+
+  const isWithinHours = ukHour >= BUSINESS_HOURS_START && ukHour < BUSINESS_HOURS_END;
+
   return {
     isWithinHours,
     currentTime: now.toISOString(),
-    timezone: isDST ? 'CEST (UTC+2)' : 'CET (UTC+1)',
+    timezone: isBST ? 'BST (UTC+1)' : 'GMT (UTC+0)',
   };
 }
 

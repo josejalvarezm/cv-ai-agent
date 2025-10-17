@@ -50,6 +50,30 @@ async function generateEmbedding(text: string, ai: Ai): Promise<number[]> {
   return response.data[0];
 }
 
+// Detect if query is asking about a specific project/company
+function detectProjectInQuery(query: string): { isProjectSpecific: boolean; projectName?: string; cleanQuery: string } {
+  const lowerQuery = query.toLowerCase();
+  
+  // Known project patterns
+  const projectPatterns = [
+    { pattern: /\b(at|in|for|during|with)\s+(cchq|conservative.*hq|conservative.*party)\b/i, name: 'CCHQ' },
+    { pattern: /\b(cchq)\b/i, name: 'CCHQ' },
+    { pattern: /\b(at|in|for|during|with)\s+(wairbut)\b/i, name: 'Wairbut' },
+    { pattern: /\b(wairbut)\b/i, name: 'Wairbut' },
+  ];
+
+  for (const { pattern, name } of projectPatterns) {
+    const match = lowerQuery.match(pattern);
+    if (match) {
+      // Remove the project mention from query for better semantic search
+      const cleanQuery = query.replace(pattern, '').trim();
+      return { isProjectSpecific: true, projectName: name, cleanQuery };
+    }
+  }
+
+  return { isProjectSpecific: false, cleanQuery: query };
+}
+
 export async function handleD1VectorQuery(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url);
@@ -82,20 +106,37 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     console.log(`D1 Vector Query: "${query}" (sanitized)`);
     console.log(`Business hours check passed: ${businessHoursCheck.timezone} at ${businessHoursCheck.currentTime}`);
 
-    // Generate query embedding
-    const queryEmbedding = await generateEmbedding(query, env.AI);
+    // Detect if query is project-specific (e.g., "skills at CCHQ")
+    const projectDetection = detectProjectInQuery(query);
+    const searchQuery = projectDetection.isProjectSpecific ? projectDetection.cleanQuery : query;
+    
+    if (projectDetection.isProjectSpecific) {
+      console.log(`Project-specific query detected: ${projectDetection.projectName}`);
+      console.log(`Clean search query: "${searchQuery}"`);
+    }
+
+    // Generate query embedding using the cleaned search query
+    const queryEmbedding = await generateEmbedding(searchQuery, env.AI);
     const queryVector = new Float32Array(queryEmbedding);
 
-    // Fetch ALL vectors from D1 (for small datasets, this is fine)
-    // For large datasets, you'd want to implement approximate nearest neighbor search
-    const { results: vectors } = await env.DB.prepare(
-      `SELECT v.id, v.item_id, v.embedding, v.metadata, t.name, t.experience, t.experience_years,
+    // Fetch vectors from D1 - optionally filter by project if detected
+    let sqlQuery = `SELECT v.id, v.item_id, v.embedding, v.metadata, t.name, t.experience, t.experience_years,
               t.proficiency_percent, t.level, t.summary, t.category, t.recency,
               t.action, t.effect, t.outcome, t.related_project
        FROM vectors v
        JOIN technology t ON v.item_id = t.id
-       WHERE v.item_type = 'technology'`
-    ).all();
+       WHERE v.item_type = 'technology'`;
+    
+    // If project-specific, filter to only skills used in that project
+    const params: any[] = [];
+    if (projectDetection.isProjectSpecific) {
+      sqlQuery += ` AND t.related_project LIKE ?`;
+      params.push(`%${projectDetection.projectName}%`);
+    }
+    
+    const { results: vectors } = params.length > 0 
+      ? await env.DB.prepare(sqlQuery).bind(...params).all()
+      : await env.DB.prepare(sqlQuery).all();
 
     if (!vectors || vectors.length === 0) {
       return Response.json({ error: 'No vectors found in database' }, { status: 404 });
@@ -249,7 +290,7 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
           responseData.quotaStatus = status;
         } else {
           // Quota available - proceed with AI inference
-          const top5 = topResults.slice(0, 5);
+          const top5 = topResults.slice(0, 10); // Increased from 5 to 10 for better multi-skill synthesis
         const topScore = top5[0]?.similarity ?? 0;
 
         // Confidence interpretation: scores above 0.65 are strong matches for broad queries
@@ -282,6 +323,7 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
         const prompt = `You are an expert CV assistant designed to answer recruiter-style questions about a candidate's skills and professional level.
 
 USER QUESTION: "${query}"
+${projectDetection.isProjectSpecific ? `\n**PROJECT CONTEXT: This question is specifically about ${projectDetection.projectName}. All skills below were used at ${projectDetection.projectName}.**\n` : ''}
 
 TOP MATCHING SKILLS (confidence: ${confidence}, score: ${topScore.toFixed(3)}):
 ${resultsText}
@@ -294,7 +336,33 @@ CONTEXT FOR ASSESSMENT:
 
 ### YOUR GOALS:
 
-1. **Classification (junior/mid/senior/principal)**
+1. **Project-specific queries (CRITICAL - READ CAREFULLY)**
+   ${projectDetection.isProjectSpecific ? `
+   - This is a PROJECT-SPECIFIC query about ${projectDetection.projectName}
+   - The skills below were ALL used at ${projectDetection.projectName}, but the "years" field shows TOTAL CAREER experience, NOT time at ${projectDetection.projectName}
+   - DO NOT say "I have 19 years of JavaScript at CCHQ" - JavaScript has 19 years TOTAL, but was used at CCHQ for a shorter period
+   - DO NOT say "20 years of SQL Server at CCHQ" - SQL Server has 20 years TOTAL, but was used at CCHQ for a shorter period
+   - CORRECT approach: "At ${projectDetection.projectName}, I used JavaScript/C#/SQL Server to [action] achieving [outcome]" (no year mention unless you have CCHQ-specific duration)
+   - When asked about "skillset used at ${projectDetection.projectName}", synthesize MULTIPLE relevant skills, not just one
+   - Focus on WHAT was accomplished at ${projectDetection.projectName} with these skills, not HOW LONG you've known them overall
+   - Example WRONG: "At CCHQ I used JavaScript (19 years experience)"
+   - Example CORRECT: "At CCHQ I used JavaScript, C#, and SQL Server to build modular services, cutting release cycles from weeks to days"
+   ` : `
+   - This is a GENERAL query about skills/experience
+   - You MAY mention total experience (e.g., "19 years of JavaScript")
+   - Provide broader context across all projects
+   `}
+
+2. **Multi-skill synthesis for "skillset" queries (CRITICAL)**
+   - When query uses words like "skillset", "skills", "technologies", "tech stack", you MUST synthesize MULTIPLE skills
+   - DO NOT just focus on the top-ranked skill - mention at least 3-5 different skills from the results
+   - Group related skills together: "I used [skill1], [skill2], and [skill3] for [purpose]"
+   - Provide a comprehensive overview of the technology stack used
+   - Example WRONG: "At CCHQ I used Full-Stack Service Decomposition"
+   - Example CORRECT: "At CCHQ I used Full-Stack Service Decomposition, JavaScript, C#, SQL Server, and AngularJS to build modular services, achieving [outcomes]"
+   - Think of the answer as describing a complete technology stack, not just one skill
+
+3. **Classification (junior/mid/senior/principal)**
    - When asked "what type of professional is this" or "junior/mid/senior?", you MUST:
      - Aggregate across ALL skills provided (not just one)
      - Use experience_years + level to classify:
@@ -305,23 +373,40 @@ CONTEXT FOR ASSESSMENT:
      - If skills vary in depth, return the highest consistent level, but note newer skills at lower depth
      - ALWAYS state the classification explicitly (e.g., "This is a senior/principal-level professional")
 
-2. **Outcome-driven synthesis**
+4. **Outcome-driven synthesis**
    - When generating an answer about a skill, ALWAYS structure as:
      **Skill → Context (years, level) → Action → Effect → Outcome → Project (optional)**
    - Use the "action", "effect", "outcome", and "related_project" fields when available
    - If empty, extract from summary, but NEVER repeat summary verbatim
    - NEVER invent data not in the database
+   - NEVER invent or conflate timeframes (e.g., don't say "7 years" if data shows "5 years")
    - Prioritize measurable outcomes (percentages, cycle times, uptime, throughput)
    - Avoid vague phrases like "delivered business value" or "drove success"
 
-3. **Avoid tool-centric answers**
+5. **Avoid tool-centric answers**
    - NEVER present SQL Server, AppDynamics, or any single tool as the sole definition of the candidate
    - ALWAYS contextualize tool-specific skills inside broader architectural or engineering outcomes
    - When multiple skills are retrieved, aggregate across categories (database, architecture, cloud, DevOps)
    - Prioritize breadth + outcomes over depth in a single tool, unless the question explicitly asks about that tool
    - Example: Instead of "You're a SQL Server expert", say "You're a senior data architect who used SQL Server to cut query times by 80%, enabling real-time analytics"
 
-### EXAMPLE TRANSFORMATION:
+### EXAMPLE TRANSFORMATION FOR PROJECT-SPECIFIC QUERIES:
+
+${projectDetection.isProjectSpecific ? `
+**IMPORTANT: This is a PROJECT-SPECIFIC query. Follow this example exactly:**
+
+**WRONG ANSWER (DO NOT DO THIS):**
+"At CCHQ I have 19 years of C# experience and 20 years of SQL Server experience..."
+
+**CORRECT ANSWER (DO THIS INSTEAD):**
+"At CCHQ I used C#, JavaScript, SQL Server, and AngularJS to build a modular service architecture. By decomposing monolithic applications, I enabled independent team deployments, cutting release cycles from weeks to days and achieving 50% reduction in coordination overhead. The technology stack supported 100,000+ daily active users during critical national elections."
+
+Notice the difference:
+- WRONG: Mentions "19 years" and "20 years" (total experience)
+- CORRECT: Focuses on what was DONE at CCHQ with those skills, without mentioning total years
+- CORRECT: Lists MULTIPLE skills (C#, JavaScript, SQL Server, AngularJS)
+- CORRECT: Includes measurable outcomes
+` : ''}
 
 **Input skill data:**
 {
@@ -338,12 +423,13 @@ CONTEXT FOR ASSESSMENT:
 "With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, I broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."
 
 ### CONSTRAINTS:
-- Never invent skills, outcomes, or projects not present in the database
+- Never invent skills, outcomes, projects, or timeframes not present in the database
+- Never conflate different experience durations (if data says "5 years", don't say "7 years")
 - Never repeat the CV summary verbatim; always reframe it into the outcome‑driven template
 - Keep answers recruiter‑friendly: clear, measurable, and business‑linked
 - Always answer the implicit recruiter question: "So what?"
 
-Provide a professional, outcome-driven answer (3-5 sentences maximum):`;
+Provide a professional, outcome-driven answer (3-5 sentences maximum)`;
 
         const aiResponse = await env.AI.run('@hf/mistral/mistral-7b-instruct-v0.2' as any, {
           messages: [
@@ -374,7 +460,23 @@ Always follow these rules:
      * "José has 5+ years of experience..." → REWRITE: "I have 5+ years of experience..."
      * "The candidate broke down monolithic apps..." → REWRITE: "I broke down monolithic apps..."
 
-3. **Classification**
+3. **Project-specific vs General queries (CRITICAL)**
+   - If the user asks about a SPECIFIC PROJECT (e.g., "at CCHQ", "during Wairbut"), ONLY discuss skills used in that project
+   - The "experience_years" field shows TOTAL CAREER experience, NOT project-specific duration
+   - NEVER say "At CCHQ I used JavaScript for 19 years" - the 19 years is total career, not CCHQ-specific
+   - NEVER say "20 years of SQL Server at CCHQ" - the 20 years is total career, not CCHQ-specific
+   - Example WRONG: "At CCHQ I used JavaScript (19 years experience)" → The 19 years is total, not CCHQ-specific
+   - Example CORRECT: "At CCHQ I used JavaScript to build interactive campaign dashboards, achieving 95% user satisfaction"
+   - When asked about a "skillset" at a project, synthesize MULTIPLE relevant skills, not just one
+   - Format: "At [PROJECT], I used [SKILL1], [SKILL2], and [SKILL3] to [ACTION], achieving [OUTCOME]"
+
+4. **Never conflate or invent timeframes (CRITICAL)**
+   - If data says "5 years", never say "7 years"
+   - If data says "19 years total" and "5 years at CCHQ", don't mix them
+   - Always use EXACT numbers from the database
+   - Never round up or extrapolate experience durations
+
+5. **Classification**
    - When asked about professional level, always classify explicitly as Junior, Mid-level, Senior, or Principal/Lead.
    - Use this mapping:
      - 0–3 years = Junior
@@ -383,18 +485,18 @@ Always follow these rules:
      - 15+ years = Principal/Lead
    - If skills vary, return the highest consistent level but note if some newer skills are at lower depth.
 
-4. **Outcome-driven synthesis**
+6. **Outcome-driven synthesis**
    - Structure every skill answer as:
      Skill → Context (years, level) → Action → Effect → Outcome → Project (optional).
    - Prioritise measurable outcomes (percentages, cycle times, uptime, throughput).
    - Avoid vague phrases like "delivered business value" or "drove success."
 
-5. **Anti tool-centric**
+7. **Anti tool-centric**
    - Never present SQL Server, AppDynamics, or any single tool as the sole definition of the candidate.
    - Always contextualise tool-specific skills inside broader architectural or engineering outcomes.
    - Aggregate across categories (database, architecture, cloud, DevOps) when multiple skills are relevant.
 
-6. **Style**
+8. **Style**
    - Keep answers concise, clear, and recruiter-friendly.
    - Always answer the implicit recruiter question: "So what?"
    - Do not repeat summaries verbatim; reframe into outcome-driven narratives.
@@ -411,7 +513,7 @@ Input skill:
 - Related_project: CCHQ national campaign platform
 
 Output answer:
-"With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, José broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."`
+"With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, I broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."`
             },
             { role: 'user', content: prompt }
           ],

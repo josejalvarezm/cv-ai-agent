@@ -77,6 +77,80 @@ function Write-Error-Custom {
 }
 
 # ============================================================================
+# Cache Clearing Functions
+# ============================================================================
+
+function Clear-LocalCaches {
+    Write-Step "Clearing local caches..."
+    
+    if ($DryRun) {
+        Write-Info "[DRY RUN] Would clear:"
+        Write-Info "  - .wrangler directory (Wrangler build cache)"
+        Write-Info "  - dist directory (Compiled TypeScript)"
+        return
+    }
+    
+    try {
+        # Clear Wrangler cache
+        if (Test-Path ".wrangler") {
+            Remove-Item -Path ".wrangler" -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Info "Cleared .wrangler cache"
+        }
+        
+        # Clear compiled output (will be rebuilt)
+        if (Test-Path "dist") {
+            Remove-Item -Path "dist" -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Info "Cleared dist directory"
+        }
+        
+        Write-Success "Local caches cleared"
+    }
+    catch {
+        Write-Warning "Could not clear some caches: $_"
+    }
+}
+
+function Clear-RemoteCaches {
+    Write-Step "Clearing Cloudflare caches..."
+    
+    if ($DryRun) {
+        Write-Info "[DRY RUN] Would:"
+        Write-Info "  - Rebuild TypeScript"
+        Write-Info "  - Redeploy worker"
+        Write-Info "  - Invalidate Cloudflare cache"
+        return
+    }
+    
+    try {
+        # Rebuild TypeScript
+        Write-Info "Rebuilding TypeScript..."
+        npm run build 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+        Write-Info "TypeScript rebuilt"
+        
+        # Redeploy worker (this clears Cloudflare edge cache)
+        Write-Info "Redeploying worker to invalidate edge cache..."
+        $deployOutput = npm run deploy 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Deploy failed" }
+        
+        # Extract version ID if available
+        if ($deployOutput -match "Version ID:\s*([a-f0-9\-]+)") {
+            $versionId = $Matches[1]
+            Write-Info "Deployed new version: $versionId"
+        } elseif ($deployOutput -match "Current Version ID:\s*([a-f0-9\-]+)") {
+            $versionId = $Matches[1]
+            Write-Info "Current version: $versionId"
+        }
+        
+        Write-Success "Cloudflare caches cleared"
+    }
+    catch {
+        Write-Warning "Cache invalidation may have failed: $_"
+        Write-Info "You may need to wait 60 seconds for CDN cache to expire"
+    }
+}
+
+# ============================================================================
 # Helper Functions
 # ============================================================================
 
@@ -154,6 +228,16 @@ Write-Info "Environment: $Environment"
 Write-Info "Worker URL: $WorkerUrl"
 if ($DryRun) { Write-Warning "DRY RUN MODE - No changes will be made" }
 Write-Host ""
+
+# Step 0: Clear caches
+if ($Environment -eq 'remote') {
+    Clear-LocalCaches
+    # Remote caches will be cleared after re-deployment
+} else {
+    if (-not $DryRun) {
+        Clear-LocalCaches
+    }
+}
 
 # Step 1: Check JSON and SQL files
 Write-Step "Checking source data files..."
@@ -331,8 +415,15 @@ if (-not $DryRun -and $Environment -eq 'remote') {
     }
 }
 
+# Step 8: Clear remote caches (Cloudflare edge)
+if ($Environment -eq 'remote' -and -not $DryRun) {
+    Clear-RemoteCaches
+    Write-Info "Waiting 5 seconds for cache propagation..."
+    Start-Sleep -Seconds 5
+}
+
 # Summary
-Write-Host "`n" + ("=" * 70) -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 if ($DryRun) {
     Write-Host "  DRY RUN COMPLETE - NO CHANGES MADE" -ForegroundColor Yellow
 } else {
@@ -341,6 +432,10 @@ if ($DryRun) {
 Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Info "The database is now seeded with outcomes-enriched AI data"
 Write-Info "Semantic search is operational with latest skill information"
+if ($Environment -eq 'remote' -and -not $DryRun) {
+    Write-Info "Caches have been cleared (local and Cloudflare edge)"
+    Write-Info "Workers are running latest version with fresh data"
+}
 Write-Host ""
 
 exit 0

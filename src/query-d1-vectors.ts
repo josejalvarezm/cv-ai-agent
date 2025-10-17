@@ -4,6 +4,12 @@
  */
 
 import { canUseAI, incrementQuota, getQuotaExceededMessage, NEURON_COSTS, type QuotaStatus } from './ai-quota';
+import {
+  validateAndSanitizeInput,
+  isWithinBusinessHours,
+  getBusinessHoursMessage,
+  getCircuitBreakerMessage,
+} from './input-validation';
 
 interface Env {
   DB: D1Database;
@@ -47,13 +53,34 @@ async function generateEmbedding(text: string, ai: Ai): Promise<number[]> {
 export async function handleD1VectorQuery(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const query = url.searchParams.get('q') || await request.text();
+    const rawQuery = url.searchParams.get('q') || await request.text();
 
-    if (!query || query.trim().length === 0) {
-      return Response.json({ error: 'Query parameter "q" is required' }, { status: 400 });
+    // ===== STEP 1: INPUT VALIDATION & SANITATION =====
+    const validationResult = validateAndSanitizeInput(rawQuery);
+    if (!validationResult.isValid) {
+      return Response.json(
+        { error: validationResult.errorMessage },
+        { status: 400 }
+      );
     }
 
-    console.log(`D1 Vector Query: "${query}"`);
+    const query = validationResult.sanitizedInput!;
+
+    // ===== STEP 2: BUSINESS HOURS CHECK =====
+    const businessHoursCheck = isWithinBusinessHours(rawQuery); // rawQuery contains bypass phrase if present
+    if (!businessHoursCheck.isWithinHours) {
+      return Response.json(
+        {
+          error: getBusinessHoursMessage(),
+          currentTime: businessHoursCheck.currentTime,
+          timezone: businessHoursCheck.timezone,
+        },
+        { status: 403 } // Forbidden outside business hours
+      );
+    }
+
+    console.log(`D1 Vector Query: "${query}" (sanitized)`);
+    console.log(`Business hours check passed: ${businessHoursCheck.timezone} at ${businessHoursCheck.currentTime}`);
 
     // Generate query embedding
     const queryEmbedding = await generateEmbedding(query, env.AI);
@@ -203,13 +230,13 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     // Generate AI reply if enabled
     if (env.AI_REPLY_ENABLED === 'true' && topResults.length > 0) {
       try {
-        // Check AI quota circuit breaker
+        // ===== STEP 3: CIRCUIT BREAKER CHECK =====
         const { allowed, status } = await canUseAI(env.KV);
         
         if (!allowed) {
-          // Quota exceeded - return friendly fallback message
+          // Quota exceeded - return circuit breaker message
           console.log(`AI quota exceeded: ${status.neuronsUsed}/${status.neuronsLimit} neurons (resets at ${status.resetAt})`);
-          responseData.assistantReply = getQuotaExceededMessage(query, topResults);
+          responseData.assistantReply = getCircuitBreakerMessage();
           responseData.quotaExceeded = true;
           responseData.quotaStatus = status;
         } else {

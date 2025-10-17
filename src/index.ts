@@ -12,6 +12,7 @@
 import { handleD1VectorQuery } from './query-d1-vectors';
 import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
 import { getQuotaStatus, resetQuota, syncQuotaFromDashboard } from './ai-quota';
+import { isWithinBusinessHours } from './input-validation';
 
 // Environment bindings interface
 interface Env {
@@ -752,12 +753,20 @@ async function handleHealth(env: Env): Promise<Response> {
     // Get AI quota status
     const quotaStatus = await getQuotaStatus(env.KV);
     
+    // Get business hours status
+    const businessHours = isWithinBusinessHours();
+    
     return new Response(JSON.stringify({
       status: 'healthy',
       database: dbCheck ? 'connected' : 'error',
       total_skills: skillCount?.count || 0,
       last_index: lastIndex || null,
       ai_quota: quotaStatus,
+      business_hours: {
+        isWithinHours: businessHours.isWithinHours,
+        timezone: businessHours.timezone,
+        hours: '09:00-19:00 CET/CEST',
+      },
       timestamp: new Date().toISOString(),
     }), {
       headers: { 'Content-Type': 'application/json' },

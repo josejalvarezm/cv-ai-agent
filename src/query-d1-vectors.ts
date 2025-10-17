@@ -345,7 +345,7 @@ CONTEXT FOR ASSESSMENT:
 
 Provide a professional, outcome-driven answer (3-5 sentences maximum):`;
 
-        const aiResponse = await env.AI.run('@cf/mistral/mistral-7b-instruct-v0.2' as any, {
+        const aiResponse = await env.AI.run('@hf/mistral/mistral-7b-instruct-v0.2' as any, {
           messages: [
             { 
               role: 'system', 

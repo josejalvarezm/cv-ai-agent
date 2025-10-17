@@ -47,7 +47,8 @@ const COMMON_WORDS = new Set([
   'come','its','over','think','also','back','after','use','two','how','our','work','first','well','way','even','new','want',
   'because','any','these','give','day','most','us','experience','years','expert','senior','junior','skill','skills','c#',
   'java','javascript','sql','server','development','backend','frontend','project','performance','database','cloud',
-  'architecture','devops','team','lead','principal','manager','engineer','consultant','design','build','maintain'
+  'architecture','devops','team','lead','leader','principal','manager','engineer','consultant','design','build','maintain',
+  'qualified','jose','josé','candidate','profile','background','resume','cv','capabilities','competent','suitable'
 ]);
 
 /**

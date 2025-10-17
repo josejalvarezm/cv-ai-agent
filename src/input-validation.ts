@@ -156,17 +156,26 @@ function hasSufficientEnglishWords(text: string): boolean {
 /**
  * Check for profanity or unsafe content
  */
-function containsUnsafeContent(text: string): boolean {
+/**
+ * Check for profanity or unsafe content.
+ * Returns the matched keyword if found (as a string), otherwise null.
+ * Matches whole words to avoid substring false positives (e.g. 'skills' matching 'sex').
+ */
+function containsUnsafeContent(text: string): string | null {
   const lowerText = text.toLowerCase();
-  
   const unsafeArray = Array.from(UNSAFE_KEYWORDS);
+
   for (let i = 0; i < unsafeArray.length; i++) {
-    if (lowerText.includes(unsafeArray[i])) {
-      return true;
+    const kw = unsafeArray[i];
+    // Build a word-boundary regex; escape the keyword for safety
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (re.test(lowerText)) {
+      return kw;
     }
   }
-  
-  return false;
+
+  return null;
 }
 
 /**
@@ -214,10 +223,13 @@ export function validateAndSanitizeInput(input: string): ValidationResult {
   }
 
   // 7. Check for unsafe content (profanity, hate speech, etc.)
-  if (containsUnsafeContent(sanitized)) {
+  const unsafeMatch = containsUnsafeContent(sanitized);
+  if (unsafeMatch) {
+    details.safetyCheck = `Matched unsafe keyword: ${unsafeMatch}`;
     return {
       isValid: false,
       errorMessage: "That input isn't appropriate for this chatbot.",
+      validationDetails: details,
     };
   }
 

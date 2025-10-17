@@ -1,6 +1,6 @@
 /**
- * Generate SQL INSERT statements from enriched JSON
- * Run with: node scripts/generate-seed-sql.js > migrations/002_seed_data.sql
+ * Generate SQL INSERT statements from enriched JSON with outcomes
+ * Run with: node scripts/generate-seed-sql.js > migrations/002_seed_data_tech_only.sql
  */
 
 import fs from 'fs';
@@ -10,10 +10,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dataPath = path.join(__dirname, '../schema/technologies-content-enriched.json');
+const dataPath = path.join(__dirname, '../schema/technologies-content-with-outcomes.json');
 const enrichedData = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
 
-console.log('-- Seed data generated from technologies-content-enriched.json\n');
+console.log('-- Seed data generated from technologies-content-with-outcomes.json\n');
 
 // Insert categories and collect IDs
 const categoryMap = new Map();
@@ -49,11 +49,15 @@ for (const categoryObj of enrichedData.technologyCategories) {
       escape(tech.summary),
       escape(tech.category),
       tech.recency ? escape(tech.recency) : 'NULL',
-      catId
+      catId,
+      escape(tech.action),
+      escape(tech.effect),
+      escape(tech.outcome),
+      escape(tech.related_project)
     ];
 
-    console.log(`INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id)`);
-    console.log(`VALUES (${values.join(', ')});`);
+    const insertStatement = `INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project) VALUES (${values.join(', ')});`;
+    console.log(insertStatement);
 
     techId++;
   }

@@ -77,7 +77,8 @@ function isLikelyMeaningful(text: string): boolean {
 }
 
 /**
- * Check if current time is within European business hours (09:00-19:00 CET/CEST)
+ * Check if current time is within UK business hours (08:00-20:00 GMT/BST, Mon-Fri only)
+ * Disabled during weekends (Saturday & Sunday)
  */
 export function isWithinBusinessHours(bypassPhrase?: string): BusinessHoursCheck {
   // Special bypass for admin testing
@@ -90,6 +91,18 @@ export function isWithinBusinessHours(bypassPhrase?: string): BusinessHoursCheck
   }
 
   const now = new Date();
+  
+  // Check day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  const dayOfWeek = now.getUTCDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+  
+  if (isWeekend) {
+    return {
+      isWithinHours: false,
+      currentTime: now.toISOString(),
+      timezone: 'GMT/BST (Weekend)',
+    };
+  }
   
   // Convert to UK time (GMT in winter, BST in summer)
   // Note: This is approximate. For production, use a proper timezone library.
@@ -334,7 +347,7 @@ export function validateAndSanitizeInput(input: string): ValidationResult {
  * Get business hours error message
  */
 export function getBusinessHoursMessage(): string {
-  return "Our assistant is available during European business hours (09:00–19:00 CET). Please return then for a full response.";
+  return "Our assistant is available during UK business hours (Monday-Friday, 08:00-20:00 GMT/BST). Please return then for a full response.";
 }
 
 /**

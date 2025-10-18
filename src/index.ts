@@ -766,7 +766,7 @@ async function handleHealth(env: Env): Promise<Response> {
       business_hours: {
         isWithinHours: businessHours.isWithinHours,
         timezone: businessHours.timezone,
-        hours: '09:00-19:00 CET/CEST',
+        hours: '08:00-20:00 Mon-Fri UK (GMT/BST)',
       },
       timestamp: new Date().toISOString(),
     }), {

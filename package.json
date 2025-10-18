@@ -27,6 +27,12 @@
     "deploy:force": "pwsh -File scripts/deploy-cv-assistant.ps1 -Force",
     "deploy:quick": "npm run build && npm run deploy",
     "enrich:json": "node scripts/enrich-json.js",
+    "analytics": "node scripts/fetch-ai-analytics.js",
+    "analytics:today": "node scripts/fetch-ai-analytics.js --today",
+    "analytics:week": "node scripts/fetch-ai-analytics.js --week",
+    "analytics:month": "node scripts/fetch-ai-analytics.js --month",
+    "analytics:export": "node scripts/fetch-ai-analytics.js --export",
+    "analytics:csv": "node scripts/fetch-ai-analytics.js --export --csv",
     "test": "node tests/run-tests.js",
     "type-check": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
@@ -46,6 +52,8 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231218.0",
     "@types/node": "^20.10.5",
+    "cli-table3": "^0.6.5",
+    "dotenv": "^16.6.1",
     "typescript": "^5.3.3",
     "wrangler": "^4.43.0"
   }

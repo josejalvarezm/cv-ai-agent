@@ -429,8 +429,15 @@ Notice the difference:
 - Keep answers recruiter‑friendly: clear, measurable, and business‑linked
 - Always answer the implicit recruiter question: "So what?"
 
-Provide a professional, outcome-driven answer (3-5 sentences maximum)`;
+**CRITICAL: Be concise and laconic (2-4 sentences maximum, <100 tokens)**
+- No fluff, no verbose explanations
+- Get straight to the point
+- One sentence per concept (skill, metric, or outcome)
+- Avoid repetition or elaboration`;
 
+        // Concise response mode: limit to 100 tokens for cost efficiency
+        // This reduces output from ~300 tokens to ~100 tokens
+        // Expected neuron savings: 120 neurons → 60 neurons per query (50% reduction)
         const aiResponse = await env.AI.run('@cf/meta/llama-3.1-70b-instruct' as any, {
           messages: [
             { 
@@ -517,7 +524,18 @@ Output answer:
             },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 300
+          // COST OPTIMIZATION: Reduced from 300 to 100 tokens for conciseness
+          // This cuts response length by 67% and saves ~60 neurons per query (50% cost reduction)
+          // Trade-off: Slightly shorter responses, but more focused and actionable
+          max_tokens: 100
+        },
+        // AI GATEWAY: Third argument enables analytics, caching, and detailed metrics
+        // Benefits: Request tracking, token/cost monitoring, 20-50% cost reduction via caching
+        // Analytics available via: npm run analytics:today
+        {
+          gateway: {
+            id: 'cv-assistant-gateway'
+          }
         }) as any;
 
           // Extract AI response - handle multiple formats
@@ -538,9 +556,9 @@ Output answer:
           responseData.assistantReply = aiReply;
           
           // Increment quota counter after successful inference
-          // Mistral 7B estimated cost: 75 neurons per inference
-          await incrementQuota(env.KV, NEURON_COSTS['mistral-7b-instruct']);
-          console.log(`AI inference successful. Quota: ${(status.neuronsUsed + NEURON_COSTS['mistral-7b-instruct']).toFixed(2)}/${status.neuronsLimit} neurons`);
+          // Llama 3.1 70B estimated cost: 120 neurons per inference
+          await incrementQuota(env.KV, NEURON_COSTS['llama-3.1-70b-instruct']);
+          console.log(`AI inference successful. Quota: ${(status.neuronsUsed + NEURON_COSTS['llama-3.1-70b-instruct']).toFixed(2)}/${status.neuronsLimit} neurons`);
         }
       } catch (aiError: any) {
         console.error('AI reply generation failed:', aiError);

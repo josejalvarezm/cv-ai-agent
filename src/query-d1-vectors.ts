@@ -538,20 +538,95 @@ Output answer:
           }
         }) as any;
 
-          // Extract AI response - handle multiple formats
+          // Extract AI response - handle multiple formats including streams
           let aiReply = '';
-          if (typeof aiResponse === 'string') {
+          
+          // Helper function to fully consume a ReadableStream
+          const consumeStream = async (stream: ReadableStream): Promise<string> => {
+            const reader = stream.getReader();
+            const decoder = new TextDecoder();
+            let result = '';
+            const timeout = 30000; // 30 second timeout
+            const startTime = Date.now();
+            
+            try {
+              while (true) {
+                // Check for timeout
+                if (Date.now() - startTime > timeout) {
+                  console.warn('Stream read timeout after 30s');
+                  reader.cancel('Timeout');
+                  break;
+                }
+                
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                  break;
+                }
+                
+                if (value) {
+                  result += decoder.decode(value, { stream: true });
+                }
+              }
+              
+              // Final decode with stream: false to flush any remaining bytes
+              result += decoder.decode();
+              
+              return result;
+            } catch (error) {
+              console.error('Stream consumption error:', error);
+              reader.cancel('Error reading stream');
+              throw error;
+            } finally {
+              reader.releaseLock();
+            }
+          };
+          
+          // Check if response is a ReadableStream
+          if (aiResponse && typeof aiResponse === 'object' && 'body' in aiResponse && aiResponse.body instanceof ReadableStream) {
+            console.log('AI response is a ReadableStream, consuming fully...');
+            aiReply = await consumeStream(aiResponse.body);
+          } else if (aiResponse && typeof aiResponse === 'object' && aiResponse instanceof ReadableStream) {
+            console.log('AI response is directly a ReadableStream, consuming fully...');
+            aiReply = await consumeStream(aiResponse);
+          } else if (typeof aiResponse === 'string') {
             aiReply = aiResponse;
           } else if (aiResponse?.response) {
-            aiReply = aiResponse.response;
+            // Check if nested response is a stream
+            if (aiResponse.response instanceof ReadableStream) {
+              aiReply = await consumeStream(aiResponse.response);
+            } else {
+              aiReply = aiResponse.response;
+            }
           } else if (aiResponse?.result?.response) {
-            aiReply = aiResponse.result.response;
+            // Check if nested result.response is a stream
+            if (aiResponse.result.response instanceof ReadableStream) {
+              aiReply = await consumeStream(aiResponse.result.response);
+            } else {
+              aiReply = aiResponse.result.response;
+            }
           } else if (Array.isArray(aiResponse?.choices) && aiResponse.choices[0]?.message?.content) {
             aiReply = aiResponse.choices[0].message.content;
+          } else if (aiResponse && typeof aiResponse === 'object') {
+            // Try to stringify and look for content
+            console.log('AI response is object, attempting to extract content...');
+            const responseStr = JSON.stringify(aiResponse);
+            console.log('AI response structure:', responseStr.substring(0, 300));
+            
+            // Try common response patterns
+            if ('content' in aiResponse) {
+              aiReply = aiResponse.content;
+            } else if ('text' in aiResponse) {
+              aiReply = aiResponse.text;
+            } else if ('message' in aiResponse && typeof aiResponse.message === 'object' && 'content' in aiResponse.message) {
+              aiReply = aiResponse.message.content;
+            }
           }
           
-          console.log('AI response format:', JSON.stringify(aiResponse).substring(0, 200));
+          console.log('AI response type:', typeof aiResponse);
+          console.log('AI response constructor:', aiResponse?.constructor?.name || 'N/A');
           console.log('Extracted AI reply length:', aiReply.length);
+          console.log('AI reply preview:', aiReply.substring(0, 100));
           
           responseData.assistantReply = aiReply;
           

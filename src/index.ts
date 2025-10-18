@@ -884,6 +884,25 @@ export default {
         return response;
       }
 
+      // Admin: get current AI quota status from KV
+      if (path === '/admin/quota' && request.method === 'GET') {
+        // Simple auth: if JWT_SECRET is set require a Bearer token matching it (admin use only)
+        const authHeader = request.headers.get('Authorization');
+        if (env.JWT_SECRET) {
+          if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          const token = authHeader.substring(7);
+          if (token !== env.JWT_SECRET) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
+
+        const quota = await getQuotaStatus(env.KV);
+        const resp = new Response(JSON.stringify({ success: true, quota }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return resp;
+      }
+
       // Legacy endpoint - redirects to /query
       if (path === '/query-d1' && (request.method === 'GET' || request.method === 'POST')) {
         const response = await handleD1VectorQuery(request, env);

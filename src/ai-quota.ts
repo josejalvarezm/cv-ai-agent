@@ -27,8 +27,9 @@ export const NEURON_COSTS = {
   'mistral-7b-instruct': 75, // Conservative estimate: 75 neurons per inference
   
   // Llama 3.1 70B: 6,667 neurons per M input tokens, 13,889 per M output tokens
-  // Estimated average per call: ~100-150 neurons (depends on input/output length)
-  'llama-3.1-70b-instruct': 120, // Conservative estimate: 120 neurons per inference (PRIMARY MODEL)
+  // Estimated average per call: ~100 neurons (depends on input/output length)
+  // Observed: 717.14 neurons / 7 inferences ≈ 102.45 neurons per call
+  'llama-3.1-70b-instruct': 102, // Refined estimate based on actual usage: ~102 neurons per inference (PRIMARY MODEL)
   
   // Embeddings: bge-base-en-v1.5: 6,058 neurons per M input tokens
   // Typical CV skill text: ~50-100 tokens = ~0.3-0.6 neurons per call

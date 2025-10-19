@@ -45,10 +45,11 @@ const COMMON_WORDS = new Set([
   'what','so','up','out','if','about','who','get','which','go','me','when','make','can','like','time','no','just','him',
   'know','take','people','into','year','your','good','some','could','them','see','other','than','then','now','look','only',
   'come','its','over','think','also','back','after','use','two','how','our','work','first','well','way','even','new','want',
-  'because','any','these','give','day','most','us','experience','years','expert','senior','junior','skill','skills','c#',
-  'java','javascript','sql','server','development','backend','frontend','project','performance','database','cloud',
+  'because','any','these','give','day','most','us','are','am','is','was','were','been','being','has','had','having',
+  'experience','years','expert','senior','junior','skill','skills','c#','key','main','primary','projects','project',
+  'java','javascript','sql','server','development','backend','frontend','performance','database','cloud',
   'architecture','devops','team','lead','leader','principal','manager','engineer','consultant','design','build','maintain',
-  'qualified','jose','josé','candidate','profile','background','resume','cv','capabilities','competent','suitable'
+  'qualified','jose','josé','candidate','profile','background','resume','cv','capabilities','competent','suitable','osito'
 ]);
 
 /**

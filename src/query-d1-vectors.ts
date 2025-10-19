@@ -156,15 +156,17 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     // Fetch vectors from D1 - optionally filter by project if detected
     let sqlQuery = `SELECT v.id, v.item_id, v.embedding, v.metadata, t.name, t.experience, t.experience_years,
               t.proficiency_percent, t.level, t.summary, t.category, t.recency,
-              t.action, t.effect, t.outcome, t.related_project
+              t.action, t.effect, t.outcome, t.related_project, t.employer
        FROM vectors v
        JOIN technology t ON v.item_id = t.id
        WHERE v.item_type = 'technology'`;
     
     // If project-specific, filter to only skills used in that project
+    // Check both employer and related_project columns
     const params: any[] = [];
     if (projectDetection.isProjectSpecific) {
-      sqlQuery += ` AND t.related_project LIKE ?`;
+      sqlQuery += ` AND (t.employer LIKE ? OR t.related_project LIKE ?)`;
+      params.push(`%${projectDetection.projectName}%`);
       params.push(`%${projectDetection.projectName}%`);
     }
     
@@ -260,6 +262,7 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
             effect: vector.effect,
             outcome: vector.outcome,
             related_project: vector.related_project,
+            employer: vector.employer,
           },
           metadata,
         });
@@ -295,6 +298,7 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
         effect: r.technology.effect,
         outcome: r.technology.outcome,
         related_project: r.technology.related_project,
+        employer: r.technology.employer,
         similarity: r.similarity,
         provenance: {
           source: 'd1-vectors',

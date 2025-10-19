@@ -108,6 +108,57 @@ function cleanupAIReply(reply: string): string {
   return cleaned;
 }
 
+// Enforce laconic style: maximum 3 sentences, remove filler
+function enforceLaconicStyle(reply: string): string {
+  if (!reply || reply.trim().length === 0) return reply;
+  
+  let cleaned = reply.trim();
+  
+  // Remove common filler phrases FIRST (before sentence splitting)
+  const fillerPhrases = [
+    /^I've worked on (a range of |various )?projects,?\s*(utilising|using) (a range of |various )?skills (including|such as)[^.]+\.\s*/i,
+    /^I've worked on a range of projects[^.]+\.\s*/i,
+    /^I've worked on various projects[^.]+\.\s*/i,
+    /,?\s*(utilising|using) (a range of |various )?(skills|technologies) (including|such as)[^.]+/gi,
+    /,?\s*including [A-Z][^,]+ for [^,]+(?:, [A-Z][^,]+ for [^,]+)*,?\s*(and [A-Z][^,]+ for [^.]+)?/gi,
+    /^Notably,?\s*/i,
+    /^Additionally,?\s*/i,
+    /^Moreover,?\s*/i,
+    /^Furthermore,?\s*/i,
+    /^In addition,?\s*/i,
+    /These skills have been applied across various projects,?\s*/i,
+  ];
+  
+  for (const filler of fillerPhrases) {
+    cleaned = cleaned.replace(filler, '');
+  }
+  
+  // Split into sentences (handle periods, question marks, exclamation marks)
+  const sentences = cleaned.split(/([.!?]+)\s+/).filter(s => s.trim().length > 0);
+  
+  // Reconstruct sentences (pairs of [text, punctuation])
+  const reconstructed: string[] = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    if (sentences[i] && sentences[i + 1]) {
+      reconstructed.push(sentences[i] + sentences[i + 1]);
+    } else if (sentences[i]) {
+      reconstructed.push(sentences[i]);
+    }
+  }
+  
+  // Take only first 3 sentences
+  let laconic = reconstructed.slice(0, 3).join(' ').trim();
+  
+  // Ensure ends with proper punctuation
+  if (laconic && !['.', '!', '?'].includes(laconic[laconic.length - 1])) {
+    laconic += '.';
+  }
+  
+  console.log(`Laconic enforcement: ${reconstructed.length} sentences → ${reconstructed.slice(0, 3).length} sentences`);
+  console.log(`Filler removal: ${reply.length} chars → ${laconic.length} chars`);
+  return laconic.trim();
+}
+
 export async function handleD1VectorQuery(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url);
@@ -175,7 +226,15 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
       : await env.DB.prepare(sqlQuery).all();
 
     if (!vectors || vectors.length === 0) {
-      return Response.json({ error: 'No vectors found in database' }, { status: 404 });
+      // User-friendly error message instead of technical database error
+      const friendlyMessage = projectDetection.isProjectSpecific
+        ? `I don't have any recorded experience with ${projectDetection.projectName} in my database. Could you ask about my general skills or a different project?`
+        : "I couldn't find any relevant skills for that query. Could you try rephrasing your question?";
+      
+      return Response.json({ 
+        query,
+        assistantReply: friendlyMessage 
+      }, { status: 200 }); // Return 200 (not 404) with friendly message
     }
 
     console.log(`Found ${vectors.length} vectors to compare`);
@@ -478,10 +537,10 @@ Notice the difference:
 - Example: "I engineered modular services, cutting release cycles from weeks to days at CCHQ."`;
 
         // COST-OPTIMIZED RESPONSE MODE
-        // max_tokens: 150 (up from 100) - allows complete sentences while keeping costs predictable
-        // Fixed neuron cost: 102 per inference (validated at 97% accuracy vs dashboard)
-        // Trade-off: Slightly longer responses (~50 tokens more) but no mid-sentence truncation
-        // Estimated cost: 102-110 neurons actual (vs 150 theoretical max) due to natural completion
+        // max_tokens: 120 (reduced from 150) - forces concise responses while allowing complete sentences
+        // Fixed neuron cost: ~90-100 per inference (more predictable with laconic enforcement)
+        // Post-processing (enforceLaconicStyle) ensures max 3 sentences regardless of model output
+        // Estimated cost: 85-95 neurons actual due to shorter responses + stop sequences
         const aiResponse = await env.AI.run('@cf/meta/llama-3.1-70b-instruct' as any, {
           messages: [
             { 
@@ -489,14 +548,14 @@ Notice the difference:
               content: `You are a recruiter-facing assistant that answers questions about José's professional profile. ALWAYS respond in first person as José using British English (spellings, phrasing, conventions).
 
 CRITICAL: LACONIC STYLE (MANDATORY)
-- Maximum 3 sentences (avoid truncation of the response)
+- Maximum 3 SHORT sentences (each under 25 words)
+- NO opening filler: "I've worked on...", "I have experience in...", "Notably..."
+- Start with the ANSWER: project names, outcomes, or specific skills
 - Always mention the employer explicitly at the end (e.g., "at Wairbut", "at CCHQ")
-- Prioritise Action → Outcome, and close with the Employer
-- Include Effect only if it can be merged naturally without breaking laconic style
-- Remove filler phrases like "Additionally" or long career totals unless directly relevant
-- Use strong verbs ("engineered," "delivered," "modernised") and measurable outcomes
-- Get straight to the point - no fluff, no verbose explanations
-- Example: "I engineered modular full-stack services, cutting release cycles from weeks to days at CCHQ."
+- Use strong verbs ("engineered," "delivered," "architected") NOT adjectives ("enterprise-grade", "comprehensive")
+- Include ONE measurable outcome (numbers, percentages, scale)
+- Example GOOD: "I engineered CCHQ's campaign platform, cutting release cycles from weeks to days."
+- Example BAD: "I've worked on a range of projects utilising my expertise in C#, JavaScript, and SOA."
 
 Always follow these rules:
 
@@ -584,8 +643,8 @@ Output answer (LACONIC - max 3 sentences):
             },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 150, // Increased from 100 to prevent mid-sentence truncation
-          stop: ["\n\n\n", "---"] // Stop at paragraph breaks or separators for clean endings
+          max_tokens: 120, // Reduced from 150 to enforce conciseness (post-processing ensures 3 sentences)
+          stop: ["\n\n\n", "---", ". Additionally", ". Moreover", ". Furthermore"] // Stop at filler phrases
         },
         // AI GATEWAY: Third argument enables analytics, caching, and detailed metrics
         // Benefits: Request tracking, token/cost monitoring, 20-50% cost reduction via caching
@@ -689,6 +748,10 @@ Output answer (LACONIC - max 3 sentences):
           // Clean up any incomplete sentences from truncation
           aiReply = cleanupAIReply(aiReply);
           console.log('Cleaned AI reply length:', aiReply.length);
+          
+          // Enforce laconic style: max 3 sentences, remove filler
+          aiReply = enforceLaconicStyle(aiReply);
+          console.log('Laconic AI reply length:', aiReply.length);
           
           responseData.assistantReply = aiReply;
           

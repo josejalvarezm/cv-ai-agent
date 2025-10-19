@@ -27,6 +27,14 @@
 | **[IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)** | Complete technical implementation, architecture | Developers |
 | **[AUTOMATION.md](AUTOMATION.md)** | Deployment automation, commands, scripts | DevOps |
 | **[outcome-driven-cv-assistant.md](docs/outcome-driven-cv-assistant.md)** | Feature guide, AI prompt engineering | Product |
+| **[SCHEMA_MIGRATION_GUIDE.md](SCHEMA_MIGRATION_GUIDE.md)** | ⚠️ How to add new database fields safely | Developers |
+
+### Data Management
+| File | Purpose | Audience |
+|------|---------|----------|
+| **[RESEED_GUIDE.md](RESEED_GUIDE.md)** | Complete re-seeding reference | Developers |
+| **[RESEED_SOLUTION_SUMMARY.md](RESEED_SOLUTION_SUMMARY.md)** | Quick re-seed commands and workflow | Everyone |
+| **[RESEED_QUICK_REF.md](RESEED_QUICK_REF.md)** | One-page command reference | Everyone |
 
 ### Automation Scripts
 | File | Purpose | Language |

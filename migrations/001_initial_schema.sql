@@ -3,6 +3,15 @@ DROP TABLE IF EXISTS vectors;
 DROP TABLE IF EXISTS technology;
 DROP TABLE IF EXISTS technology_category;
 
+-- ⚠️ IMPORTANT: When adding new columns to the technology table:
+-- 1. Add the column definition below (for documentation)
+-- 2. Create a new migration file (e.g., 004_add_your_field.sql)
+-- 3. Apply the migration: npx wrangler d1 execute cv_assistant_db --remote --file=migrations/00X_add_field.sql
+-- 4. Update scripts/generate-seed-sql.js to include the new field
+-- 5. Update schema/technologies-content-with-outcomes.json with values
+-- 6. Run: npm run reseed
+-- See: SCHEMA_MIGRATION_GUIDE.md for complete instructions
+
 -- Create technology_category table
 CREATE TABLE technology_category (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +35,7 @@ CREATE TABLE technology (
   effect TEXT,              -- Operational/technical effect
   outcome TEXT,             -- Business outcome or measurable result
   related_project TEXT,     -- Optional project/context anchor
+  employer TEXT,            -- Employer/organization (Independent Production, Wairbut, CCHQ national campaign platform)
   FOREIGN KEY (category_id) REFERENCES technology_category(id)
 );
 

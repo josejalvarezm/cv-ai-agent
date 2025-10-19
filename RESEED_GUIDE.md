@@ -4,9 +4,21 @@
 
 The `reseed-ai-data.ps1` script provides a bulletproof way to update your CV Assistant's AI data without worrying about foreign key constraints, duplicate categories, or incomplete operations.
 
+## ⚠️ Important: Schema Changes
+
+**Before using this guide**, if you're adding a **new field** to the technology table (like `employer`, `tags`, etc.), you **must** follow the schema migration process first. See:
+
+📖 **[SCHEMA_MIGRATION_GUIDE.md](./SCHEMA_MIGRATION_GUIDE.md)** - Complete guide for adding new database columns
+
+If you skip schema migration and try to reseed with a new field, you'll get:
+```
+X [ERROR] table technology has no column named your_field: SQLITE_ERROR
+```
+
 ## Quick Start
 
 ### Update AI data (recommended)
+
 ```bash
 npm run reseed
 ```

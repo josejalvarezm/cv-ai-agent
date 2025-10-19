@@ -43,12 +43,35 @@ npm run reseed
 
 ## Workflow
 
-### When You Update AI Data
+### When You Update AI Data (Content Only)
 
 1. Edit `schema/technologies-content-with-outcomes.json`
 2. Run `npm run reseed`
 3. Wait for completion (~30 seconds)
 4. Check `npm run health` - should show 64 skills
+
+### When You Add New Fields to the Schema
+
+⚠️ **IMPORTANT**: Adding new fields requires schema migration FIRST!
+
+1. **Update the schema**: Edit `migrations/001_initial_schema.sql`
+2. **Create a migration**: Add new file `migrations/00X_add_your_field.sql`
+
+   ```sql
+   ALTER TABLE technology ADD COLUMN your_field TEXT;
+   ```
+
+3. **Apply migration to remote DB**:
+
+   ```bash
+   npx wrangler d1 execute cv_assistant_db --remote --file=migrations/00X_add_your_field.sql
+   ```
+
+4. **Update the generator**: Edit `scripts/generate-seed-sql.js` to include new field
+5. **Update the JSON**: Add the new field to `technologies-content-with-outcomes.json`
+6. **Run reseed**: `npm run reseed` to populate the new field
+
+**Why this order matters**: The database schema must exist BEFORE you try to insert data with the new field. Skipping the migration step will cause `"table technology has no column named X"` errors.
 
 ### When You Want to See What Would Happen
 
@@ -161,19 +184,36 @@ You'll know it worked when:
 
 ## Troubleshooting
 
+### Issue: "table technology has no column named X"
+
+**Cause**: You added a new field to the JSON but didn't migrate the database schema first.
+
+**Solution**:
+
+1. Create migration file: `migrations/00X_add_your_field.sql`
+2. Apply it: `npx wrangler d1 execute cv_assistant_db --remote --file=migrations/00X_add_your_field.sql`
+3. Run reseed: `npm run reseed`
+
+**Prevention**: Always follow the "When You Add New Fields to the Schema" workflow above.
+
 ### Issue: "SQL file is old"
+
 **Solution**: Run `npm run reseed:force`
 
 ### Issue: "Foreign key constraint failed"
+
 **Solution**: Already handled! Run `npm run reseed` again
 
 ### Issue: "Vectors show 0 records"
+
 **Solution**: Wait 10 seconds, run `npm run health` again
 
 ### Issue: "Worker shows unhealthy"
+
 **Solution**: Check wrangler logs, then `npm run reseed`
 
 ### Issue: Not sure what will happen
+
 **Solution**: Always run `npm run reseed:dryrun` first!
 
 ## Documentation

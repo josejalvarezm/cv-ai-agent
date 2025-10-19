@@ -128,9 +128,15 @@ AI_REPLY_ENABLED = "true"
 
 ## 📖 Learn More
 
+### Core Documentation
 - [Architecture](docs/architecture.md)
 - [Database Deployment](docs/database-deployment-guide.md)
 - [Database Seeding](docs/database-seeding-guide.md)
+
+### Data Management
+- [Re-seeding Guide](RESEED_GUIDE.md) - How to update AI data
+- [Schema Migration Guide](SCHEMA_MIGRATION_GUIDE.md) - ⚠️ **Read this before adding new fields**
+- [Re-seed Solution Summary](RESEED_SOLUTION_SUMMARY.md) - Quick reference
 
 ---
 

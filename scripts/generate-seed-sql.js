@@ -1,6 +1,14 @@
 /**
  * Generate SQL INSERT statements from enriched JSON with outcomes
  * Run with: node scripts/generate-seed-sql.js > migrations/002_seed_data_tech_only.sql
+ * 
+ * ⚠️ IMPORTANT: When adding new fields to the technology table:
+ * 1. First create and apply a migration (e.g., migrations/00X_add_field.sql)
+ * 2. Then update this generator to include the new field
+ * 3. Update the JSON data with the new field values
+ * 4. Run npm run reseed
+ * 
+ * See: SCHEMA_MIGRATION_GUIDE.md for complete instructions
  */
 
 import fs from 'fs';
@@ -53,10 +61,11 @@ for (const categoryObj of enrichedData.technologyCategories) {
       escape(tech.action),
       escape(tech.effect),
       escape(tech.outcome),
-      escape(tech.related_project)
+      escape(tech.related_project),
+      escape(tech.employer)
     ];
 
-    const insertStatement = `INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project) VALUES (${values.join(', ')});`;
+    const insertStatement = `INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project, employer) VALUES (${values.join(', ')});`;
     console.log(insertStatement);
 
     techId++;

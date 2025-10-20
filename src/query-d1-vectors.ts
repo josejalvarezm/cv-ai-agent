@@ -50,6 +50,49 @@ async function generateEmbedding(text: string, ai: Ai): Promise<number[]> {
   return response.data[0];
 }
 
+// Validate question type - block non-technical queries
+function validateQuestionType(query: string): { 
+  isValid: boolean; 
+  errorMessage?: string;
+  suggestion?: string;
+} {
+  // Non-technical question patterns
+  const nonTechnicalPatterns = [
+    { 
+      pattern: /\b(salary|compensation|pay|wage|money|market rate|below market|above market|remuneration|cost|expensive|cheap|affordable)\b/i, 
+      type: 'compensation',
+      suggestion: "Try asking: 'What experience does Osito have with enterprise systems?' or 'What technologies has Osito used in fintech?'"
+    },
+    { 
+      pattern: /\b(personal|private|family|age|married|children|spouse|relationship|home|address|contact)\b/i, 
+      type: 'personal',
+      suggestion: "Try asking about specific technologies, projects, or technical accomplishments."
+    },
+    { 
+      pattern: /\b(willing to relocate|accept offer|consider position|available for|start date|notice period|when can|join date)\b/i, 
+      type: 'employment',
+      suggestion: "Try asking: 'What are Osito's key technical strengths?' or 'What projects has Osito worked on?'"
+    },
+    { 
+      pattern: /\b(weakness|weaknesses|failures|mistakes|regrets|worst|bad at|not good at|struggles with)\b/i, 
+      type: 'negative',
+      suggestion: "Try asking about specific technologies, achievements, or successful projects."
+    },
+  ];
+
+  for (const { pattern, type, suggestion } of nonTechnicalPatterns) {
+    if (pattern.test(query)) {
+      return {
+        isValid: false,
+        errorMessage: `I can only answer questions about technical skills, projects, and professional achievements.`,
+        suggestion: suggestion
+      };
+    }
+  }
+
+  return { isValid: true };
+}
+
 // Detect if query is asking about a specific project/company
 function detectProjectInQuery(query: string): { isProjectSpecific: boolean; projectName?: string; cleanQuery: string } {
   const lowerQuery = query.toLowerCase();
@@ -86,7 +129,8 @@ function cleanupAIReply(reply: string): string {
   
   if (!hasProperEnding) {
     // Find the last complete sentence (ends with . ! or ?)
-    const sentenceEndPattern = /[.!?](?=\s|$)/g;
+    // Exclude decimal numbers like "99.9" - look for period followed by space or uppercase letter
+    const sentenceEndPattern = /[.!?](?=\s+[A-Z]|\s*$)/g;
     const matches = [...cleaned.matchAll(sentenceEndPattern)];
     
     if (matches.length > 0) {
@@ -103,7 +147,8 @@ function cleanupAIReply(reply: string): string {
   
   // Remove any trailing incomplete phrases after sentence endings
   // e.g., "...systems. Additionally, I've worked" -> "...systems."
-  cleaned = cleaned.replace(/([.!?])\s+[^.!?]*$/, '$1');
+  // But preserve decimal numbers like "99.9%"
+  cleaned = cleaned.replace(/([.!?])(?=\s+[A-Z])\s+[^.!?]*$/, '$1');
   
   return cleaned;
 }
@@ -116,20 +161,33 @@ function enforceLaconicStyle(reply: string): string {
   
   // Remove common filler phrases FIRST (before sentence splitting)
   const fillerPhrases = [
+    // Generic openers (PRIORITY - remove these first)
+    /^I've worked in \w+(-\w+)?\s+(technologies|domains?|areas?|fields?)?\s+for \d+ years?,?\s*/gi,
+    /^I've consistently delivered (high-quality )?work (across|for|over) \d+ years (of experience )?in[^.]+\.\s*/gi,
+    /^My expertise spans\s+[^.]+\.\s*/gi,
+    /^I've demonstrated expertise in (multiple areas?|various domains?),?\s*/gi,
+    
+    // Project/skill listing patterns
     /^I've worked (on|with) (a range of |various )?projects,?\s*(utilising|using) (a range of |various )?skills (including|such as)[^.]+\.\s*/i,
     /^I've worked (on|with) (a range of |various )?(projects|technologies|tools)[^.]+\.\s*/i,
     /^I've worked (on|with) [A-Z][a-z]+ for \d+ years?,?\s*/i, // "I've worked with Terraform for 1 year"
     /,?\s*(utilising|using) (a range of |various )?(skills|technologies) (including|such as)[^.]+/gi,
     /,?\s*including [A-Z][^,]+ for [^,]+(?:, [A-Z][^,]+ for [^,]+)*,?\s*(and [A-Z][^,]+ for [^.]+)?/gi,
-    /,?\s*and (also )?(worked with|used|explored|implemented) [^,]+ (and|using|with) [^,]+,?\s*/gi, // Remove unrelated skills
+    /,?\s*and (also )?(worked with|used|explored|implemented) [^,]+ (and|using|with) [^,]+,?\s*/gi,
     /I'?m a (junior|mid-level|senior|principal)(-level)? professional with a strong background in[^.]+\.\s*/gi,
-    /,?\s*having also worked (with|on) [^.]+\.\s*/gi, // Remove "having also worked with..."
+    /,?\s*having also worked (with|on) [^.]+\.\s*/gi,
+    
+    // Transition words
     /^Notably,?\s*/i,
     /^Additionally,?\s*/i,
     /^Moreover,?\s*/i,
     /^Furthermore,?\s*/i,
     /^In addition,?\s*/i,
     /These skills have been applied across various projects,?\s*/i,
+    
+    // Trailing generic phrases
+    /,?\s*including [^.]+,\s*[^.]+,\s*and [^.]+\.$/gi, // Remove trailing "including X, Y, and Z."
+    /\s+across (multiple|various) (projects|domains|areas)\.$/gi,
   ];
   
   for (const filler of fillerPhrases) {
@@ -162,6 +220,64 @@ function enforceLaconicStyle(reply: string): string {
   return laconic.trim();
 }
 
+// Validate response quality and auto-correct issues
+function validateResponseQuality(reply: string): {
+  isValid: boolean;
+  issues: string[];
+  correctedReply?: string;
+} {
+  const issues: string[] = [];
+  
+  // Check 1: Must end with employer (at CCHQ, at Wairbut, or at [CompanyName])
+  if (!/(at (CCHQ|Wairbut|[A-Z][a-z]+))\.$/.test(reply)) {
+    issues.push("Missing employer at end");
+  }
+  
+  // Check 2: Sentence count (max 3)
+  const sentences = reply.match(/[^.!?]+[.!?]+/g) || [];
+  if (sentences.length > 3) {
+    issues.push(`Too many sentences (${sentences.length}, max 3)`);
+  }
+  
+  // Check 3: Word count (max 60 for quality, but allow up to 80)
+  const wordCount = reply.split(/\s+/).length;
+  if (wordCount > 60) {
+    issues.push(`Too wordy (${wordCount} words, target <60)`);
+  }
+  
+  // Check 4: No filler phrases (these should have been removed already)
+  const fillerCheck = [
+    { phrase: "I've worked in", severity: "high" },
+    { phrase: "My expertise spans", severity: "high" },
+    { phrase: "I've consistently", severity: "high" },
+    { phrase: "I've demonstrated", severity: "high" },
+    { phrase: "across multiple", severity: "medium" },
+    { phrase: "various projects", severity: "medium" },
+  ];
+  
+  for (const { phrase, severity } of fillerCheck) {
+    if (reply.includes(phrase)) {
+      issues.push(`Contains filler (${severity}): "${phrase}"`);
+    }
+  }
+  
+  if (issues.length > 0) {
+    console.warn('Response quality issues detected:', issues);
+    
+    // Auto-correct: truncate to first 2 sentences if too long
+    if (sentences.length > 3) {
+      const corrected = sentences.slice(0, 2).join(' ');
+      return {
+        isValid: false,
+        issues,
+        correctedReply: corrected,
+      };
+    }
+  }
+  
+  return { isValid: issues.length === 0, issues: [] };
+}
+
 export async function handleD1VectorQuery(request: Request, env: Env): Promise<Response> {
   try {
     const url = new URL(request.url);
@@ -177,6 +293,19 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     }
 
     const query = validationResult.sanitizedInput!;
+
+    // ===== STEP 1.5: QUESTION TYPE VALIDATION (Block non-technical queries) =====
+    const questionValidation = validateQuestionType(query);
+    if (!questionValidation.isValid) {
+      return Response.json(
+        {
+          error: questionValidation.errorMessage,
+          suggestion: questionValidation.suggestion,
+          query: query,
+        },
+        { status: 400 }
+      );
+    }
 
     // ===== STEP 2: BUSINESS HOURS CHECK =====
     const businessHoursCheck = isWithinBusinessHours(rawQuery); // rawQuery contains bypass phrase if present
@@ -433,6 +562,41 @@ CONTEXT FOR ASSESSMENT:
 - Expert-level skills: ${expertSkills.length} (${expertSkills.map(s => s.technology.name).join(', ')})
 - Senior experience (10+ years): ${seniorSkills.length} (${seniorSkills.map(s => s.technology.name).join(', ')})
 - Recent/current skills: ${hasRecent ? 'Yes' : 'No'}
+
+### CRITICAL RULES (READ CAREFULLY):
+
+1. **LACONIC STYLE (2-3 SENTENCES MAXIMUM)**
+   - Get STRAIGHT to the action and outcome - no filler
+   - NEVER start with: "I've worked in X for Y years", "My expertise spans", "I've consistently delivered", "I've demonstrated"
+   - NEVER end with: "including X, Y, and Z" or "across multiple projects"
+   - Maximum 40-50 words total
+   - Example BAD: "I've worked in fintech-relevant technologies for 19 years, utilising C#, JavaScript, and SQL Server to deliver scalable, maintainable systems, achieving 99.9% uptime..."
+   - Example GOOD: "I engineered C# microservices achieving 99.9% uptime and processing millions of transactions at CCHQ."
+
+2. **ALWAYS ANSWER THE QUESTION DIRECTLY**
+   - If asked "Is he qualified for fintech?", start with "Yes, I'm qualified for fintech because..."
+   - If asked "What type of professional?", start with "This is a senior/principal-level professional because..."
+   - If asked about a specific technology, focus ONLY on that technology
+   - Don't list unrelated skills or give generic overviews
+
+3. **ALWAYS CLOSE WITH EMPLOYER**
+   - Every response MUST end with "at CCHQ" or "at Wairbut"
+   - NEVER end with generic phrases like "across multiple projects" or "in various domains"
+   - Example: "...achieving 99.9% uptime at CCHQ."
+
+4. **OUTCOME ATTRIBUTION (STRICT - NO MIXING)**
+   - Each skill has its OWN outcomes - NEVER combine them
+   - C# has "99.9% uptime" and JavaScript has "95% satisfaction" - these are DIFFERENT
+   - WRONG: "I achieved 99.9% uptime and 95% satisfaction with C# and JavaScript"
+   - CORRECT: "I delivered C# backend services with 99.9% uptime at CCHQ"
+   - Focus on the TOP-RANKED skill's outcomes first
+
+5. **DISTINGUISH RELATED SKILLS (CRITICAL)**
+   - Angular (3y) and AngularJS (10y) are DIFFERENT skills
+   - RxJS (3y) and JavaScript (19y) are DIFFERENT skills
+   - NEVER say "19 years of Angular" when data shows "3y Angular + 10y AngularJS + 19y JavaScript"
+   - NEVER combine outcomes: Angular's "40% faster" ≠ AngularJS's "10,000 users" ≠ JavaScript's "95% satisfaction"
+   - When multiple related skills match, mention them SEPARATELY with INDIVIDUAL years and outcomes
 
 ### YOUR GOALS:
 
@@ -789,6 +953,16 @@ Output answer (LACONIC - max 3 sentences):
           // Enforce laconic style: max 3 sentences, remove filler
           aiReply = enforceLaconicStyle(aiReply);
           console.log('Laconic AI reply length:', aiReply.length);
+          
+          // Validate response quality and auto-correct if needed
+          const qualityCheck = validateResponseQuality(aiReply);
+          if (!qualityCheck.isValid) {
+            console.warn('Response quality issues detected:', qualityCheck.issues);
+            if (qualityCheck.correctedReply) {
+              console.log('Using corrected reply:', qualityCheck.correctedReply.substring(0, 100));
+              aiReply = qualityCheck.correctedReply;
+            }
+          }
           
           responseData.assistantReply = aiReply;
           

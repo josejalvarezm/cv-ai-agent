@@ -5,8 +5,10 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run deploy:dev && npm run deploy:production",
+    "deploy:dev": "wrangler deploy",
     "deploy:production": "wrangler deploy --env production",
+    "deploy:both": "npm run build && npm run deploy",
     "db:create": "wrangler d1 create cv_assistant_db",
     "db:migrate": "wrangler d1 execute cv_assistant_db --file=./schema/schema.sql",
     "db:seed": "wrangler d1 execute cv_assistant_db --file=./schema/seed.sql",

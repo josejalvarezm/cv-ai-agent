@@ -89,24 +89,50 @@ if (-not $SkipBuild) {
     Write-Step "📦 Step 1: Skipping build (--SkipBuild)"
 }
 
-# Step 2: Deploy Worker
+# Step 2: Deploy Worker to BOTH environments (dev + production)
 Write-Step "🚀 Step 2: Deploying Worker to Cloudflare..."
+
+# Deploy to DEV (testing) environment
+Write-Info "   Deploying to DEV environment..."
 try {
-    $deployOutput = npm run deploy 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { throw "Deployment failed" }
+    $deployOutputDev = npm run deploy 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "Dev deployment failed" }
     
     # Extract version ID if available
-    if ($deployOutput -match "Version ID: ([a-f0-9\-]+)") {
-        $versionId = $Matches[1]
-        Write-Success "Deployment complete (Version: $versionId)"
+    if ($deployOutputDev -match "Version ID: ([a-f0-9\-]+)") {
+        $versionIdDev = $Matches[1]
+        Write-Success "DEV deployment complete (Version: $versionIdDev)"
+        Write-Info "   URL: https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}"
     } else {
-        Write-Success "Deployment complete"
+        Write-Success "DEV deployment complete"
     }
 }
 catch {
-    Write-Error "❌ Deployment failed: $_"
+    Write-Error "❌ DEV deployment failed: $_"
     exit 1
 }
+
+# Deploy to PRODUCTION environment
+Write-Info "   Deploying to PRODUCTION environment..."
+try {
+    $deployOutputProd = npm run deploy:production 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "Production deployment failed" }
+    
+    # Extract version ID if available
+    if ($deployOutputProd -match "Version ID: ([a-f0-9\-]+)") {
+        $versionIdProd = $Matches[1]
+        Write-Success "PRODUCTION deployment complete (Version: $versionIdProd)"
+        Write-Info "   URL: https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}"
+    } else {
+        Write-Success "PRODUCTION deployment complete"
+    }
+}
+catch {
+    Write-Error "❌ PRODUCTION deployment failed: $_"
+    exit 1
+}
+
+Write-Success "Both environments deployed successfully!"
 
 # Step 3: Check and update database schema
 Write-Step "🗄️  Step 3: Checking database schema..."

@@ -4,8 +4,8 @@
  * Prevents abuse, injection attacks, and ensures European business hours compliance
  */
 
-const MAX_INPUT_LENGTH = 500;
-const MIN_INPUT_LENGTH = 3;
+const MAX_INPUT_LENGTH = 200;
+const MIN_INPUT_LENGTH = 10;
 const BUSINESS_HOURS_START = 8;  // 08:00 UK (GMT/BST)
 const BUSINESS_HOURS_END = 20;   // 20:00 UK (GMT/BST)
 

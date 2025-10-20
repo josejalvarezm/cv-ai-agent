@@ -116,11 +116,14 @@ function enforceLaconicStyle(reply: string): string {
   
   // Remove common filler phrases FIRST (before sentence splitting)
   const fillerPhrases = [
-    /^I've worked on (a range of |various )?projects,?\s*(utilising|using) (a range of |various )?skills (including|such as)[^.]+\.\s*/i,
-    /^I've worked on a range of projects[^.]+\.\s*/i,
-    /^I've worked on various projects[^.]+\.\s*/i,
+    /^I've worked (on|with) (a range of |various )?projects,?\s*(utilising|using) (a range of |various )?skills (including|such as)[^.]+\.\s*/i,
+    /^I've worked (on|with) (a range of |various )?(projects|technologies|tools)[^.]+\.\s*/i,
+    /^I've worked (on|with) [A-Z][a-z]+ for \d+ years?,?\s*/i, // "I've worked with Terraform for 1 year"
     /,?\s*(utilising|using) (a range of |various )?(skills|technologies) (including|such as)[^.]+/gi,
     /,?\s*including [A-Z][^,]+ for [^,]+(?:, [A-Z][^,]+ for [^,]+)*,?\s*(and [A-Z][^,]+ for [^.]+)?/gi,
+    /,?\s*and (also )?(worked with|used|explored|implemented) [^,]+ (and|using|with) [^,]+,?\s*/gi, // Remove unrelated skills
+    /I'?m a (junior|mid-level|senior|principal)(-level)? professional with a strong background in[^.]+\.\s*/gi,
+    /,?\s*having also worked (with|on) [^.]+\.\s*/gi, // Remove "having also worked with..."
     /^Notably,?\s*/i,
     /^Additionally,?\s*/i,
     /^Moreover,?\s*/i,
@@ -146,16 +149,16 @@ function enforceLaconicStyle(reply: string): string {
     }
   }
   
-  // Take only first 3 sentences
-  let laconic = reconstructed.slice(0, 3).join(' ').trim();
+  // Take only first 2 sentences (changed from 3 to force even more conciseness)
+  let laconic = reconstructed.slice(0, 2).join(' ').trim();
   
   // Ensure ends with proper punctuation
   if (laconic && !['.', '!', '?'].includes(laconic[laconic.length - 1])) {
     laconic += '.';
   }
   
-  console.log(`Laconic enforcement: ${reconstructed.length} sentences → ${reconstructed.slice(0, 3).length} sentences`);
-  console.log(`Filler removal: ${reply.length} chars → ${laconic.length} chars`);
+  console.log(`Laconic enforcement: ${reconstructed.length} sentences → ${Math.min(2, reconstructed.length)} sentences`);
+  console.log(`Filler removal: ${reply.length} chars → ${laconic.length} chars (${Math.round((1 - laconic.length/reply.length) * 100)}% reduction)`);
   return laconic.trim();
 }
 
@@ -477,10 +480,21 @@ CONTEXT FOR ASSESSMENT:
    - If empty, extract from summary, but NEVER repeat summary verbatim
    - NEVER invent data not in the database
    - NEVER invent or conflate timeframes (e.g., don't say "7 years" if data shows "5 years")
+   - **NEVER mix outcomes from different skills** (e.g., don't attribute JavaScript's "95% satisfaction" to Angular)
+   - **Each skill has its OWN outcomes** - keep them separate and skill-specific
    - Prioritize measurable outcomes (percentages, cycle times, uptime, throughput)
    - Avoid vague phrases like "delivered business value" or "drove success"
 
-5. **Avoid tool-centric answers**
+5. **Distinguish between related but different skills (CRITICAL)**
+   - **Angular** (3 years) and **AngularJS** (10 years) are DIFFERENT skills with DIFFERENT durations
+   - **RxJS** (3 years) and **JavaScript** (19 years) are DIFFERENT skills with DIFFERENT durations
+   - NEVER say "19 years of Angular" when data shows "3 years Angular + 10 years AngularJS + 19 years JavaScript"
+   - NEVER combine outcomes: Angular's "40% faster" ≠ AngularJS's "10,000 users" ≠ JavaScript's "95% satisfaction"
+   - When multiple related skills match, mention them SEPARATELY with their INDIVIDUAL years and outcomes
+   - Example WRONG: "19 years of Angular with 95% satisfaction and 40% faster load times"
+   - Example CORRECT: "3 years Angular (40% faster SPAs), 10 years AngularJS (10,000+ users), 19 years JavaScript (95% satisfaction)"
+
+6. **Avoid tool-centric answers**
    - NEVER present SQL Server, AppDynamics, or any single tool as the sole definition of the candidate
    - ALWAYS contextualize tool-specific skills inside broader architectural or engineering outcomes
    - When multiple skills are retrieved, aggregate across categories (database, architecture, cloud, DevOps)
@@ -519,6 +533,19 @@ Notice the difference:
 **Output answer:**
 "With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, I broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."
 
+### EXAMPLE: HANDLING MULTIPLE RELATED SKILLS CORRECTLY
+
+**Input data:**
+- Angular: 3 years, Advanced, "40% faster load times"
+- AngularJS: 10 years, Expert, "10,000+ daily active users"
+- JavaScript: 19 years, Expert, "95%+ user satisfaction scores across 19 years"
+
+**WRONG ANSWER (mixing outcomes and years):**
+"I have 19 years of Angular experience with 95% satisfaction and 40% faster load times."
+
+**CORRECT ANSWER (separate skills with individual years and outcomes):**
+"I engineered enterprise Angular applications (3 years, 40% faster SPAs) and AngularJS platforms (10 years, 10,000+ users), leveraging JavaScript expertise (19 years, 95% satisfaction) to deliver responsive web applications."
+
 ### CONSTRAINTS:
 - Never invent skills, outcomes, projects, or timeframes not present in the database
 - Never conflate different experience durations (if data says "5 years", don't say "7 years")
@@ -537,10 +564,10 @@ Notice the difference:
 - Example: "I engineered modular services, cutting release cycles from weeks to days at CCHQ."`;
 
         // COST-OPTIMIZED RESPONSE MODE
-        // max_tokens: 120 (reduced from 150) - forces concise responses while allowing complete sentences
-        // Fixed neuron cost: ~90-100 per inference (more predictable with laconic enforcement)
-        // Post-processing (enforceLaconicStyle) ensures max 3 sentences regardless of model output
-        // Estimated cost: 85-95 neurons actual due to shorter responses + stop sequences
+        // max_tokens: 80 (reduced from 120) - forces very concise responses (2 short sentences)
+        // Fixed neuron cost: ~70-80 per inference (more predictable with aggressive laconic enforcement)
+        // Post-processing (enforceLaconicStyle) ensures max 2 sentences regardless of model output
+        // Estimated cost: 65-75 neurons actual due to shorter responses + aggressive stop sequences
         const aiResponse = await env.AI.run('@cf/meta/llama-3.1-70b-instruct' as any, {
           messages: [
             { 
@@ -548,14 +575,18 @@ Notice the difference:
               content: `You are a recruiter-facing assistant that answers questions about José's professional profile. ALWAYS respond in first person as José using British English (spellings, phrasing, conventions).
 
 CRITICAL: LACONIC STYLE (MANDATORY)
-- Maximum 3 SHORT sentences (each under 25 words)
-- NO opening filler: "I've worked on...", "I have experience in...", "Notably..."
-- Start with the ANSWER: project names, outcomes, or specific skills
-- Always mention the employer explicitly at the end (e.g., "at Wairbut", "at CCHQ")
-- Use strong verbs ("engineered," "delivered," "architected") NOT adjectives ("enterprise-grade", "comprehensive")
-- Include ONE measurable outcome (numbers, percentages, scale)
-- Example GOOD: "I engineered CCHQ's campaign platform, cutting release cycles from weeks to days."
-- Example BAD: "I've worked on a range of projects utilising my expertise in C#, JavaScript, and SOA."
+- Maximum 2 SHORT sentences (each under 20 words)
+- NO opening filler: "I've worked with...", "I have experience in...", "I'm a senior professional..."
+- Start DIRECTLY with the action: "I implemented...", "I engineered...", "I delivered..."
+- NEVER include unrelated skills (if asked about Terraform, DON'T mention Docker/Kubernetes)
+- ALWAYS end with employer: "at Wairbut" or "at CCHQ" (NOT "for Cloudflare")
+- ONE measurable outcome maximum
+- Example PERFECT: "I implemented Terraform infrastructure-as-code, reducing provisioning time by 85% at Wairbut."
+- Example BAD: "I've worked with Terraform for 1 year at an advanced level, implementing infrastructure-as-code with state management and modular configurations..."
+
+ANSWER FORMAT:
+1st sentence: [Strong verb] + [technology] + [outcome] + [employer]
+2nd sentence (optional): [Additional context] + [related technology] + [employer]
 
 Always follow these rules:
 
@@ -643,8 +674,8 @@ Output answer (LACONIC - max 3 sentences):
             },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 120, // Reduced from 150 to enforce conciseness (post-processing ensures 3 sentences)
-          stop: ["\n\n\n", "---", ". Additionally", ". Moreover", ". Furthermore"] // Stop at filler phrases
+          max_tokens: 80, // Reduced from 120 to force 2 short sentences (post-processing ensures quality)
+          stop: ["\n\n\n", "---", ". Additionally", ". Moreover", ". Furthermore", ". I also", ". I'm a"] // Stop at filler
         },
         // AI GATEWAY: Third argument enables analytics, caching, and detailed metrics
         // Benefits: Request tracking, token/cost monitoring, 20-50% cost reduction via caching
@@ -744,6 +775,12 @@ Output answer (LACONIC - max 3 sentences):
           console.log('AI response constructor:', aiResponse?.constructor?.name || 'N/A');
           console.log('Extracted AI reply length:', aiReply.length);
           console.log('AI reply preview:', aiReply.substring(0, 100));
+          
+          // Remove surrounding quotes if present (happens when response is JSON-stringified)
+          if (aiReply.startsWith('"') && aiReply.endsWith('"')) {
+            aiReply = aiReply.slice(1, -1);
+            console.log('Removed surrounding quotes from AI reply');
+          }
           
           // Clean up any incomplete sentences from truncation
           aiReply = cleanupAIReply(aiReply);

@@ -50,7 +50,7 @@ const COMMON_WORDS = new Set([
   'java','javascript','sql','server','development','backend','frontend','performance','database','cloud',
   'architecture','devops','team','lead','leader','principal','manager','engineer','consultant','design','build','maintain',
   'qualified','jose','josé','candidate','profile','background','resume','cv','capabilities','competent','suitable','osito',
-  'master','masters','microservices','microservice','api','apis','docker','kubernetes','terraform','aws','azure','gcp',
+  'master','masters','microservices','microservice','principles','api','apis','docker','kubernetes','terraform','aws','azure','gcp',
   'python','typescript','react','angular','vue','node','nodejs','rest','restful','graphql','agile','scrum','ci','cd',
   'git','github','gitlab','jenkins','testing','deployment','infrastructure','security','monitoring','logging','tracing'
 ]);

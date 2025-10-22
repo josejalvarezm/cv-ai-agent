@@ -37,6 +37,8 @@
     "analytics:csv": "node scripts/fetch-ai-analytics.js --export --csv",
     "test": "node tests/run-tests.js",
     "type-check": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "lint:fix": "eslint src --fix",
     "build": "tsc -p tsconfig.json",
     "gen:build": "tsc -p tsconfig.tools.json"
   },
@@ -54,8 +56,11 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231218.0",
     "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
     "cli-table3": "^0.6.5",
     "dotenv": "^16.6.1",
+    "eslint": "^9.38.0",
     "typescript": "^5.3.3",
     "wrangler": "^4.43.0"
   }

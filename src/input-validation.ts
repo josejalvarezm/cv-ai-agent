@@ -137,7 +137,6 @@ function hasExtremeVowelConsonantImbalance(text: string): boolean {
   if (letters.length < 5) return false; // Not enough letters to check
   
   const vowels = (text.toLowerCase().match(/[aeiou]/g) || []).length;
-  const consonants = letters.length - vowels;
   
   const totalLetters = letters.length;
   const vowelRatio = vowels / totalLetters;

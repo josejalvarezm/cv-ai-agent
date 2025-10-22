@@ -16,18 +16,13 @@ import {
   CACHE_CONFIG,
   AI_CONFIG,
   SEARCH_CONFIG,
-  INDEX_CONFIG,
   ENDPOINTS,
-  TURNSTILE_VERIFY_URL,
-  DB_TABLES,
-  ITEM_TYPES,
 } from './config';
 import { handleHealth } from './handlers/healthHandler';
 import { handleQuotaStatus, handleAdminQuota, handleQuotaReset, handleQuotaSync } from './handlers/quotaHandler';
 import { handleSession } from './handlers/sessionHandler';
 import { handleIndex } from './handlers/indexHandler';
 import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector } from './handlers/indexManagementHandler';
-import { createSkillText } from './utils';
 import { handleCORSPreflight, addCORSHeaders, verifyAuth, handleWorkerError, handle404 } from './middleware';
 
 // Environment bindings interface
@@ -79,27 +74,12 @@ interface QueryResult {
   };
 }
 
-// Lock helper: acquire a KV lock for indexing to prevent concurrent runs
-async function acquireIndexLock(itemType: string, env: Env, ttlSeconds = 60): Promise<boolean> {
-  const lockKey = `index:lock:${itemType}`;
-  const existing = await env.KV.get(lockKey);
-  if (existing) return false; // lock already held
-  await env.KV.put(lockKey, new Date().toISOString(), { expirationTtl: ttlSeconds });
-  return true;
-}
-
-// Lock helper: release a KV lock for indexing
-async function releaseIndexLock(itemType: string, env: Env): Promise<void> {
-  const lockKey = `index:lock:${itemType}`;
-  await env.KV.delete(lockKey);
-}
-
 // Fetch canonical skill-like record by id. Tries `skills` first, then `technology`.
 async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
   try {
     const s = await env.DB.prepare('SELECT * FROM skills WHERE id = ?').bind(id).first<Skill>();
     if (s) return s;
-  } catch (_) {
+  } catch {
     // ignore
   }
 
@@ -120,7 +100,7 @@ async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
       };
       return mapped;
     }
-  } catch (_) {
+  } catch {
     // ignore
   }
 
@@ -406,7 +386,7 @@ Output answer:
  * Main Worker entry point
  */
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
     

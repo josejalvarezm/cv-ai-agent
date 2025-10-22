@@ -124,7 +124,6 @@ export function getQuotaExceededMessage(query: string, topResults: any[]): strin
     return "I found relevant skills in the database, but I've reached my daily AI response limit (10,000 neurons). The system will reset at midnight UTC. You can still see the raw skill matches above.";
   }
   
-  const topSkill = topResults[0];
   const skillNames = topResults.slice(0, 3).map((r: any) => r.technology?.name || r.name).join(', ');
   
   return `I've found highly relevant skills matching your query: **${skillNames}**. However, I've reached my daily AI response limit (10,000 neurons/day). The system will reset at midnight UTC. In the meantime, you can review the detailed skill information provided above, including years of experience, proficiency levels, and specific outcomes.`;

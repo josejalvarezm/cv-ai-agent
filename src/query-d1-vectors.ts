@@ -3,7 +3,7 @@
  * This bypasses Vectorize and uses the embeddings stored in your vectors table
  */
 
-import { canUseAI, incrementQuota, getQuotaExceededMessage, NEURON_COSTS, type QuotaStatus } from './ai-quota';
+import { canUseAI, incrementQuota, NEURON_COSTS } from './ai-quota';
 import {
   validateAndSanitizeInput,
   isWithinBusinessHours,
@@ -11,7 +11,7 @@ import {
   getCircuitBreakerMessage,
 } from './input-validation';
 import { AI_CONFIG, SEARCH_CONFIG, AI_STOP_SEQUENCES } from './config';
-import { generateEmbedding, cosineSimilarity, blobToFloat32Array } from './services/embeddingService';
+import { generateEmbedding, cosineSimilarity } from './services/embeddingService';
 
 interface Env {
   DB: D1Database;
@@ -50,7 +50,7 @@ function validateQuestionType(query: string): {
     },
   ];
 
-  for (const { pattern, type, suggestion } of nonTechnicalPatterns) {
+  for (const { pattern, suggestion } of nonTechnicalPatterns) {
     if (pattern.test(query)) {
       return {
         isValid: false,

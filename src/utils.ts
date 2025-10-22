@@ -20,11 +20,6 @@ export interface Skill {
   related_project?: string;     // Optional project/context anchor
 }
 
-interface Env {
-  DB: D1Database;
-  KV: KVNamespace;
-}
-
 /**
  * Acquire a KV lock for indexing to prevent concurrent runs
  */

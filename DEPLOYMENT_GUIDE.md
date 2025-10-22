@@ -17,6 +17,7 @@
 This project uses **TWO separate Cloudflare Workers**:
 
 ### 1️⃣ **Development/Testing Worker** (`cv-assistant-worker`)
+
 - **URL**: `https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}`
 - **Purpose**: Testing, debugging, development
 - **Authentication**: ❌ None (open for testing)
@@ -24,6 +25,7 @@ This project uses **TWO separate Cloudflare Workers**:
 - **wrangler.toml**: Default configuration (no `[env]` prefix)
 
 ### 2️⃣ **Production Worker** (`cv-assistant-worker-production`)
+
 - **URL**: `https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}`
 - **Purpose**: Public chatbot, production traffic
 - **Authentication**: ✅ Turnstile + JWT required
@@ -42,6 +44,7 @@ npm run deploy:full
 ```
 
 **What happens:**
+
 1. ✅ Builds TypeScript → JavaScript
 2. ✅ Deploys to **dev** worker
 3. ✅ Deploys to **production** worker
@@ -81,12 +84,14 @@ npm run health
 ## 🔍 Testing Deployments
 
 ### **Test Dev Worker**
+
 ```powershell
 curl "https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}/health"
 curl "https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}/query?q=What+is+Terraform"
 ```
 
 ### **Test Production Worker**
+
 ```powershell
 # Health check (no auth required)
 curl "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/health"
@@ -112,6 +117,7 @@ Before deploying, ensure:
 ## 🔧 Environment Variables
 
 ### **Development Worker** (no `[env]` prefix)
+
 ```toml
 [vars]
 ENVIRONMENT = "development"
@@ -121,6 +127,7 @@ AI_REPLY_ENABLED = "true"
 ```
 
 ### **Production Worker** (`[env.production]`)
+
 ```toml
 [env.production]
 vars = { 
@@ -132,6 +139,7 @@ vars = {
 ```
 
 ### **Secrets** (configured via `wrangler secret put`)
+
 ```powershell
 # Set Turnstile secret for production
 wrangler secret put TURNSTILE_SECRET_KEY --env production
@@ -147,6 +155,7 @@ wrangler secret put JWT_SECRET --env production
 ### **Issue: "I deployed but chatbot still shows old version"**
 
 **Solution:**
+
 ```powershell
 # Always deploy to BOTH workers
 npm run deploy
@@ -163,6 +172,7 @@ The chatbot uses the **production** worker (`cv-assistant-worker-production`), n
 
 **Solution:**
 Check Cloudflare dashboard or run:
+
 ```powershell
 wrangler deployments list
 wrangler deployments list --env production
@@ -174,6 +184,7 @@ wrangler deployments list --env production
 
 **Solution:**
 New deployments automatically clear Cloudflare cache. Wait 1-2 minutes for cache propagation, then test with a cache-busting parameter:
+
 ```powershell
 curl "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/query?q=test&v=$(date +%s)"
 ```
@@ -183,6 +194,7 @@ curl "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/query?q=te
 ## 📊 Deployment History
 
 Track deployments in Cloudflare dashboard:
+
 1. Go to **Cloudflare Dashboard** → **Workers & Pages**
 2. Select worker: `cv-assistant-worker` or `cv-assistant-worker-production`
 3. Click **Deployments** tab
@@ -193,11 +205,13 @@ Track deployments in Cloudflare dashboard:
 ## 🔐 Security Notes
 
 ### **Development Worker** (No Auth)
+
 - Open for testing and debugging
 - Should NOT be shared publicly
 - Rate limits apply via Cloudflare
 
 ### **Production Worker** (Auth Required)
+
 - Protected by Cloudflare Turnstile (CAPTCHA)
 - JWT token required for queries
 - Business hours enforcement (9am-9pm UTC)
@@ -228,6 +242,7 @@ Track deployments in Cloudflare dashboard:
 ## 🎉 Success Indicators
 
 After deployment, verify:
+
 - ✅ Dev worker health: `https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}/health`
 - ✅ Production worker health: `https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/health`
 - ✅ Both workers show same version ID

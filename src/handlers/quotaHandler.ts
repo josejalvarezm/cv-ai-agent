@@ -99,7 +99,7 @@ export async function handleQuotaSync(request: Request, env: Env): Promise<Respo
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (e) {
+  } catch {
     return new Response(JSON.stringify({
       error: 'Failed to parse request body. Expected: { "neurons": <number> }',
     }), {

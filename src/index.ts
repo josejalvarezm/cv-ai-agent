@@ -10,7 +10,6 @@
  */
 
 import { handleD1VectorQuery } from './query-d1-vectors';
-import { verifyJWT } from './jwt';
 import { generateEmbedding, cosineSimilarity } from './services/embeddingService';
 import { generateCacheKey, getCachedResponse, setCachedResponse } from './services/cacheService';
 import {
@@ -19,7 +18,6 @@ import {
   SEARCH_CONFIG,
   INDEX_CONFIG,
   ENDPOINTS,
-  CORS_CONFIG,
   TURNSTILE_VERIFY_URL,
   DB_TABLES,
   ITEM_TYPES,
@@ -29,7 +27,8 @@ import { handleQuotaStatus, handleAdminQuota, handleQuotaReset, handleQuotaSync 
 import { handleSession } from './handlers/sessionHandler';
 import { handleIndex } from './handlers/indexHandler';
 import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector } from './handlers/indexManagementHandler';
-import { validateTurnstileToken, createSkillText } from './utils';
+import { createSkillText } from './utils';
+import { handleCORSPreflight, addCORSHeaders, verifyAuth, handleWorkerError, handle404 } from './middleware';
 
 // Environment bindings interface
 interface Env {
@@ -411,97 +410,30 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     
-    // CORS headers for development
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': CORS_CONFIG.ALLOWED_ORIGINS,
-      'Access-Control-Allow-Methods': CORS_CONFIG.ALLOWED_METHODS,
-      'Access-Control-Allow-Headers': CORS_CONFIG.ALLOWED_HEADERS,
-    };
-    
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return handleCORSPreflight();
     }
     
     try {
       // Route handling
       if (path === ENDPOINTS.SESSION && request.method === 'POST') {
-        const response = await handleSession(request, env);
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-        return response;
+        return addCORSHeaders(await handleSession(request, env));
       }
       
       if (path === ENDPOINTS.INDEX && request.method === 'POST') {
-        const response = await handleIndex(request, env);
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-        return response;
+        return addCORSHeaders(await handleIndex(request, env));
       }
       
       if (path === ENDPOINTS.QUERY && (request.method === 'GET' || request.method === 'POST')) {
-        // Check for JWT in Authorization header first, then fall back to Turnstile token
-        const authHeader = request.headers.get('Authorization');
-        const hasJWT = authHeader && authHeader.startsWith('Bearer ');
-        
-        if (hasJWT && env.JWT_SECRET) {
-          // Verify JWT
-          const token = authHeader!.substring(7); // Remove 'Bearer ' prefix
-          const payload = await verifyJWT(token, env.JWT_SECRET);
-          
-          if (!payload) {
-            return new Response(JSON.stringify({
-              error: 'Unauthorized',
-              message: 'Invalid or expired session token. Please refresh the page.',
-            }), {
-              status: 401,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          console.log(`Query authorized with JWT session: ${payload.sessionId}`);
-        } else {
-          // Fall back to Turnstile token validation (backward compatibility)
-          const turnstileToken = request.headers.get('X-Turnstile-Token');
-          
-          if (env.TURNSTILE_SECRET_KEY) {
-            if (!turnstileToken) {
-              return new Response(JSON.stringify({
-                error: 'Forbidden',
-                message: 'Turnstile verification required. Please complete the human verification.',
-              }), {
-                status: 403,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-
-            // Validate token
-            const clientIp = request.headers.get('CF-Connecting-IP') || undefined;
-            const validation = await validateTurnstileToken(turnstileToken, env.TURNSTILE_SECRET_KEY, clientIp);
-            
-            if (!validation.success) {
-              return new Response(JSON.stringify({
-                error: 'Forbidden',
-                message: 'Turnstile verification failed. Please refresh and try again.',
-                details: validation.error,
-              }), {
-                status: 403,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-            
-            console.log('Query authorized with Turnstile token');
-          }
+        // Verify authentication (JWT or Turnstile)
+        const authResult = await verifyAuth(request, env);
+        if (!authResult.authorized) {
+          return authResult.response!;
         }
 
-        // Use D1 vectors for all queries (replaces old Vectorize implementation)
-        const response = await handleD1VectorQuery(request, env);
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-        return response;
+        // Use D1 vectors for all queries
+        return addCORSHeaders(await handleD1VectorQuery(request, env));
       }
 
       // Admin: get current AI quota status from KV
@@ -511,20 +443,12 @@ export default {
 
       // Legacy endpoint - redirects to /query
       if (path === ENDPOINTS.QUERY_D1 && (request.method === 'GET' || request.method === 'POST')) {
-        const response = await handleD1VectorQuery(request, env);
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-        return response;
+        return addCORSHeaders(await handleD1VectorQuery(request, env));
       }
 
       // Old Vectorize-based query (deprecated, keeping for reference)
       if (path === ENDPOINTS.QUERY_VECTORIZE && (request.method === 'GET' || request.method === 'POST')) {
-        const response = await handleQuery(request, env);
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-        return response;
+        return addCORSHeaders(await handleQuery(request, env));
       }
 
       if (path === ENDPOINTS.DEBUG_VECTOR && request.method === 'GET') {
@@ -544,11 +468,7 @@ export default {
       }
       
       if (path === ENDPOINTS.HEALTH || path === ENDPOINTS.ROOT) {
-        const response = await handleHealth(env);
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-        return response;
+        return addCORSHeaders(await handleHealth(env));
       }
 
       if (path === ENDPOINTS.IDS && request.method === 'GET') {
@@ -568,30 +488,10 @@ export default {
       }
       
       // 404 for unknown routes
-      return new Response(JSON.stringify({
-        error: 'Not found',
-        available_endpoints: [
-          'GET / - Health check',
-          'GET /health - Health check',
-          'POST /index - Index all skills into Vectorize',
-          'GET /query?q=<query> - Semantic search',
-          'POST /query - Semantic search (body as query)',
-        ],
-      }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return handle404();
       
     } catch (error: any) {
-      console.error('Worker error:', error);
-      
-      return new Response(JSON.stringify({
-        error: 'Internal server error',
-        message: error.message,
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return handleWorkerError(error);
     }
   },
 };

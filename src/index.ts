@@ -10,9 +10,7 @@
  */
 
 import { handleD1VectorQuery } from './query-d1-vectors';
-import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
-import { getQuotaStatus, resetQuota, syncQuotaFromDashboard } from './ai-quota';
-import { isWithinBusinessHours } from './input-validation';
+import { verifyJWT } from './jwt';
 import { generateEmbedding, cosineSimilarity } from './services/embeddingService';
 import { generateCacheKey, getCachedResponse, setCachedResponse } from './services/cacheService';
 import {
@@ -20,13 +18,18 @@ import {
   AI_CONFIG,
   SEARCH_CONFIG,
   INDEX_CONFIG,
-  AUTH_CONFIG,
   ENDPOINTS,
   CORS_CONFIG,
   TURNSTILE_VERIFY_URL,
   DB_TABLES,
   ITEM_TYPES,
 } from './config';
+import { handleHealth } from './handlers/healthHandler';
+import { handleQuotaStatus, handleAdminQuota, handleQuotaReset, handleQuotaSync } from './handlers/quotaHandler';
+import { handleSession } from './handlers/sessionHandler';
+import { handleIndex } from './handlers/indexHandler';
+import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector } from './handlers/indexManagementHandler';
+import { validateTurnstileToken, createSkillText } from './utils';
 
 // Environment bindings interface
 interface Env {
@@ -125,303 +128,11 @@ async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
   return null;
 }
 
-/**
- * Validate Turnstile token with Cloudflare's siteverify API
- * @param token - Turnstile token from client
- * @param secretKey - Turnstile secret key
- * @param clientIp - Optional client IP address
- * @returns true if token is valid, false otherwise
- */
-async function validateTurnstileToken(
-  token: string,
-  secretKey: string,
-  clientIp?: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const formData = new FormData();
-    formData.append('secret', secretKey);
-    formData.append('response', token);
-    if (clientIp) {
-      formData.append('remoteip', clientIp);
-    }
+// Utility functions moved to utils.ts
 
-    const response = await fetch(TURNSTILE_VERIFY_URL, {
-      method: 'POST',
-      body: formData,
-    });
+// Handlers moved to handlers/ directory
 
-    const result = await response.json() as { success: boolean; 'error-codes'?: string[] };
-    
-    if (!result.success) {
-      console.warn('Turnstile validation failed:', result['error-codes']);
-      return { success: false, error: result['error-codes']?.join(', ') || 'Validation failed' };
-    }
-
-    return { success: true };
-  } catch (error: any) {
-    console.error('Turnstile validation error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Helper to create skill text for embedding
-function createSkillText(skill: Skill): string {
-  return `${skill.name} with ${skill.mastery} mastery level and ${skill.years} years of experience${skill.category ? ` in ${skill.category}` : ''}`;
-}
-
-/**
- * /index endpoint: Index all skills into Vectorize
- * 
- * 1. Reads all skills from D1
- * 2. Generates embeddings using Workers AI
- * 3. Upserts vectors into Vectorize with metadata
- * 4. Stores fallback copy in KV
- * 5. Records indexing metadata
- */
-async function handleIndex(request: Request, env: Env): Promise<Response> {
-  const lockAcquired = { value: false, itemType: 'skills' as string };
-  
-  try {
-    console.log('Starting indexing process...');
-
-    // parse optional body for batched indexing
-    let params: { type?: string; batchSize?: number; offset?: number } = {};
-    try {
-      if (request.headers.get('content-type')?.includes('application/json')) {
-        params = await request.json();
-      }
-    } catch {
-      params = {};
-    }
-
-    const itemType = params.type === 'technology' ? 'technology' : 'skills';
-    lockAcquired.itemType = itemType;
-
-    // acquire lock to prevent concurrent indexing
-    const acquired = await acquireIndexLock(itemType, env, 120);
-    if (!acquired) {
-      return new Response(JSON.stringify({ error: 'Indexing already in progress', itemType }), { status: 409, headers: { 'Content-Type': 'application/json' } });
-    }
-    lockAcquired.value = true;
-
-    const ai = env.AI;
-
-    // ensure index_metadata table exists (no-op if already present)
-    await env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS index_metadata (
-        version INTEGER PRIMARY KEY,
-        indexed_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        total_skills INTEGER,
-        status TEXT
-      )`
-    ).run();
-
-    // determine version
-    const lastVersion = await env.DB.prepare('SELECT MAX(version) as last_version FROM index_metadata').first();
-    const version = (lastVersion?.last_version as number || 0) + 1;
-
-    // create indexing record
-    await env.DB.prepare('INSERT INTO index_metadata (version, total_skills, status) VALUES (?, ?, ?)').bind(version, 0, 'in_progress').run();
-
-    // batching params
-    const batchSize = params.batchSize && params.batchSize > 0 ? params.batchSize : (params.type === 'technology' ? INDEX_CONFIG.TECHNOLOGY_BATCH_SIZE : INDEX_CONFIG.DEFAULT_BATCH_SIZE);
-    let offset = params.offset && params.offset >= 0 ? params.offset : 0;
-
-    // fetch batch from D1 using LIMIT/OFFSET
-    const selectSql = itemType === 'technology'
-      ? 'SELECT id, category_id, name, experience, experience_years FROM technology ORDER BY id LIMIT ? OFFSET ?'
-      : 'SELECT id, name, mastery, years, category, description, last_used FROM skills ORDER BY id LIMIT ? OFFSET ?';
-
-    const { results: rows } = await env.DB.prepare(selectSql).bind(batchSize, offset).all<any>();
-    const items = rows as any[] || [];
-
-    if (!items.length) {
-      // nothing to do
-      await env.DB.prepare('UPDATE index_metadata SET status = ? WHERE version = ?').bind('completed', version).run();
-      return new Response(JSON.stringify({ success: true, message: 'No items to index', version, processed: 0 }), { headers: { 'Content-Type': 'application/json' } });
-    }
-
-    const vectors: any[] = [];
-    const kvPromises: Promise<any>[] = [];
-    const d1Promises: Promise<any>[] = [];
-
-    for (const item of items) {
-      const text = itemType === 'technology'
-        ? `${item.name} (${item.experience || ''})`
-        : createSkillText(item as Skill);
-
-      const embedding = await generateEmbedding(text, ai);
-      const idKey = `${itemType}-${item.id}`;
-      const metadata = {
-        id: item.id,
-        version,
-        name: item.name,
-        category: itemType === 'technology' ? item.category_id : (item as Skill).category || '',
-      };
-
-      vectors.push({ id: idKey, values: embedding, metadata });
-
-      kvPromises.push(env.KV.put(`vector:${idKey}`, JSON.stringify({ values: embedding, metadata }), { expirationTtl: INDEX_CONFIG.VECTOR_KV_TTL }));
-      
-      // Store embedding in D1 vectors table (id is auto-increment, don't specify it)
-      const embeddingBlob = new Float32Array(embedding).buffer;
-      d1Promises.push(
-        env.DB.prepare(
-          'INSERT INTO vectors (item_type, item_id, embedding, metadata) VALUES (?, ?, ?, ?)'
-        ).bind(itemType, item.id, embeddingBlob, JSON.stringify(metadata)).run()
-      );
-    }
-
-    // upsert into Vectorize, KV, and D1
-    await env.VECTORIZE.upsert(vectors as any);
-    await Promise.all([...kvPromises, ...d1Promises]);
-
-    // update metadata: increment total_skills by processed count and mark as in_progress
-    await env.DB.prepare('UPDATE index_metadata SET total_skills = COALESCE(total_skills,0) + ?, status = ? WHERE version = ?').bind(items.length, 'in_progress', version).run();
-
-    // write checkpoint to KV for resumability
-    try {
-      const totalRow = await env.DB.prepare(itemType === 'technology' ? 'SELECT COUNT(*) as total FROM technology' : 'SELECT COUNT(*) as total FROM skills').first<any>();
-      const total = totalRow?.total || 0;
-      const nextOffset = offset + items.length;
-      const checkpointKey = `index:checkpoint:${itemType}`;
-      const checkpoint = {
-        version,
-        nextOffset,
-        processed: nextOffset,
-        total,
-        status: nextOffset >= total ? 'completed' : 'in_progress',
-        lastBatchAt: new Date().toISOString(),
-        lastProcessedCount: items.length,
-        errors: [] as any[],
-      };
-      await env.KV.put(checkpointKey, JSON.stringify(checkpoint));
-    } catch (e) {
-      console.error('Failed to write checkpoint to KV', e);
-    }
-
-    // release lock
-    if (lockAcquired.value) {
-      await releaseIndexLock(lockAcquired.itemType, env);
-    }
-
-    return new Response(JSON.stringify({ success: true, version, processed: items.length, offset }), { headers: { 'Content-Type': 'application/json' } });
-    
-  } catch (error: any) {
-    console.error('Indexing error:', error);
-    
-    // release lock on error
-    if (lockAcquired.value) {
-      await releaseIndexLock(lockAcquired.itemType, env);
-    }
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message || 'Indexing failed',
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
-/**
- * /session endpoint: Exchange Turnstile token for session JWT
- * 
- * 1. Validates Turnstile token (single-use, 5-minute TTL)
- * 2. Issues a signed JWT with 15-minute expiry
- * 3. Returns JWT to client for subsequent requests
- */
-async function handleSession(request: Request, env: Env): Promise<Response> {
-  const corsHeaders = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Turnstile-Token',
-  };
-
-  try {
-    // Get Turnstile token from header
-    const turnstileToken = request.headers.get('X-Turnstile-Token');
-    
-    if (!turnstileToken) {
-      return new Response(JSON.stringify({
-        error: 'Forbidden',
-        message: 'Turnstile token required',
-      }), {
-        status: 403,
-        headers: corsHeaders,
-      });
-    }
-
-    // Validate Turnstile token
-    if (!env.TURNSTILE_SECRET_KEY) {
-      return new Response(JSON.stringify({
-        error: 'Server configuration error',
-        message: 'Turnstile not configured',
-      }), {
-        status: 500,
-        headers: corsHeaders,
-      });
-    }
-
-    const clientIp = request.headers.get('CF-Connecting-IP') || undefined;
-    const validation = await validateTurnstileToken(turnstileToken, env.TURNSTILE_SECRET_KEY, clientIp);
-    
-    if (!validation.success) {
-      return new Response(JSON.stringify({
-        error: 'Forbidden',
-        message: 'Turnstile verification failed. Please refresh and try again.',
-        details: validation.error,
-      }), {
-        status: 403,
-        headers: corsHeaders,
-      });
-    }
-
-    // Issue JWT
-    if (!env.JWT_SECRET) {
-      return new Response(JSON.stringify({
-        error: 'Server configuration error',
-        message: 'JWT not configured',
-      }), {
-        status: 500,
-        headers: corsHeaders,
-      });
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    const sessionId = generateSessionId();
-    const payload: JWTPayload = {
-      sub: 'cv-chat-session',
-      iat: now,
-      exp: now + AUTH_CONFIG.JWT_EXPIRY,
-      sessionId,
-    };
-
-    const jwt = await signJWT(payload, env.JWT_SECRET);
-
-    console.log(`Session created: ${sessionId}, expires in 15 minutes`);
-
-    return new Response(JSON.stringify({
-      success: true,
-      token: jwt,
-      expiresIn: AUTH_CONFIG.JWT_EXPIRY,
-      expiresAt: new Date((now + AUTH_CONFIG.JWT_EXPIRY) * 1000).toISOString(),
-    }), {
-      headers: corsHeaders,
-    });
-  } catch (error) {
-    console.error('Session creation error:', error);
-    return new Response(JSON.stringify({
-      error: 'Internal server error',
-      message: 'Failed to create session',
-    }), {
-      status: 500,
-      headers: corsHeaders,
-    });
-  }
-}
+// Handlers moved to handlers/ directory
 
 /**
  * /query endpoint: Semantic search over skills
@@ -690,60 +401,7 @@ Output answer:
 /**
  * Health check endpoint
  */
-async function handleHealth(env: Env): Promise<Response> {
-  try {
-    // Check D1 connection
-    const dbCheck = await env.DB.prepare('SELECT 1').first();
-    
-    // Get skill count
-    let skillCount: { count: number } | null = null;
-    try {
-      skillCount = await env.DB.prepare('SELECT COUNT(*) as count FROM skills').first<{ count: number }>();
-    } catch (e) {
-      // skills table may not exist in this DB; fall back to technology count
-      try {
-        skillCount = await env.DB.prepare('SELECT COUNT(*) as count FROM technology').first<{ count: number }>();
-      } catch {
-        skillCount = { count: 0 };
-      }
-    }
-    
-    // Get last index version
-    const lastIndex = await env.DB.prepare(
-      'SELECT version, indexed_at, total_skills, status FROM index_metadata ORDER BY version DESC LIMIT 1'
-    ).first();
-    
-    // Get AI quota status
-    const quotaStatus = await getQuotaStatus(env.KV);
-    
-    // Get business hours status
-    const businessHours = isWithinBusinessHours();
-    
-    return new Response(JSON.stringify({
-      status: 'healthy',
-      database: dbCheck ? 'connected' : 'error',
-      total_skills: skillCount?.count || 0,
-      last_index: lastIndex || null,
-      ai_quota: quotaStatus,
-      business_hours: {
-        isWithinHours: businessHours.isWithinHours,
-        timezone: businessHours.timezone,
-        hours: '08:00-20:00 Mon-Fri UK (GMT/BST)',
-      },
-      timestamp: new Date().toISOString(),
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error: any) {
-    return new Response(JSON.stringify({
-      status: 'unhealthy',
-      error: error.message,
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
+// Handlers moved to handlers/ directory
 
 /**
  * Main Worker entry point
@@ -848,21 +506,7 @@ export default {
 
       // Admin: get current AI quota status from KV
       if (path === ENDPOINTS.ADMIN_QUOTA && request.method === 'GET') {
-        // Simple auth: if JWT_SECRET is set require a Bearer token matching it (admin use only)
-        const authHeader = request.headers.get('Authorization');
-        if (env.JWT_SECRET) {
-          if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-          }
-          const token = authHeader.substring(7);
-          if (token !== env.JWT_SECRET) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-          }
-        }
-
-        const quota = await getQuotaStatus(env.KV);
-        const resp = new Response(JSON.stringify({ success: true, quota }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        return resp;
+        return await handleAdminQuota(request, env);
       }
 
       // Legacy endpoint - redirects to /query
@@ -884,88 +528,19 @@ export default {
       }
 
       if (path === ENDPOINTS.DEBUG_VECTOR && request.method === 'GET') {
-        // Debug endpoint to inspect raw vector data
-        const { results } = await env.DB.prepare('SELECT id, item_id, LENGTH(embedding) as size, typeof(embedding) as type FROM vectors LIMIT 1').all();
-        const vec = results[0] as any;
-        const { results: vecData } = await env.DB.prepare('SELECT * FROM vectors LIMIT 1').all();
-        const fullVec = vecData[0] as any;
-
-        const embeddingInfo: any = {
-          id: vec.id,
-          item_id: vec.item_id,
-          size: vec.size,
-          sqlType: vec.type,
-          jsType: typeof fullVec.embedding,
-          isArrayBuffer: fullVec.embedding instanceof ArrayBuffer,
-          isUint8Array: fullVec.embedding instanceof Uint8Array,
-          constructorName: fullVec.embedding?.constructor?.name,
-        };
-
-        if (ArrayBuffer.isView(fullVec.embedding)) {
-          embeddingInfo.byteLength = (fullVec.embedding as any).byteLength;
-          embeddingInfo.byteOffset = (fullVec.embedding as any).byteOffset;
-        }
-
-        return Response.json(embeddingInfo);
+        return await handleDebugVector(env);
       }
       
       if (path === ENDPOINTS.QUOTA && request.method === 'GET') {
-        // AI quota status endpoint
-        const quotaStatus = await getQuotaStatus(env.KV);
-        return new Response(JSON.stringify(quotaStatus), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return await handleQuotaStatus(env);
       }
       
       if (path === ENDPOINTS.QUOTA_RESET && request.method === 'POST') {
-        // Admin endpoint to manually reset quota (requires authentication in production)
-        // TODO: Add proper authentication/authorization
-        await resetQuota(env.KV);
-        const newStatus = await getQuotaStatus(env.KV);
-        return new Response(JSON.stringify({
-          success: true,
-          message: 'Quota reset successfully',
-          status: newStatus,
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return await handleQuotaReset(env);
       }
       
       if (path === ENDPOINTS.QUOTA_SYNC && request.method === 'POST') {
-        // Admin endpoint to manually sync quota from dashboard
-        // Usage: POST /quota/sync with body: { "neurons": 137.42 }
-        // TODO: Add proper authentication/authorization
-        try {
-          const body = await request.json() as any;
-          const neurons = parseFloat(body.neurons);
-          
-          if (isNaN(neurons) || neurons < 0) {
-            return new Response(JSON.stringify({
-              error: 'Invalid neurons value. Must be a positive number.',
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          await syncQuotaFromDashboard(env.KV, neurons);
-          const newStatus = await getQuotaStatus(env.KV);
-          
-          return new Response(JSON.stringify({
-            success: true,
-            message: `Quota synced successfully. Updated to ${neurons} neurons.`,
-            status: newStatus,
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        } catch (e) {
-          return new Response(JSON.stringify({
-            error: 'Failed to parse request body. Expected: { "neurons": <number> }',
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
+        return await handleQuotaSync(request, env);
       }
       
       if (path === ENDPOINTS.HEALTH || path === ENDPOINTS.ROOT) {
@@ -977,48 +552,19 @@ export default {
       }
 
       if (path === ENDPOINTS.IDS && request.method === 'GET') {
-        // return technology ids for remote orchestration
-        const rows = await env.DB.prepare('SELECT id FROM technology ORDER BY id').all();
-        const ids = (rows.results || []).map((r: any) => r.id);
-        return new Response(JSON.stringify({ ids }), { headers: { 'Content-Type': 'application/json' } });
+        return await handleIds(env);
       }
 
       if (path === ENDPOINTS.INDEX_PROGRESS && request.method === 'GET') {
-        const itemType = url.searchParams.get('type') || 'technology';
-        const checkpointKey = `index:checkpoint:${itemType}`;
-        const data = await env.KV.get(checkpointKey);
-        if (!data) return new Response(JSON.stringify({ found: false }), { headers: { 'Content-Type': 'application/json' } });
-        return new Response(data, { headers: { 'Content-Type': 'application/json' } });
+        return await handleIndexProgress(request, env);
       }
 
       if (path === ENDPOINTS.INDEX_RESUME && request.method === 'POST') {
-        // resume indexing using checkpoint in KV; returns immediate response and continues via worker-invoked POST
-    const bodyAny = await request.json().catch(() => ({})) as any;
-    const itemType = bodyAny.type || 'technology';
-    const checkpointKey = `index:checkpoint:${itemType}`;
-    const checkpointRaw = await env.KV.get(checkpointKey);
-    const checkpoint = checkpointRaw ? JSON.parse(checkpointRaw) : { nextOffset: 0 };
-    const batchSize = bodyAny.batchSize || 20;
-
-        // trigger one batch by calling handleIndex directly
-        const req = new Request(`${url.origin}${ENDPOINTS.INDEX}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: itemType, batchSize, offset: checkpoint.nextOffset || 0 }),
-        });
-        const res = await handleIndex(req, env);
-        return new Response(JSON.stringify({ triggered: true, status: res.status }), { headers: { 'Content-Type': 'application/json' } });
+        return await handleIndexResume(request, env);
       }
 
       if (path === ENDPOINTS.INDEX_STOP && request.method === 'POST') {
-    const bodyAny = await request.json().catch(() => ({})) as any;
-    const itemType = bodyAny.type || 'technology';
-        const checkpointKey = `index:checkpoint:${itemType}`;
-        const checkpointRaw = await env.KV.get(checkpointKey);
-        const checkpoint = checkpointRaw ? JSON.parse(checkpointRaw) : { nextOffset: 0 };
-        checkpoint.status = 'stopped';
-        await env.KV.put(checkpointKey, JSON.stringify(checkpoint));
-        return new Response(JSON.stringify({ stopped: true }), { headers: { 'Content-Type': 'application/json' } });
+        return await handleIndexStop(request, env);
       }
       
       // 404 for unknown routes

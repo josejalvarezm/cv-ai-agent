@@ -35,7 +35,10 @@
     "analytics:month": "node scripts/fetch-ai-analytics.js --month",
     "analytics:export": "node scripts/fetch-ai-analytics.js --export",
     "analytics:csv": "node scripts/fetch-ai-analytics.js --export --csv",
-    "test": "node tests/run-tests.js",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --max-warnings 0",
     "lint:fix": "eslint src --fix",
@@ -62,6 +65,7 @@
     "dotenv": "^16.6.1",
     "eslint": "^9.38.0",
     "typescript": "^5.3.3",
+    "vitest": "^4.0.0",
     "wrangler": "^4.43.0"
   }
 }

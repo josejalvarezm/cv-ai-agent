@@ -64,6 +64,7 @@ module.exports = [
       "tools/",
       "migrations/",
       "src/generate_vector_inserts.ts", // Not in tsconfig.json project
+      "vitest.config.ts", // Vitest config not in main tsconfig
     ],
   },
 ];

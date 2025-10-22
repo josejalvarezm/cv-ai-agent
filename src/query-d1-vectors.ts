@@ -10,6 +10,7 @@ import {
   getBusinessHoursMessage,
   getCircuitBreakerMessage,
 } from './input-validation';
+import { AI_CONFIG, SEARCH_CONFIG, AI_STOP_SEQUENCES } from './config';
 
 interface Env {
   DB: D1Database;
@@ -44,7 +45,7 @@ function cosineSimilarity(vecA: Float32Array | number[], vecB: Float32Array | nu
 
 // Generate embedding using Workers AI
 async function generateEmbedding(text: string, ai: Ai): Promise<number[]> {
-  const response = await ai.run('@cf/baai/bge-base-en-v1.5', {
+  const response = await ai.run(AI_CONFIG.EMBEDDING_MODEL, {
     text: [text],
   }) as { data: number[][] };
   return response.data[0];
@@ -465,7 +466,7 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
 
     // Sort by similarity (highest first) and take top 5
     similarities.sort((a, b) => b.similarity - a.similarity);
-    const topResults = similarities.slice(0, 5);
+    const topResults = similarities.slice(0, SEARCH_CONFIG.TOP_K_EXTENDED);
 
     console.log(`Top result: ${topResults[0]?.technology.name} (${topResults[0]?.similarity.toFixed(4)})`);
 
@@ -519,13 +520,13 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
           responseData.quotaStatus = status;
         } else {
           // Quota available - proceed with AI inference
-          const top5 = topResults.slice(0, 10); // Increased from 5 to 10 for better multi-skill synthesis
+          const top5 = topResults.slice(0, SEARCH_CONFIG.TOP_K_SYNTHESIS); // Increased from 5 to 10 for better multi-skill synthesis
         const topScore = top5[0]?.similarity ?? 0;
 
         // Confidence interpretation: scores above 0.65 are strong matches for broad queries
-        const confidence = topScore >= 0.80 ? 'very high' :
-                          topScore >= 0.65 ? 'high' :
-                          topScore >= 0.50 ? 'moderate' : 'low';
+        const confidence = topScore >= SEARCH_CONFIG.HIGH_CONFIDENCE ? 'very high' :
+                          topScore >= SEARCH_CONFIG.MEDIUM_CONFIDENCE ? 'high' :
+                          topScore >= SEARCH_CONFIG.MIN_SIMILARITY ? 'moderate' : 'low';
 
         // Group results by category for breadth analysis
         const categories = new Set(top5.map(r => r.technology.category));
@@ -732,7 +733,7 @@ Notice the difference:
         // Fixed neuron cost: ~70-80 per inference (more predictable with aggressive laconic enforcement)
         // Post-processing (enforceLaconicStyle) ensures max 2 sentences regardless of model output
         // Estimated cost: 65-75 neurons actual due to shorter responses + aggressive stop sequences
-        const aiResponse = await env.AI.run('@cf/meta/llama-3.1-70b-instruct' as any, {
+        const aiResponse = await env.AI.run(AI_CONFIG.CHAT_MODEL as any, {
           messages: [
             { 
               role: 'system', 
@@ -838,8 +839,8 @@ Output answer (LACONIC - max 3 sentences):
             },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 80, // Reduced from 120 to force 2 short sentences (post-processing ensures quality)
-          stop: ["\n\n\n", "---", ". Additionally", ". Moreover", ". Furthermore", ". I also", ". I'm a"] // Stop at filler
+          max_tokens: AI_CONFIG.MAX_TOKENS,
+          stop: AI_STOP_SEQUENCES as any // Stop at filler
         },
         // AI GATEWAY: Third argument enables analytics, caching, and detailed metrics
         // Benefits: Request tracking, token/cost monitoring, 20-50% cost reduction via caching

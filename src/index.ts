@@ -13,6 +13,18 @@ import { handleD1VectorQuery } from './query-d1-vectors';
 import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
 import { getQuotaStatus, resetQuota, syncQuotaFromDashboard } from './ai-quota';
 import { isWithinBusinessHours } from './input-validation';
+import {
+  CACHE_CONFIG,
+  AI_CONFIG,
+  SEARCH_CONFIG,
+  INDEX_CONFIG,
+  AUTH_CONFIG,
+  ENDPOINTS,
+  CORS_CONFIG,
+  TURNSTILE_VERIFY_URL,
+  DB_TABLES,
+  ITEM_TYPES,
+} from './config';
 
 // Environment bindings interface
 interface Env {
@@ -131,7 +143,7 @@ async function validateTurnstileToken(
       formData.append('remoteip', clientIp);
     }
 
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
       method: 'POST',
       body: formData,
     });
@@ -164,10 +176,10 @@ function generateCacheKey(query: string): string {
 
 // Generate embedding using Workers AI
 async function generateEmbedding(text: string, ai: Ai): Promise<number[]> {
-  const response = await ai.run('@cf/baai/bge-base-en-v1.5', {
+  const response = await ai.run(AI_CONFIG.EMBEDDING_MODEL, {
     text: [text],
   }) as { data: number[][] };
-  return response.data[0]; // Returns array of 768 dimensions
+  return response.data[0]; // Returns array of AI_CONFIG.EMBEDDING_DIMENSIONS dimensions
 }
 
 // Cosine similarity for fallback vector search
@@ -249,7 +261,7 @@ async function handleIndex(request: Request, env: Env): Promise<Response> {
     await env.DB.prepare('INSERT INTO index_metadata (version, total_skills, status) VALUES (?, ?, ?)').bind(version, 0, 'in_progress').run();
 
     // batching params
-    const batchSize = params.batchSize && params.batchSize > 0 ? params.batchSize : (params.type === 'technology' ? 20 : 10);
+    const batchSize = params.batchSize && params.batchSize > 0 ? params.batchSize : (params.type === 'technology' ? INDEX_CONFIG.TECHNOLOGY_BATCH_SIZE : INDEX_CONFIG.DEFAULT_BATCH_SIZE);
     let offset = params.offset && params.offset >= 0 ? params.offset : 0;
 
     // fetch batch from D1 using LIMIT/OFFSET
@@ -286,7 +298,7 @@ async function handleIndex(request: Request, env: Env): Promise<Response> {
 
       vectors.push({ id: idKey, values: embedding, metadata });
 
-      kvPromises.push(env.KV.put(`vector:${idKey}`, JSON.stringify({ values: embedding, metadata }), { expirationTtl: 86400 * 30 }));
+      kvPromises.push(env.KV.put(`vector:${idKey}`, JSON.stringify({ values: embedding, metadata }), { expirationTtl: INDEX_CONFIG.VECTOR_KV_TTL }));
       
       // Store embedding in D1 vectors table (id is auto-increment, don't specify it)
       const embeddingBlob = new Float32Array(embedding).buffer;
@@ -420,7 +432,7 @@ async function handleSession(request: Request, env: Env): Promise<Response> {
     const payload: JWTPayload = {
       sub: 'cv-chat-session',
       iat: now,
-      exp: now + (15 * 60), // 15 minutes
+      exp: now + AUTH_CONFIG.JWT_EXPIRY,
       sessionId,
     };
 
@@ -431,8 +443,8 @@ async function handleSession(request: Request, env: Env): Promise<Response> {
     return new Response(JSON.stringify({
       success: true,
       token: jwt,
-      expiresIn: 900, // 15 minutes in seconds
-      expiresAt: new Date((now + 900) * 1000).toISOString(),
+      expiresIn: AUTH_CONFIG.JWT_EXPIRY,
+      expiresAt: new Date((now + AUTH_CONFIG.JWT_EXPIRY) * 1000).toISOString(),
     }), {
       headers: corsHeaders,
     });
@@ -506,7 +518,7 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
       // Try Vectorize first
       console.log('Querying Vectorize...');
       const vectorResults = await env.VECTORIZE.query(queryEmbedding, {
-        topK: 3,
+        topK: SEARCH_CONFIG.TOP_K,
         returnMetadata: true,
       });
       
@@ -571,7 +583,7 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
         
         // Sort by similarity and take top 3
         similarities.sort((a, b) => b.similarity - a.similarity);
-        const topMatches = similarities.slice(0, 3);
+        const topMatches = similarities.slice(0, SEARCH_CONFIG.TOP_K);
         
         // Fetch skills from D1
         const skillPromises = topMatches.map(async (match) => {
@@ -619,9 +631,9 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
     // Generate assistant reply using Workers AI (if enabled)
     if (env.AI_REPLY_ENABLED === 'true' && responseData.results.length > 0) {
       try {
-        const topResults = responseData.results.slice(0, 3);
+        const topResults = responseData.results.slice(0, SEARCH_CONFIG.TOP_K);
         const topScore = topResults[0]?.distance ?? 0;
-        const confidence = topScore >= 0.80 ? 'high' : (topScore >= 0.70 ? 'medium' : 'low');
+        const confidence = topScore >= SEARCH_CONFIG.HIGH_CONFIDENCE ? 'high' : (topScore >= SEARCH_CONFIG.MEDIUM_CONFIDENCE ? 'medium' : 'low');
         
         const resultsText = topResults.map((r: any, i: number) => 
           `${i+1}) ${r.name} — ${r.description || ''} (id:${r.id}, score:${r.distance.toFixed(3)})`
@@ -639,7 +651,7 @@ Provide a short 2-3 sentence answer that:
 - Keep it conversational and helpful`;
 
         // Using Mistral 7B HuggingFace model
-        const response = await env.AI.run('@hf/mistral/mistral-7b-instruct-v0.2' as any, {
+        const response = await env.AI.run(AI_CONFIG.FALLBACK_MODEL as any, {
           messages: [
             { 
               role: 'system', 
@@ -698,7 +710,7 @@ Output answer:
     }
     
     // Cache the response
-    const cacheTtl = parseInt(env.CACHE_TTL || '3600', 10);
+    const cacheTtl = parseInt(env.CACHE_TTL || CACHE_CONFIG.DEFAULT_TTL.toString(), 10);
     const responseToCache = new Response(JSON.stringify(responseData), {
       headers: {
         'Content-Type': 'application/json',
@@ -793,9 +805,9 @@ export default {
     
     // CORS headers for development
     const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Turnstile-Token, Authorization',
+      'Access-Control-Allow-Origin': CORS_CONFIG.ALLOWED_ORIGINS,
+      'Access-Control-Allow-Methods': CORS_CONFIG.ALLOWED_METHODS,
+      'Access-Control-Allow-Headers': CORS_CONFIG.ALLOWED_HEADERS,
     };
     
     // Handle CORS preflight
@@ -805,7 +817,7 @@ export default {
     
     try {
       // Route handling
-      if (path === '/session' && request.method === 'POST') {
+      if (path === ENDPOINTS.SESSION && request.method === 'POST') {
         const response = await handleSession(request, env);
         Object.entries(corsHeaders).forEach(([key, value]) => {
           response.headers.set(key, value);
@@ -813,7 +825,7 @@ export default {
         return response;
       }
       
-      if (path === '/index' && request.method === 'POST') {
+      if (path === ENDPOINTS.INDEX && request.method === 'POST') {
         const response = await handleIndex(request, env);
         Object.entries(corsHeaders).forEach(([key, value]) => {
           response.headers.set(key, value);
@@ -821,7 +833,7 @@ export default {
         return response;
       }
       
-      if (path === '/query' && (request.method === 'GET' || request.method === 'POST')) {
+      if (path === ENDPOINTS.QUERY && (request.method === 'GET' || request.method === 'POST')) {
         // Check for JWT in Authorization header first, then fall back to Turnstile token
         const authHeader = request.headers.get('Authorization');
         const hasJWT = authHeader && authHeader.startsWith('Bearer ');
@@ -885,7 +897,7 @@ export default {
       }
 
       // Admin: get current AI quota status from KV
-      if (path === '/admin/quota' && request.method === 'GET') {
+      if (path === ENDPOINTS.ADMIN_QUOTA && request.method === 'GET') {
         // Simple auth: if JWT_SECRET is set require a Bearer token matching it (admin use only)
         const authHeader = request.headers.get('Authorization');
         if (env.JWT_SECRET) {
@@ -904,7 +916,7 @@ export default {
       }
 
       // Legacy endpoint - redirects to /query
-      if (path === '/query-d1' && (request.method === 'GET' || request.method === 'POST')) {
+      if (path === ENDPOINTS.QUERY_D1 && (request.method === 'GET' || request.method === 'POST')) {
         const response = await handleD1VectorQuery(request, env);
         Object.entries(corsHeaders).forEach(([key, value]) => {
           response.headers.set(key, value);
@@ -913,7 +925,7 @@ export default {
       }
 
       // Old Vectorize-based query (deprecated, keeping for reference)
-      if (path === '/query-vectorize' && (request.method === 'GET' || request.method === 'POST')) {
+      if (path === ENDPOINTS.QUERY_VECTORIZE && (request.method === 'GET' || request.method === 'POST')) {
         const response = await handleQuery(request, env);
         Object.entries(corsHeaders).forEach(([key, value]) => {
           response.headers.set(key, value);
@@ -921,7 +933,7 @@ export default {
         return response;
       }
 
-      if (path === '/debug/vector' && request.method === 'GET') {
+      if (path === ENDPOINTS.DEBUG_VECTOR && request.method === 'GET') {
         // Debug endpoint to inspect raw vector data
         const { results } = await env.DB.prepare('SELECT id, item_id, LENGTH(embedding) as size, typeof(embedding) as type FROM vectors LIMIT 1').all();
         const vec = results[0] as any;
@@ -947,7 +959,7 @@ export default {
         return Response.json(embeddingInfo);
       }
       
-      if (path === '/quota' && request.method === 'GET') {
+      if (path === ENDPOINTS.QUOTA && request.method === 'GET') {
         // AI quota status endpoint
         const quotaStatus = await getQuotaStatus(env.KV);
         return new Response(JSON.stringify(quotaStatus), {
@@ -955,7 +967,7 @@ export default {
         });
       }
       
-      if (path === '/quota/reset' && request.method === 'POST') {
+      if (path === ENDPOINTS.QUOTA_RESET && request.method === 'POST') {
         // Admin endpoint to manually reset quota (requires authentication in production)
         // TODO: Add proper authentication/authorization
         await resetQuota(env.KV);
@@ -969,7 +981,7 @@ export default {
         });
       }
       
-      if (path === '/quota/sync' && request.method === 'POST') {
+      if (path === ENDPOINTS.QUOTA_SYNC && request.method === 'POST') {
         // Admin endpoint to manually sync quota from dashboard
         // Usage: POST /quota/sync with body: { "neurons": 137.42 }
         // TODO: Add proper authentication/authorization
@@ -1006,7 +1018,7 @@ export default {
         }
       }
       
-      if (path === '/health' || path === '/') {
+      if (path === ENDPOINTS.HEALTH || path === ENDPOINTS.ROOT) {
         const response = await handleHealth(env);
         Object.entries(corsHeaders).forEach(([key, value]) => {
           response.headers.set(key, value);
@@ -1014,14 +1026,14 @@ export default {
         return response;
       }
 
-      if (path === '/ids' && request.method === 'GET') {
+      if (path === ENDPOINTS.IDS && request.method === 'GET') {
         // return technology ids for remote orchestration
         const rows = await env.DB.prepare('SELECT id FROM technology ORDER BY id').all();
         const ids = (rows.results || []).map((r: any) => r.id);
         return new Response(JSON.stringify({ ids }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      if (path === '/index/progress' && request.method === 'GET') {
+      if (path === ENDPOINTS.INDEX_PROGRESS && request.method === 'GET') {
         const itemType = url.searchParams.get('type') || 'technology';
         const checkpointKey = `index:checkpoint:${itemType}`;
         const data = await env.KV.get(checkpointKey);
@@ -1029,7 +1041,7 @@ export default {
         return new Response(data, { headers: { 'Content-Type': 'application/json' } });
       }
 
-      if (path === '/index/resume' && request.method === 'POST') {
+      if (path === ENDPOINTS.INDEX_RESUME && request.method === 'POST') {
         // resume indexing using checkpoint in KV; returns immediate response and continues via worker-invoked POST
     const bodyAny = await request.json().catch(() => ({})) as any;
     const itemType = bodyAny.type || 'technology';
@@ -1039,7 +1051,7 @@ export default {
     const batchSize = bodyAny.batchSize || 20;
 
         // trigger one batch by calling handleIndex directly
-        const req = new Request(`${url.origin}/index`, {
+        const req = new Request(`${url.origin}${ENDPOINTS.INDEX}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: itemType, batchSize, offset: checkpoint.nextOffset || 0 }),
@@ -1048,7 +1060,7 @@ export default {
         return new Response(JSON.stringify({ triggered: true, status: res.status }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      if (path === '/index/stop' && request.method === 'POST') {
+      if (path === ENDPOINTS.INDEX_STOP && request.method === 'POST') {
     const bodyAny = await request.json().catch(() => ({})) as any;
     const itemType = bodyAny.type || 'technology';
         const checkpointKey = `index:checkpoint:${itemType}`;

@@ -14,6 +14,7 @@ import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
 import { getQuotaStatus, resetQuota, syncQuotaFromDashboard } from './ai-quota';
 import { isWithinBusinessHours } from './input-validation';
 import { generateEmbedding, cosineSimilarity } from './services/embeddingService';
+import { generateCacheKey, getCachedResponse, setCachedResponse } from './services/cacheService';
 import {
   CACHE_CONFIG,
   AI_CONFIG,
@@ -161,18 +162,6 @@ async function validateTurnstileToken(
     console.error('Turnstile validation error:', error);
     return { success: false, error: error.message };
   }
-}
-
-// Cache key generator (simple hash)
-function generateCacheKey(query: string): string {
-  // Simple hash for cache key
-  let hash = 0;
-  for (let i = 0; i < query.length; i++) {
-    const char = query.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return `query:${Math.abs(hash)}`;
 }
 
 // Helper to create skill text for embedding
@@ -463,18 +452,11 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
     
     // Check cache first
     const cacheKey = generateCacheKey(query);
-    const cache = caches.default;
-    const cacheUrl = new URL(request.url);
-    cacheUrl.pathname = `/cache/${cacheKey}`;
+    const cachedData = await getCachedResponse(cacheKey, request.url);
     
-    const cachedResponse = await cache.match(cacheUrl.toString());
-    if (cachedResponse) {
+    if (cachedData) {
       console.log('Cache hit');
-      const cachedData = await cachedResponse.json() as any;
-      return new Response(JSON.stringify({
-        ...(cachedData || {}),
-        cached: true,
-      }), {
+      return new Response(JSON.stringify(cachedData), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -685,15 +667,9 @@ Output answer:
     
     // Cache the response
     const cacheTtl = parseInt(env.CACHE_TTL || CACHE_CONFIG.DEFAULT_TTL.toString(), 10);
-    const responseToCache = new Response(JSON.stringify(responseData), {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': `max-age=${cacheTtl}`,
-      },
-    });
     
     // Store in Cache API (non-blocking)
-    await cache.put(cacheUrl.toString(), responseToCache.clone());
+    await setCachedResponse(cacheKey, request.url, responseData, cacheTtl);
     
     return new Response(JSON.stringify(responseData), {
       headers: { 'Content-Type': 'application/json' },

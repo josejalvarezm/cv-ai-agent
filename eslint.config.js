@@ -48,10 +48,10 @@ module.exports = [
           varsIgnorePattern: "^_",
         },
       ],
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "off", // Allow 'any' - needed for Cloudflare APIs, dynamic JSON, error handling
       "@typescript-eslint/explicit-function-return-type": "off",
       "no-undef": "off", // TypeScript handles this better
-      "no-control-regex": "warn", // Allow control chars in regex for input validation
+      "no-control-regex": "off", // Allow control chars in regex for input validation/sanitization
     },
   },
   {

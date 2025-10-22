@@ -11,44 +11,13 @@ import {
   getCircuitBreakerMessage,
 } from './input-validation';
 import { AI_CONFIG, SEARCH_CONFIG, AI_STOP_SEQUENCES } from './config';
+import { generateEmbedding, cosineSimilarity, blobToFloat32Array } from './services/embeddingService';
 
 interface Env {
   DB: D1Database;
   AI: Ai;
   KV: KVNamespace;  // Added for quota tracking
   AI_REPLY_ENABLED?: string;
-}
-
-// Convert binary blob to Float32Array
-function blobToFloat32Array(blob: ArrayBuffer): Float32Array {
-  return new Float32Array(blob);
-}
-
-// Cosine similarity calculation
-function cosineSimilarity(vecA: Float32Array | number[], vecB: Float32Array | number[]): number {
-  if (vecA.length !== vecB.length) {
-    throw new Error('Vectors must have same dimensions');
-  }
-
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-// Generate embedding using Workers AI
-async function generateEmbedding(text: string, ai: Ai): Promise<number[]> {
-  const response = await ai.run(AI_CONFIG.EMBEDDING_MODEL, {
-    text: [text],
-  }) as { data: number[][] };
-  return response.data[0];
 }
 
 // Validate question type - block non-technical queries

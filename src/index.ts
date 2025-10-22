@@ -13,6 +13,7 @@ import { handleD1VectorQuery } from './query-d1-vectors';
 import { signJWT, verifyJWT, generateSessionId, type JWTPayload } from './jwt';
 import { getQuotaStatus, resetQuota, syncQuotaFromDashboard } from './ai-quota';
 import { isWithinBusinessHours } from './input-validation';
+import { generateEmbedding, cosineSimilarity } from './services/embeddingService';
 import {
   CACHE_CONFIG,
   AI_CONFIG,
@@ -172,33 +173,6 @@ function generateCacheKey(query: string): string {
     hash = hash & hash; // Convert to 32-bit integer
   }
   return `query:${Math.abs(hash)}`;
-}
-
-// Generate embedding using Workers AI
-async function generateEmbedding(text: string, ai: Ai): Promise<number[]> {
-  const response = await ai.run(AI_CONFIG.EMBEDDING_MODEL, {
-    text: [text],
-  }) as { data: number[][] };
-  return response.data[0]; // Returns array of AI_CONFIG.EMBEDDING_DIMENSIONS dimensions
-}
-
-// Cosine similarity for fallback vector search
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  if (vecA.length !== vecB.length) {
-    throw new Error('Vectors must have same dimensions');
-  }
-  
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-  
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 // Helper to create skill text for embedding

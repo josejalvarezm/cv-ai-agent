@@ -4,6 +4,7 @@
 
 import { getQuotaStatus } from '../ai-quota';
 import { isWithinBusinessHours } from '../input-validation';
+import { D1Repository } from '../repositories/d1Repository';
 
 interface Env {
   DB: D1Database;
@@ -11,27 +12,26 @@ interface Env {
 }
 
 export async function handleHealth(env: Env): Promise<Response> {
+  const d1Repo = new D1Repository(env.DB);
+  
   try {
     // Check D1 connection
-    const dbCheck = await env.DB.prepare('SELECT 1').first();
+    const dbCheck = await d1Repo.testConnection();
     
-    // Get skill count
-    let skillCount: { count: number } | null = null;
+    // Get skill count (try skills first, fall back to technology)
+    let skillCount = 0;
     try {
-      skillCount = await env.DB.prepare('SELECT COUNT(*) as count FROM skills').first<{ count: number }>();
-    } catch (e) {
-      // skills table may not exist in this DB; fall back to technology count
+      skillCount = await d1Repo.getSkillCount();
+    } catch {
       try {
-        skillCount = await env.DB.prepare('SELECT COUNT(*) as count FROM technology').first<{ count: number }>();
+        skillCount = await d1Repo.getTechnologyCount();
       } catch {
-        skillCount = { count: 0 };
+        skillCount = 0;
       }
     }
     
     // Get last index version
-    const lastIndex = await env.DB.prepare(
-      'SELECT version, indexed_at, total_skills, status FROM index_metadata ORDER BY version DESC LIMIT 1'
-    ).first();
+    const lastIndex = await d1Repo.getLastIndexMetadata();
     
     // Get AI quota status
     const quotaStatus = await getQuotaStatus(env.KV);
@@ -42,7 +42,7 @@ export async function handleHealth(env: Env): Promise<Response> {
     return new Response(JSON.stringify({
       status: 'healthy',
       database: dbCheck ? 'connected' : 'error',
-      total_skills: skillCount?.count || 0,
+      total_skills: skillCount || 0,
       last_index: lastIndex || null,
       ai_quota: quotaStatus,
       business_hours: {

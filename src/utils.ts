@@ -1,6 +1,9 @@
 /**
- * Utility functions for index.ts
+ * Utility functions
  */
+
+import { D1Repository } from './repositories/d1Repository';
+import { KVRepository } from './repositories/kvRepository';
 
 // Skill record from D1
 export interface Skill {
@@ -25,55 +28,29 @@ interface Env {
 /**
  * Acquire a KV lock for indexing to prevent concurrent runs
  */
-export async function acquireIndexLock(itemType: string, env: Env, ttlSeconds = 60): Promise<boolean> {
+export async function acquireIndexLock(itemType: string, kvRepo: KVRepository, ttlSeconds = 60): Promise<boolean> {
   const lockKey = `index:lock:${itemType}`;
-  const existing = await env.KV.get(lockKey);
-  if (existing) return false; // lock already held
-  await env.KV.put(lockKey, new Date().toISOString(), { expirationTtl: ttlSeconds });
-  return true;
+  return await kvRepo.acquireLock(lockKey, ttlSeconds);
 }
 
 /**
  * Release a KV lock for indexing
  */
-export async function releaseIndexLock(itemType: string, env: Env): Promise<void> {
+export async function releaseIndexLock(itemType: string, kvRepo: KVRepository): Promise<void> {
   const lockKey = `index:lock:${itemType}`;
-  await env.KV.delete(lockKey);
+  await kvRepo.releaseLock(lockKey);
 }
 
 /**
- * Fetch canonical skill-like record by id. Tries `skills` first, then `technology`.
+ * Fetch canonical skill-like record by id using D1Repository
  */
-export async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
-  try {
-    const s = await env.DB.prepare('SELECT * FROM skills WHERE id = ?').bind(id).first<Skill>();
-    if (s) return s;
-  } catch (_) {
-    // ignore
-  }
+export async function fetchCanonicalById(id: number, d1Repo: D1Repository): Promise<Skill | null> {
+  // Try skills first
+  const skill = await d1Repo.getSkillById(id);
+  if (skill) return skill;
 
-  try {
-    const t = await env.DB.prepare('SELECT id, name, experience as description, experience_years as years FROM technology WHERE id = ?').bind(id).first<any>();
-    if (t) {
-      const mapped: Skill = {
-        id: t.id,
-        name: t.name,
-        mastery: typeof t.experience === 'string' ? t.experience : '',
-        years: t.years || 0,
-        category: undefined,
-        description: t.description || t.experience || undefined,
-        action: t.action,
-        effect: t.effect,
-        outcome: t.outcome,
-        related_project: t.related_project,
-      };
-      return mapped;
-    }
-  } catch (_) {
-    // ignore
-  }
-
-  return null;
+  // Fall back to technology
+  return await d1Repo.getTechnologyById(id);
 }
 
 /**

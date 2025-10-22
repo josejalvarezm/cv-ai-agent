@@ -5,7 +5,8 @@
 
 import { generateEmbedding } from '../services/embeddingService';
 import { INDEX_CONFIG } from '../config';
-import { acquireIndexLock, releaseIndexLock, createSkillText, type Skill } from '../utils';
+import { createSkillText, type Skill } from '../utils';
+import { D1Repository, KVRepository, VectorizeRepository } from '../repositories';
 
 interface Env {
   DB: D1Database;
@@ -20,6 +21,11 @@ interface Env {
  */
 export async function handleIndex(request: Request, env: Env): Promise<Response> {
   const lockAcquired = { value: false, itemType: 'skills' as string };
+  
+  // Initialize repositories
+  const d1Repo = new D1Repository(env.DB);
+  const kvRepo = new KVRepository(env.KV);
+  const vectorizeRepo = new VectorizeRepository(env.VECTORIZE);
   
   try {
     console.log('Starting indexing process...');
@@ -38,7 +44,8 @@ export async function handleIndex(request: Request, env: Env): Promise<Response>
     lockAcquired.itemType = itemType;
 
     // acquire lock to prevent concurrent indexing
-    const acquired = await acquireIndexLock(itemType, env, 120);
+    const lockKey = `index:lock:${itemType}`;
+    const acquired = await kvRepo.acquireLock(lockKey, 120);
     if (!acquired) {
       return new Response(JSON.stringify({ error: 'Indexing already in progress', itemType }), { 
         status: 409, 
@@ -49,38 +56,28 @@ export async function handleIndex(request: Request, env: Env): Promise<Response>
 
     const ai = env.AI;
 
-    // ensure index_metadata table exists (no-op if already present)
-    await env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS index_metadata (
-        version INTEGER PRIMARY KEY,
-        indexed_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        total_skills INTEGER,
-        status TEXT
-      )`
-    ).run();
+    // ensure index_metadata table exists
+    await d1Repo.ensureIndexMetadataTable();
 
     // determine version
-    const lastVersion = await env.DB.prepare('SELECT MAX(version) as last_version FROM index_metadata').first();
-    const version = (lastVersion?.last_version as number || 0) + 1;
+    const version = (await d1Repo.getMaxIndexVersion()) + 1;
 
     // create indexing record
-    await env.DB.prepare('INSERT INTO index_metadata (version, total_skills, status) VALUES (?, ?, ?)').bind(version, 0, 'in_progress').run();
+    await d1Repo.createIndexMetadata(version);
 
     // batching params
     const batchSize = params.batchSize && params.batchSize > 0 ? params.batchSize : (params.type === 'technology' ? INDEX_CONFIG.TECHNOLOGY_BATCH_SIZE : INDEX_CONFIG.DEFAULT_BATCH_SIZE);
     let offset = params.offset && params.offset >= 0 ? params.offset : 0;
 
-    // fetch batch from D1 using LIMIT/OFFSET
-    const selectSql = itemType === 'technology'
-      ? 'SELECT id, category_id, name, experience, experience_years FROM technology ORDER BY id LIMIT ? OFFSET ?'
-      : 'SELECT id, name, mastery, years, category, description, last_used FROM skills ORDER BY id LIMIT ? OFFSET ?';
-
-    const { results: rows } = await env.DB.prepare(selectSql).bind(batchSize, offset).all<any>();
-    const items = rows as any[] || [];
+    // fetch batch from D1 using repository
+    const itemsResult = itemType === 'technology'
+      ? await d1Repo.getTechnology(batchSize, offset)
+      : await d1Repo.getSkills(batchSize, offset);
+    const items = itemsResult.results || [];
 
     if (!items.length) {
       // nothing to do
-      await env.DB.prepare('UPDATE index_metadata SET status = ? WHERE version = ?').bind('completed', version).run();
+      await d1Repo.updateIndexMetadata(version, 0, 'completed');
       return new Response(JSON.stringify({ success: true, message: 'No items to index', version, processed: 0 }), { 
         headers: { 'Content-Type': 'application/json' } 
       });
@@ -88,7 +85,6 @@ export async function handleIndex(request: Request, env: Env): Promise<Response>
 
     const vectors: any[] = [];
     const kvPromises: Promise<any>[] = [];
-    const d1Promises: Promise<any>[] = [];
 
     for (const item of items) {
       const text = itemType === 'technology'
@@ -106,30 +102,26 @@ export async function handleIndex(request: Request, env: Env): Promise<Response>
 
       vectors.push({ id: idKey, values: embedding, metadata });
 
-      kvPromises.push(env.KV.put(`vector:${idKey}`, JSON.stringify({ values: embedding, metadata }), { expirationTtl: INDEX_CONFIG.VECTOR_KV_TTL }));
+      // Store in KV and D1 vectors table
+      kvPromises.push(kvRepo.storeVector(idKey, embedding, metadata, INDEX_CONFIG.VECTOR_KV_TTL));
       
-      // Store embedding in D1 vectors table (id is auto-increment, don't specify it)
       const embeddingBlob = new Float32Array(embedding).buffer;
-      d1Promises.push(
-        env.DB.prepare(
-          'INSERT INTO vectors (item_type, item_id, embedding, metadata) VALUES (?, ?, ?, ?)'
-        ).bind(itemType, item.id, embeddingBlob, JSON.stringify(metadata)).run()
-      );
+      kvPromises.push(d1Repo.insertVector(itemType, item.id, embeddingBlob, metadata));
     }
 
     // upsert into Vectorize, KV, and D1
-    await env.VECTORIZE.upsert(vectors as any);
-    await Promise.all([...kvPromises, ...d1Promises]);
+    await vectorizeRepo.upsert(vectors);
+    await Promise.all(kvPromises);
 
-    // update metadata: increment total_skills by processed count and mark as in_progress
-    await env.DB.prepare('UPDATE index_metadata SET total_skills = COALESCE(total_skills,0) + ?, status = ? WHERE version = ?').bind(items.length, 'in_progress', version).run();
+    // update metadata
+    await d1Repo.updateIndexMetadata(version, items.length, 'in_progress');
 
     // write checkpoint to KV for resumability
     try {
-      const totalRow = await env.DB.prepare(itemType === 'technology' ? 'SELECT COUNT(*) as total FROM technology' : 'SELECT COUNT(*) as total FROM skills').first<any>();
-      const total = totalRow?.total || 0;
+      const total = itemType === 'technology' 
+        ? await d1Repo.getTechnologyCount()
+        : await d1Repo.getSkillCount();
       const nextOffset = offset + items.length;
-      const checkpointKey = `index:checkpoint:${itemType}`;
       const checkpoint = {
         version,
         nextOffset,
@@ -140,14 +132,15 @@ export async function handleIndex(request: Request, env: Env): Promise<Response>
         lastProcessedCount: items.length,
         errors: [] as any[],
       };
-      await env.KV.put(checkpointKey, JSON.stringify(checkpoint));
+      await kvRepo.setIndexCheckpoint(itemType, checkpoint);
     } catch (e) {
       console.error('Failed to write checkpoint to KV', e);
     }
 
     // release lock
     if (lockAcquired.value) {
-      await releaseIndexLock(lockAcquired.itemType, env);
+      const lockKey = `index:lock:${lockAcquired.itemType}`;
+      await kvRepo.releaseLock(lockKey);
     }
 
     return new Response(JSON.stringify({ success: true, version, processed: items.length, offset }), { 
@@ -159,7 +152,8 @@ export async function handleIndex(request: Request, env: Env): Promise<Response>
     
     // release lock on error
     if (lockAcquired.value) {
-      await releaseIndexLock(lockAcquired.itemType, env);
+      const lockKey = `index:lock:${lockAcquired.itemType}`;
+      await kvRepo.releaseLock(lockKey);
     }
     
     return new Response(JSON.stringify({

@@ -3,6 +3,12 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     branches: [ main ]
 
@@ -141,6 +147,9 @@ jobs:
       url: https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}
     
     steps:
+      - name: Wait to avoid Cloudflare rate limits
+        run: sleep 30
+      
       - name: Checkout code
         uses: actions/checkout@v4
       

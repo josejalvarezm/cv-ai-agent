@@ -5,12 +5,6 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      deploy_to_production:
-        description: 'Deploy to production after approval'
-        required: false
-        default: 'false'
 
 jobs:
   # Job 1: Lint and Type Check
@@ -105,7 +99,6 @@ jobs:
     environment:
       name: development
       url: https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}
-    continue-on-error: true
     
     steps:
       - name: Checkout code
@@ -136,24 +129,13 @@ jobs:
         run: |
           sleep 5
           curl -f https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}/health || exit 1
-      
-      - name: Notify ready for production approval
-        if: success()
-        run: |
-          echo "✅ Development deployment successful!"
-          echo ""
-          echo "🟡 To deploy to production, go to:"
-          echo "https://github.com/josejalvarezm/MyAIAgentPrivate/actions/workflows/ci-cd.yml"
-          echo ""
-          echo "Click 'Run workflow' → Select 'main' branch → Click 'Run workflow'"
-          echo "This will trigger the production deployment."
 
-  # Job 5: Deploy to Production (Manual Approval Required)
-  # Only runs when manually triggered via GitHub Actions UI
+  # Job 5: Deploy to Production (Auto-deploy if all checks pass)
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    needs: [deploy-dev]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
       url: https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}
@@ -171,17 +153,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Run ESLint
-        run: npm run lint
-      
-      - name: Run TypeScript type check
-        run: npm run type-check
-      
-      - name: Run tests
-        run: npm run test:run
-      
-      - name: Build
-        run: npm run build
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
       
       - name: Deploy to Cloudflare Workers (Production)
         run: npm run deploy:production
@@ -195,4 +171,7 @@ jobs:
           curl -f https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/health || exit 1
       
       - name: Notify deployment success
-        run: echo "✅ Production deployment successful!"
+        run: |
+          echo "✅ Production deployment successful!"
+          echo "🌐 Dev: https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}"
+          echo "🌐 Prod: https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}"

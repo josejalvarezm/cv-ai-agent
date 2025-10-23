@@ -24,6 +24,7 @@ import { handleSession } from './handlers/sessionHandler';
 import { handleIndex } from './handlers/indexHandler';
 import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector } from './handlers/indexManagementHandler';
 import { handleCORSPreflight, addCORSHeaders, verifyAuth, handleWorkerError, handle404 } from './middleware';
+import { checkRateLimit } from './middleware/rateLimiter';
 
 // Environment bindings interface
 interface Env {
@@ -406,6 +407,21 @@ export default {
       }
       
       if (path === ENDPOINTS.QUERY && (request.method === 'GET' || request.method === 'POST')) {
+        // Rate limiting check (prevents quota exhaustion)
+        const rateLimitResult = await checkRateLimit(request, env.KV);
+        if (!rateLimitResult.allowed) {
+          return addCORSHeaders(new Response(JSON.stringify({
+            error: rateLimitResult.message,
+            retryAfter: rateLimitResult.retryAfter,
+          }), {
+            status: 429, // Too Many Requests
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
+            },
+          }));
+        }
+
         // Verify authentication (JWT or Turnstile)
         const authResult = await verifyAuth(request, env);
         if (!authResult.authorized) {

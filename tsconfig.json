@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "module": "ES2022",
+  "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "types": ["@cloudflare/workers-types"],
+    "jsx": "react",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+  "noEmit": false,
+  "outDir": "dist",
+    "isolatedModules": true,
+    "allowJs": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", ".wrangler", "src/generate_vector_inserts.ts"]
+}

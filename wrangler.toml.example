@@ -1,0 +1,18 @@
+name = "cv-assistant-worker"
+main = "src/index.ts"
+compatibility_date = "2024-10-01"
+
+# Replace these with your actual values from Cloudflare dashboard
+[[d1_databases]]
+binding = "DB"
+database_name = "YOUR_DATABASE_NAME"
+database_id = "YOUR_DATABASE_ID"
+
+[ai]
+binding = "AI"
+
+[vars]
+AI_REPLY_ENABLED = "true"
+
+# Optional: Turnstile protection (uncomment and add your secret key)
+# TURNSTILE_SECRET_KEY = "YOUR_SECRET_KEY"

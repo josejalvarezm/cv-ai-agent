@@ -1,0 +1,48 @@
+{
+  "name": "cv-ai-agent",
+  "version": "1.0.0",
+  "description": "Production-ready CV assistant with semantic search using Cloudflare Workers, D1, and Workers AI",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:full": "pwsh -File scripts/deploy.ps1",
+    "deploy:force": "pwsh -File scripts/deploy.ps1 -Force",
+    "deploy:quick": "npm run build && npm run deploy",
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "health": "curl https://your-worker.workers.dev/health",
+    "lint": "eslint src --max-warnings 0",
+    "lint:fix": "eslint src --fix"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "d1",
+    "workers-ai",
+    "semantic-search",
+    "cv-assistant",
+    "edge-computing",
+    "vector-embeddings"
+  ],
+  "author": "Jose Alvarez",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/josejalvarezm/cv-ai-agent.git"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "@vitest/coverage-v8": "^4.0.1",
+    "eslint": "^9.38.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0",
+    "wrangler": "^4.43.0"
+  }
+}

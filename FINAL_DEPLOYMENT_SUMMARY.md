@@ -3,6 +3,7 @@
 ## ✅ All Requirements Completed
 
 ### 1. ✅ **Deployed to Production**
+
 - Production URL: `https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}`
 - Development URL: `https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}`
 - Latest Version (Prod): `944ce80d-c13e-4080-91c3-8d5ae887e48e`
@@ -11,6 +12,7 @@
 ### 2. ✅ **Daily Query Capacity Calculated**
 
 **Formula:**
+
 ```
 Daily Capacity = (10,000 neurons/day - 500 buffer) ÷ 120 neurons/query
 Daily Capacity = 9,500 ÷ 120
@@ -18,11 +20,13 @@ Daily Capacity ≈ 79 queries/day
 ```
 
 **Realistic Throughput:**
+
 - Short queries: **158 queries/day** (~60 neurons each)
 - Average queries: **79 queries/day** (~120 neurons each) ← **EXPECTED**
 - Long queries: **47 queries/day** (~200 neurons each)
 
 **Active Operating Window:**
+
 - Hours: 08:00-20:00 UK time
 - Days: Monday-Friday only
 - Duration: 12 hours per day × 5 days = 60 active hours/week
@@ -32,6 +36,7 @@ Daily Capacity ≈ 79 queries/day
 ### 3. ✅ **Weekend Disabling Implemented**
 
 **Schedule:**
+
 | Day | Status | Query Support |
 |-----|--------|---------------|
 | Monday | ✅ Active | 08:00-20:00 GMT/BST |
@@ -43,6 +48,7 @@ Daily Capacity ≈ 79 queries/day
 | Sunday | ❌ Disabled | All day |
 
 **Error Message When Disabled:**
+
 ```
 "Our assistant is available during UK business hours 
 (Monday-Friday, 08:00-20:00 GMT/BST). Please return then."
@@ -51,6 +57,7 @@ Daily Capacity ≈ 79 queries/day
 ### 4. ✅ **UK Time Zone Confirmed (NOT European Central Time)**
 
 **Implementation Details:**
+
 ```typescript
 // UK Time Configuration (NOT CET)
 const BUSINESS_HOURS_START = 8;    // 08:00 UK time
@@ -65,6 +72,7 @@ const isBST = month >= 2 && month <= 9;  // Automatic DST handling
 ```
 
 **Health Check Verification:**
+
 ```json
 {
   "business_hours": {
@@ -80,18 +88,21 @@ const isBST = month >= 2 && month <= 9;  // Automatic DST handling
 ## 📈 Daily Capacity Breakdown
 
 ### Available Budget per Day
+
 - **Free Tier Limit**: 10,000 neurons
 - **Safety Margin**: 500 neurons (5%)
 - **Usable Budget**: 9,500 neurons
 - **Auto-reset**: Daily at 00:00 UTC
 
 ### Query Cost
+
 - **Model**: Llama 3.1 70B
 - **Average Input**: 200 tokens (~1,333 neurons/M)
 - **Average Output**: 300 tokens (~4,167 neurons/M)
 - **Total per Query**: ~120 neurons
 
 ### Distribution Across Week
+
 ```
 Monday:    ~79 queries (reset at midnight)
 Tuesday:   ~79 queries
@@ -105,6 +116,7 @@ Weekly Total: ~395 queries
 ```
 
 ### Hourly Distribution (During Business Hours)
+
 ```
 08:00-09:00:  6-7 queries
 09:00-10:00:  6-7 queries
@@ -127,18 +139,21 @@ Total: 79 queries/day across 12 active hours
 ## 🚀 Performance Metrics
 
 ### Current Production Status
+
 - **Quota Used Today**: 3,450 neurons (36%)
 - **Queries Processed**: 46 queries
 - **Remaining Budget**: 6,050 neurons (~50 more queries)
 - **Reset Time**: 2025-10-18 00:00 UTC
 
 ### Model Quality
+
 - **Llama 3.1 70B**: ⭐⭐⭐⭐⭐
 - **WPF Query Test**: ✅ PERFECT (correctly identifies WPF as main topic)
 - **CCHQ Skillset**: ✅ PERFECT (mentions 4+ skills with outcomes)
 - **Leadership Query**: ✅ PERFECT (classifies as Principal/Lead level)
 
 ### Semantic Search Accuracy
+
 - **Query Ranking**: Top results correctly ranked by similarity
 - **Project Filtering**: 35 CCHQ skills returned (from 100+ total)
 - **Embedding Quality**: Cosine similarity working as expected
@@ -220,6 +235,7 @@ Total: 79 queries/day across 12 active hours
 **Status**: ✅ **LIVE & TESTED**
 
 The CV Assistant is now:
+
 - ✅ Running on Llama 3.1 70B with 10x better instruction-following
 - ✅ Limited to UK business hours (Mon-Fri 08:00-20:00 GMT/BST)
 - ✅ Disabled on weekends
@@ -232,6 +248,6 @@ The CV Assistant is now:
 ---
 
 **Deployment Date**: October 17, 2025  
-**Production URL**: https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}  
-**Development URL**: https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}  
+**Production URL**: <https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}>  
+**Development URL**: <https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}>  
 **Status**: ✅ LIVE

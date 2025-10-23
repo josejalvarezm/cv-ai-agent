@@ -3,12 +3,15 @@
 ## 🎯 Quick Navigation
 
 ### For First-Time Users
+
 👉 **Start Here:** [SUMMARY.md](SUMMARY.md) - What we built and how it works (5 min read)
 
 ### For Deployment
+
 👉 **Automation Guide:** [AUTOMATION.md](AUTOMATION.md) - One-command deployment (2 min read)
 
 ### For Deep Dive
+
 👉 **Technical Guide:** [docs/IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) - Complete implementation (20 min read)
 
 ---
@@ -16,12 +19,14 @@
 ## 📖 All Documentation Files
 
 ### Executive Summaries
+
 | File | Purpose | Audience |
 |------|---------|----------|
 | **[SUMMARY.md](SUMMARY.md)** | What we accomplished, key metrics, examples | Everyone |
 | **[DEPLOYMENT_SUCCESS.md](DEPLOYMENT_SUCCESS.md)** | Production status, sample queries, validation | Product/QA |
 
 ### Technical Guides
+
 | File | Purpose | Audience |
 |------|---------|----------|
 | **[IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)** | Complete technical implementation, architecture | Developers |
@@ -30,6 +35,7 @@
 | **[SCHEMA_MIGRATION_GUIDE.md](SCHEMA_MIGRATION_GUIDE.md)** | ⚠️ How to add new database fields safely | Developers |
 
 ### Data Management
+
 | File | Purpose | Audience |
 |------|---------|----------|
 | **[RESEED_GUIDE.md](RESEED_GUIDE.md)** | Complete re-seeding reference | Developers |
@@ -37,12 +43,14 @@
 | **[RESEED_QUICK_REF.md](RESEED_QUICK_REF.md)** | One-page command reference | Everyone |
 
 ### Automation Scripts
+
 | File | Purpose | Language |
 |------|---------|----------|
 | **[deploy-cv-assistant.ps1](scripts/deploy-cv-assistant.ps1)** | Full deployment automation | PowerShell |
 | **[index-vectors.js](scripts/index-vectors.js)** | Vector indexing automation | Node.js |
 
 ### Database Migrations
+
 | File | Purpose | When to Use |
 |------|---------|-------------|
 | **[003_add_outcome_fields.sql](migrations/003_add_outcome_fields.sql)** | Add outcome fields to existing DB | Upgrading |
@@ -83,21 +91,27 @@ npm run health
 ## 🎯 Documentation by Use Case
 
 ### "I want to understand what was built"
+
 → Read [SUMMARY.md](SUMMARY.md)
 
 ### "I need to deploy this"
+
 → Follow [AUTOMATION.md](AUTOMATION.md), run `npm run deploy:full`
 
 ### "I want to add new skills"
+
 → Edit `migrations/002_seed_data_outcome_driven.sql`, run `.\scripts\deploy-cv-assistant.ps1 -Force`
 
 ### "I need to troubleshoot"
+
 → Check [AUTOMATION.md#troubleshooting](AUTOMATION.md#troubleshooting-guide)
 
 ### "I want to understand the architecture"
+
 → Read [IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)
 
 ### "I want to see production examples"
+
 → Check [DEPLOYMENT_SUCCESS.md](DEPLOYMENT_SUCCESS.md)
 
 ---
@@ -170,6 +184,7 @@ npm run health
 ## 🎓 Key Learnings
 
 ### What Worked Well
+
 1. ✅ **Outcome-driven template** - Forces measurable responses
 2. ✅ **Triple storage** (Vectorize + KV + D1) - Redundancy and flexibility
 3. ✅ **Batched indexing** - Avoids Worker limits
@@ -177,6 +192,7 @@ npm run health
 5. ✅ **PowerShell script** - Cross-platform, robust error handling
 
 ### Best Practices
+
 1. 📝 **Always version control seed data** - Easy rollback
 2. 🔒 **Keep Turnstile enabled** in production
 3. 🧪 **Test locally first** with `-Environment local`
@@ -187,22 +203,24 @@ npm run health
 
 ## 🔗 External Links
 
-- **Production:** https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}
-- **Cloudflare Dashboard:** https://dash.cloudflare.com
-- **Wrangler Docs:** https://developers.cloudflare.com/workers/wrangler/
-- **Workers AI Docs:** https://developers.cloudflare.com/workers-ai/
+- **Production:** <https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}>
+- **Cloudflare Dashboard:** <https://dash.cloudflare.com>
+- **Wrangler Docs:** <https://developers.cloudflare.com/workers/wrangler/>
+- **Workers AI Docs:** <https://developers.cloudflare.com/workers-ai/>
 
 ---
 
 ## 📞 Support
 
 ### Common Issues
+
 1. **"Indexing already in progress"** → Delete index_metadata, retry
 2. **Empty query results** → Re-run indexing
 3. **Build fails** → Clear dist/, rebuild
 4. **Schema errors** → Check PRAGMA table_info
 
 ### Commands to Diagnose
+
 ```powershell
 # Check system health
 npm run health

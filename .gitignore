@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json intentionally NOT ignored - needed for reproducible builds in CI/CD
+# yarn.lock and pnpm-lock.yaml can be ignored since we use npm
 yarn.lock
 pnpm-lock.yaml
 

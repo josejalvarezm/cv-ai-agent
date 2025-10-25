@@ -223,7 +223,7 @@ Based on production deployment with 64 skills:
 
 This repository accompanies a technical blog series on building production-ready AI at the edge:
 
-1. **[AI Fundamentals](https://josealvarez.dev/blog/ai-fundamentals)** - Understanding vectors, embeddings, and LLMs
+1. **[AI Fundamentals](https://blog.josealvarez.dev/blog/ai-agent-post-0)** - Understanding vectors, embeddings, and LLMs
 
 ---
 
@@ -254,6 +254,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Acknowledgements
 
 Built with:
+
 - [Cloudflare Workers](https://workers.cloudflare.com/)
 - [Cloudflare D1](https://developers.cloudflare.com/d1/)
 - [Workers AI](https://developers.cloudflare.com/workers-ai/)

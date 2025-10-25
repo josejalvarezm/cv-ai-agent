@@ -63,11 +63,13 @@ Maintain all technical accuracy, code examples, and diagrams—just adjust the n
 # Guidelines for Refining Blog Posts
 
 ## Style and Tone
+
 - Use professional British English.  
 - Avoid em dashes or hyphens for sentence breaks. Use commas, colons, or full stops.  
 - Keep tone factual, measured, and audience‑aware.  
 
 ## Symbols and Formatting
+
 - Replace emoji checkmarks with ✓.  
 - Replace emoticons with Unicode text symbols.  
 - Use consistent Markdown headings.  
@@ -75,6 +77,7 @@ Maintain all technical accuracy, code examples, and diagrams—just adjust the n
 - Use fenced code blocks for technical snippets.  
 
 ## Core Strategy
+
 - Keep structure: Challenge, Stakes, Tests, Lessons, Human Element.  
 - Dial down theatre: prefer “validating disaster recovery” to “destroying production”.  
 - Show judgement, not bravado: emphasise discipline, reproducibility, lessons.  
@@ -82,11 +85,13 @@ Maintain all technical accuracy, code examples, and diagrams—just adjust the n
 - Frame trade‑offs as maturity: manual steps can show pragmatism.  
 
 ## ✓ What to Emphasise
+
 - Structure, testing discipline, automation.  
 - Humanisation signals: bugs, nerves, trade‑offs.  
 - Outcome focus: concise results such as “3 tests, 0 data loss, 47‑second recovery”.  
 
 ## ⚠️ What to Tone Down
+
 - Over‑drama: avoid reckless phrasing.  
 - Contrived ROI: use industry‑standard downtime costs or simple time comparisons.  
 - AI fingerprints: vary phrasing, avoid repetitive labels.  
@@ -100,7 +105,9 @@ Maintain all technical accuracy, code examples, and diagrams—just adjust the n
 "To validate disaster recovery, I ran the tests directly against my live API. Whilst the business impact was limited, the exercise simulated the same risks faced by production systems: downtime, data loss, and configuration drift. By codifying every component and scripting data population, I could measure how quickly and reliably the system could be rebuilt from scratch."  
 
 ## Final Guidance
+
 Treat each post as a case study, not a performance. Readers want to see:  
+
 - ✓ Competence: design and test resilient systems.  
 - ✓ Judgement: balance automation with pragmatism.  
 - ✓ Authenticity: admit flaws and show how you fixed them.  

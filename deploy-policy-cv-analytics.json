@@ -1,0 +1,118 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudFormationManagement",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate",
+        "cloudformation:ValidateTemplate",
+        "cloudformation:CreateChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:ListStacks",
+        "cloudformation:ListStackResources"
+      ],
+      "Resource": "arn:aws:cloudformation:us-east-1:{AWS_ACCOUNT_ID}:stack/cv-analytics-*/*"
+    },
+    {
+      "Sid": "SQSAccess",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ListQueues"
+      ],
+      "Resource": "arn:aws:sqs:us-east-1:{AWS_ACCOUNT_ID}:cv-analytics-*"
+    },
+    {
+      "Sid": "DynamoDBAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:UpdateItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:BatchGetItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:{AWS_ACCOUNT_ID}:table/QueryEvents",
+        "arn:aws:dynamodb:us-east-1:{AWS_ACCOUNT_ID}:table/Analytics"
+      ]
+    },
+    {
+      "Sid": "LambdaManagement",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:GetFunction",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:InvokeFunction",
+        "lambda:PublishVersion"
+      ],
+      "Resource": "arn:aws:lambda:us-east-1:{AWS_ACCOUNT_ID}:function:cv-analytics-*"
+    },
+    {
+      "Sid": "EventBridgeAndScheduler",
+      "Effect": "Allow",
+      "Action": [
+        "events:PutRule",
+        "events:PutTargets",
+        "events:RemoveTargets",
+        "events:DeleteRule",
+        "events:PutEvents",
+        "events:DescribeRule"
+      ],
+      "Resource": "arn:aws:events:us-east-1:{AWS_ACCOUNT_ID}:rule/cv-analytics-*"
+    },
+    {
+      "Sid": "SES",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:VerifyEmailIdentity",
+        "ses:ListIdentities"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:{AWS_ACCOUNT_ID}:log-group:/aws/lambda/cv-analytics-*:*"
+    },
+    {
+      "Sid": "IAMPassAndRoleCreate",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole",
+        "iam:CreateRole",
+        "iam:AttachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:CreatePolicy"
+      ],
+      "Resource": "arn:aws:iam::{AWS_ACCOUNT_ID}:role/cv-analytics-*"
+    }
+  ]
+}

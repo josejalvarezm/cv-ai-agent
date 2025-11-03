@@ -25,6 +25,7 @@ import { handleIndex } from './handlers/indexHandler';
 import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector } from './handlers/indexManagementHandler';
 import { handleCORSPreflight, addCORSHeaders, verifyAuth, handleWorkerError, handle404 } from './middleware';
 import { checkRateLimit } from './middleware/rateLimiter';
+import { initializeSQSLogger } from './aws/sqs-logger';
 
 // Environment bindings interface
 interface Env {
@@ -37,6 +38,10 @@ interface Env {
   AI_REPLY_ENABLED?: string;
   TURNSTILE_SECRET_KEY?: string; // Turnstile secret for server-side validation
   JWT_SECRET?: string;            // Secret for signing session JWTs
+  AWS_SQS_URL?: string;           // SQS queue URL for analytics
+  AWS_REGION?: string;            // AWS region for SQS
+  AWS_ACCESS_KEY_ID?: string;     // AWS access key for SigV4 signing
+  AWS_SECRET_ACCESS_KEY?: string; // AWS secret key for SigV4 signing
 }
 
 // Skill record from D1
@@ -388,6 +393,14 @@ Output answer:
  */
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+    // Initialize SQS analytics logger on first request
+    initializeSQSLogger({
+      AWS_SQS_URL: env.AWS_SQS_URL,
+      AWS_REGION: env.AWS_REGION,
+      AWS_ACCESS_KEY_ID: env.AWS_ACCESS_KEY_ID,
+      AWS_SECRET_ACCESS_KEY: env.AWS_SECRET_ACCESS_KEY,
+    });
+
     const url = new URL(request.url);
     const path = url.pathname;
     

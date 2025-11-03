@@ -12,6 +12,7 @@ import {
 } from './input-validation';
 import { AI_CONFIG, SEARCH_CONFIG, AI_STOP_SEQUENCES } from './config';
 import { generateEmbedding, cosineSimilarity } from './services/embeddingService';
+import { sqsLogger } from './aws/sqs-logger';
 
 interface Env {
   DB: D1Database;
@@ -263,6 +264,23 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     }
 
     const query = validationResult.sanitizedInput!;
+
+    // Generate a unique request ID for tracking this query through the analytics pipeline
+    const requestId = crypto.randomUUID();
+    const sessionId = request.headers.get('x-session-id') || 'anonymous';
+
+    // Log query event to SQS (fire-and-forget, won't block response)
+    sqsLogger.sendEvent(
+      sqsLogger.createQueryEvent(
+        requestId,
+        sessionId,
+        query,
+        {
+          userAgent: request.headers.get('user-agent') || undefined,
+          referer: request.headers.get('referer') || undefined,
+        }
+      )
+    ).catch(e => console.error('Failed to send query event:', e));
 
     // ===== STEP 1.5: QUESTION TYPE VALIDATION (Block non-technical queries) =====
     const questionValidation = validateQuestionType(query);
@@ -951,6 +969,44 @@ Output answer (LACONIC - max 3 sentences):
         responseData.aiError = aiError.message;
       }
     }
+
+    // Log response event to SQS with match quality assessment
+    // Determine match quality based on top result similarity
+    const topResult = topResults[0];
+    let matchType: 'full' | 'partial' | 'none' = 'none';
+    let matchScore = 0;
+    let reasoning = 'No relevant skills found';
+
+    if (topResult) {
+      matchScore = Math.round(topResult.similarity * 100);
+      if (topResult.similarity > 0.8) {
+        matchType = 'full';
+        reasoning = `Excellent match: "${topResult.technology.name}" with ${topResult.similarity.toFixed(2)} similarity`;
+      } else if (topResult.similarity > 0.5) {
+        matchType = 'partial';
+        reasoning = `Moderate match: "${topResult.technology.name}" with ${topResult.similarity.toFixed(2)} similarity`;
+      } else {
+        matchType = 'none';
+        reasoning = `Weak match: "${topResult.technology.name}" with ${topResult.similarity.toFixed(2)} similarity`;
+      }
+    }
+
+    // Send response event (non-blocking)
+    sqsLogger.sendEvent(
+      sqsLogger.createResponseEvent(
+        requestId,
+        sessionId,
+        matchType,
+        matchScore,
+        reasoning,
+        undefined, // No performance metrics available in Worker context
+        topResults.length, // vectorMatches count
+        {
+          matchQuality: topResult?.similarity || 0,
+          sourcesUsed: topResults.map(r => r.technology.name),
+        }
+      )
+    ).catch(e => console.error('Failed to send response event:', e));
 
     return Response.json(responseData);
 

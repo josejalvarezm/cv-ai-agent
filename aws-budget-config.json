@@ -1,0 +1,9 @@
+{
+  "BudgetName": "cv-analytics-monthly",
+  "BudgetLimit": {
+    "Amount": "5.00",
+    "Unit": "USD"
+  },
+  "TimeUnit": "MONTHLY",
+  "BudgetType": "COST"
+}

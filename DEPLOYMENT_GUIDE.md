@@ -114,7 +114,33 @@ Before deploying, ensure:
 
 ---
 
-## 🔧 Environment Variables
+## � AWS Secrets Configuration
+
+**⚠️ Important:** Before deploying with SQS analytics integration, configure AWS credentials in Cloudflare.
+
+The Worker sends analytics events to AWS SQS. To enable this:
+
+1. **Set 4 AWS secrets in Cloudflare:**
+   - `AWS_SQS_URL` — SQS queue URL
+   - `AWS_REGION` — AWS region (us-east-1)
+   - `AWS_ACCESS_KEY_ID` — IAM credentials
+   - `AWS_SECRET_ACCESS_KEY` — IAM credentials
+
+2. **Verify secrets are configured:**
+   ```powershell
+   wrangler secret list
+   ```
+
+3. **After setting secrets, deploy the Worker:**
+   ```powershell
+   npm run deploy:full
+   ```
+
+👉 **See [AWS_SECRETS_SETUP.md](./AWS_SECRETS_SETUP.md)** for complete step-by-step instructions.
+
+---
+
+## �🔧 Environment Variables
 
 ### **Development Worker** (no `[env]` prefix)
 

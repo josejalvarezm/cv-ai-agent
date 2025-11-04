@@ -395,10 +395,10 @@ export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     // Initialize SQS analytics logger on first request
     initializeSQSLogger({
-      AWS_SQS_URL: env.AWS_SQS_URL,
-      AWS_REGION: env.AWS_REGION,
-      AWS_ACCESS_KEY_ID: env.AWS_ACCESS_KEY_ID,
-      AWS_SECRET_ACCESS_KEY: env.AWS_SECRET_ACCESS_KEY,
+      AWS_SQS_URL: env.AWS_SQS_URL || '',
+      AWS_REGION: env.AWS_REGION || '',
+      AWS_ACCESS_KEY_ID: env.AWS_ACCESS_KEY_ID || '',
+      AWS_SECRET_ACCESS_KEY: env.AWS_SECRET_ACCESS_KEY || '',
     });
 
     const url = new URL(request.url);

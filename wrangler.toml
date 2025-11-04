@@ -29,19 +29,21 @@ ENVIRONMENT = "development"
 CACHE_TTL = "3600"
 VECTORIZE_FALLBACK = "true"
 AI_REPLY_ENABLED = "true"
-# TURNSTILE_SECRET_KEY should be set via: wrangler secret put TURNSTILE_SECRET_KEY
 
 # Development configuration
 [env.development]
 vars = { ENVIRONMENT = "development" }
-# TURNSTILE_SECRET_KEY should be set via: wrangler secret put TURNSTILE_SECRET_KEY --env development
 
 # Production configuration
 [env.production]
 vars = { ENVIRONMENT = "production", CACHE_TTL = "7200", VECTORIZE_FALLBACK = "true", AI_REPLY_ENABLED = "true" }
-# Note: TURNSTILE_SECRET_KEY and JWT_SECRET are set via wrangler secrets (not in vars):
-# wrangler secret put TURNSTILE_SECRET_KEY --env production
-# wrangler secret put JWT_SECRET --env production
+# Secrets are automatically inherited from global secrets set via wrangler secret put:
+#   - TURNSTILE_SECRET_KEY
+#   - JWT_SECRET
+#   - AWS_SQS_URL
+#   - AWS_REGION
+#   - AWS_ACCESS_KEY_ID
+#   - AWS_SECRET_ACCESS_KEY
 
 [[env.production.d1_databases]]
 binding = "DB"

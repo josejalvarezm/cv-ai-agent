@@ -992,21 +992,28 @@ Output answer (LACONIC - max 3 sentences):
     }
 
     // Send response event (non-blocking)
-    sqsLogger.sendEvent(
-      sqsLogger.createResponseEvent(
-        requestId,
-        sessionId,
-        matchType,
-        matchScore,
-        reasoning,
-        undefined, // No performance metrics available in Worker context
-        topResults.length, // vectorMatches count
-        {
-          matchQuality: topResult?.similarity || 0,
-          sourcesUsed: topResults.map(r => r.technology.name),
-        }
-      )
-    ).catch(e => console.error('Failed to send response event:', e));
+    console.log(`Analytics event sending: response - ${requestId}`);
+    try {
+      await sqsLogger.sendEvent(
+        sqsLogger.createResponseEvent(
+          requestId,
+          sessionId,
+          matchType,
+          matchScore,
+          reasoning,
+          undefined, // No performance metrics available in Worker context
+          topResults.length, // vectorMatches count
+          {
+            matchQuality: topResult?.similarity || 0,
+            sourcesUsed: topResults.map(r => r.technology.name),
+          }
+        )
+      );
+      console.log(`Analytics event sent: response - ${requestId}`);
+    } catch (e: any) {
+      console.error('Failed to send response event:', e);
+      // Log but don't block response to user
+    }
 
     return Response.json(responseData);
 

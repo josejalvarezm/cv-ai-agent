@@ -90,6 +90,8 @@ class SQSLogger {
         return;
       }
 
+      console.log(`SQS sendEvent called: ${event.eventType} - ${event.requestId}`);
+
       // Build SQS SendMessage request
       const messageBody = JSON.stringify(event);
       const messageGroupId = 'analytics';

@@ -442,7 +442,7 @@ export default {
         }
 
         // Use D1 vectors for all queries
-        return addCORSHeaders(await handleD1VectorQuery(request, env));
+        return addCORSHeaders(await handleD1VectorQuery(request, env, _ctx));
       }
 
       // Admin: get current AI quota status from KV
@@ -452,7 +452,7 @@ export default {
 
       // Legacy endpoint - redirects to /query
       if (path === ENDPOINTS.QUERY_D1 && (request.method === 'GET' || request.method === 'POST')) {
-        return addCORSHeaders(await handleD1VectorQuery(request, env));
+        return addCORSHeaders(await handleD1VectorQuery(request, env, _ctx));
       }
 
       // Old Vectorize-based query (deprecated, keeping for reference)

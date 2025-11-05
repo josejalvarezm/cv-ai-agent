@@ -108,10 +108,8 @@ function cleanupAIReply(reply: string): string {
       // Truncate at the last complete sentence
       const lastSentenceEnd = matches[matches.length - 1].index! + 1;
       cleaned = cleaned.substring(0, lastSentenceEnd).trim();
-      console.log('Truncated incomplete sentence at position:', lastSentenceEnd);
     } else {
       // No complete sentences found - return as is with ellipsis
-      console.warn('AI reply has no complete sentences, appending ellipsis');
       cleaned = cleaned + '...';
     }
   }
@@ -186,8 +184,6 @@ function enforceLaconicStyle(reply: string): string {
     laconic += '.';
   }
   
-  console.log(`Laconic enforcement: ${reconstructed.length} sentences → ${Math.min(2, reconstructed.length)} sentences`);
-  console.log(`Filler removal: ${reply.length} chars → ${laconic.length} chars (${Math.round((1 - laconic.length/reply.length) * 100)}% reduction)`);
   return laconic.trim();
 }
 
@@ -233,8 +229,6 @@ function validateResponseQuality(reply: string): {
   }
   
   if (issues.length > 0) {
-    console.warn('Response quality issues detected:', issues);
-    
     // Auto-correct: truncate to first 2 sentences if too long
     if (sentences.length > 3) {
       const corrected = sentences.slice(0, 2).join(' ');
@@ -249,7 +243,7 @@ function validateResponseQuality(reply: string): {
   return { isValid: issues.length === 0, issues: [] };
 }
 
-export async function handleD1VectorQuery(request: Request, env: Env): Promise<Response> {
+export async function handleD1VectorQuery(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   try {
     const url = new URL(request.url);
     const rawQuery = url.searchParams.get('q') || await request.text();
@@ -270,17 +264,19 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     const sessionId = request.headers.get('x-session-id') || 'anonymous';
 
     // Log query event to SQS (fire-and-forget, won't block response)
-    sqsLogger.sendEvent(
-      sqsLogger.createQueryEvent(
-        requestId,
-        sessionId,
-        query,
-        {
-          userAgent: request.headers.get('user-agent') || undefined,
-          referer: request.headers.get('referer') || undefined,
-        }
-      )
-    ).catch(e => console.error('Failed to send query event:', e));
+    ctx.waitUntil(
+      sqsLogger.sendEvent(
+        sqsLogger.createQueryEvent(
+          requestId,
+          sessionId,
+          query,
+          {
+            userAgent: request.headers.get('user-agent') || undefined,
+            referer: request.headers.get('referer') || undefined,
+          }
+        )
+      ).catch(e => console.error('Failed to send query event:', e))
+    );
 
     // ===== STEP 1.5: QUESTION TYPE VALIDATION (Block non-technical queries) =====
     const questionValidation = validateQuestionType(query);
@@ -308,17 +304,9 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
       );
     }
 
-    console.log(`D1 Vector Query: "${query}" (sanitized)`);
-    console.log(`Business hours check passed: ${businessHoursCheck.timezone} at ${businessHoursCheck.currentTime}`);
-
     // Detect if query is project-specific (e.g., "skills at CCHQ")
     const projectDetection = detectProjectInQuery(query);
     const searchQuery = projectDetection.isProjectSpecific ? projectDetection.cleanQuery : query;
-    
-    if (projectDetection.isProjectSpecific) {
-      console.log(`Project-specific query detected: ${projectDetection.projectName}`);
-      console.log(`Clean search query: "${searchQuery}"`);
-    }
 
     // Generate query embedding using the cleaned search query
     const queryEmbedding = await generateEmbedding(searchQuery, env.AI);
@@ -356,8 +344,6 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
         assistantReply: friendlyMessage 
       }, { status: 200 }); // Return 200 (not 404) with friendly message
     }
-
-    console.log(`Found ${vectors.length} vectors to compare`);
 
     // Calculate similarities
     const similarities: Array<{
@@ -455,8 +441,6 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
     similarities.sort((a, b) => b.similarity - a.similarity);
     const topResults = similarities.slice(0, SEARCH_CONFIG.TOP_K_EXTENDED);
 
-    console.log(`Top result: ${topResults[0]?.technology.name} (${topResults[0]?.similarity.toFixed(4)})`);
-
     // Check if verbose mode is requested (reuse existing url from top of function)
     const isVerbose = url.searchParams.get('verbose') === 'true';
 
@@ -501,7 +485,6 @@ export async function handleD1VectorQuery(request: Request, env: Env): Promise<R
         
         if (!allowed) {
           // Quota exceeded - return circuit breaker message
-          console.log(`AI quota exceeded: ${status.neuronsUsed}/${status.neuronsLimit} neurons (resets at ${status.resetAt})`);
           responseData.assistantReply = getCircuitBreakerMessage();
           responseData.quotaExceeded = true;
           responseData.quotaStatus = status;
@@ -874,7 +857,6 @@ Output answer (LACONIC - max 3 sentences):
               
               return result;
             } catch (error) {
-              console.error('Stream consumption error:', error);
               reader.cancel('Error reading stream');
               throw error;
             } finally {
@@ -884,10 +866,8 @@ Output answer (LACONIC - max 3 sentences):
           
           // Check if response is a ReadableStream
           if (aiResponse && typeof aiResponse === 'object' && 'body' in aiResponse && aiResponse.body instanceof ReadableStream) {
-            console.log('AI response is a ReadableStream, consuming fully...');
             aiReply = await consumeStream(aiResponse.body);
           } else if (aiResponse && typeof aiResponse === 'object' && aiResponse instanceof ReadableStream) {
-            console.log('AI response is directly a ReadableStream, consuming fully...');
             aiReply = await consumeStream(aiResponse);
           } else if (typeof aiResponse === 'string') {
             aiReply = aiResponse;
@@ -908,11 +888,6 @@ Output answer (LACONIC - max 3 sentences):
           } else if (Array.isArray(aiResponse?.choices) && aiResponse.choices[0]?.message?.content) {
             aiReply = aiResponse.choices[0].message.content;
           } else if (aiResponse && typeof aiResponse === 'object') {
-            // Try to stringify and look for content
-            console.log('AI response is object, attempting to extract content...');
-            const responseStr = JSON.stringify(aiResponse);
-            console.log('AI response structure:', responseStr.substring(0, 300));
-            
             // Try common response patterns
             if ('content' in aiResponse) {
               aiReply = aiResponse.content;
@@ -923,31 +898,21 @@ Output answer (LACONIC - max 3 sentences):
             }
           }
           
-          console.log('AI response type:', typeof aiResponse);
-          console.log('AI response constructor:', aiResponse?.constructor?.name || 'N/A');
-          console.log('Extracted AI reply length:', aiReply.length);
-          console.log('AI reply preview:', aiReply.substring(0, 100));
-          
           // Remove surrounding quotes if present (happens when response is JSON-stringified)
           if (aiReply.startsWith('"') && aiReply.endsWith('"')) {
             aiReply = aiReply.slice(1, -1);
-            console.log('Removed surrounding quotes from AI reply');
           }
           
           // Clean up any incomplete sentences from truncation
           aiReply = cleanupAIReply(aiReply);
-          console.log('Cleaned AI reply length:', aiReply.length);
           
           // Enforce laconic style: max 3 sentences, remove filler
           aiReply = enforceLaconicStyle(aiReply);
-          console.log('Laconic AI reply length:', aiReply.length);
           
           // Validate response quality and auto-correct if needed
           const qualityCheck = validateResponseQuality(aiReply);
           if (!qualityCheck.isValid) {
-            console.warn('Response quality issues detected:', qualityCheck.issues);
             if (qualityCheck.correctedReply) {
-              console.log('Using corrected reply:', qualityCheck.correctedReply.substring(0, 100));
               aiReply = qualityCheck.correctedReply;
             }
           }
@@ -955,16 +920,10 @@ Output answer (LACONIC - max 3 sentences):
           responseData.assistantReply = aiReply;
           
           // Increment quota counter after successful inference
-          // Fixed neuron cost: 102 per call (validated at 97% accuracy via testing)
-          // Note: max_tokens=150 allows ~50% buffer for complete sentences, but actual usage
-          // typically stays around 100-120 tokens due to natural completion and stop sequences.
-          // We use a fixed cost for predictability rather than calculating exact token counts.
           await incrementQuota(env.KV, NEURON_COSTS['llama-3.1-70b-instruct']);
-          console.log(`AI inference successful. Quota: ${(status.neuronsUsed + NEURON_COSTS['llama-3.1-70b-instruct']).toFixed(2)}/${status.neuronsLimit} neurons`);
         }
       } catch (aiError: any) {
         console.error('AI reply generation failed:', aiError);
-        console.error('AI error details:', aiError.message, aiError.stack);
         responseData.assistantReply = '';
         responseData.aiError = aiError.message;
       }
@@ -991,10 +950,9 @@ Output answer (LACONIC - max 3 sentences):
       }
     }
 
-    // Send response event (non-blocking)
-    console.log(`Analytics event sending: response - ${requestId}`);
-    try {
-      await sqsLogger.sendEvent(
+    // Send response event (fire-and-forget, won't block response)
+    ctx.waitUntil(
+      sqsLogger.sendEvent(
         sqsLogger.createResponseEvent(
           requestId,
           sessionId,
@@ -1008,12 +966,10 @@ Output answer (LACONIC - max 3 sentences):
             sourcesUsed: topResults.map(r => r.technology.name),
           }
         )
-      );
-      console.log(`Analytics event sent: response - ${requestId}`);
-    } catch (e: any) {
-      console.error('Failed to send response event:', e);
-      // Log but don't block response to user
-    }
+      ).catch((e: any) => {
+        console.error('Failed to send response event:', e);
+      })
+    );
 
     return Response.json(responseData);
 

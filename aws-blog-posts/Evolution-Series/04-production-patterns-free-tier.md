@@ -1,12 +1,22 @@
-# Production Patterns at £0/month
+# Production Patterns at £0/month (Evolution Series: Production Analytics on AWS, Part V)
 
-**Series:** Edge Analytics at £0/month  
-**Part:** 4 of 4  
-**Reading time:** 13 minutes
+## Contents
+ 
+- [The Constraint](#the-constraint)
+- [Why It Matters](#why-it-matters)
+- [State Management: Terraform Cloud](#state-management-terraform-cloud)
+- [Zero-Downtime Deployments](#zero-downtime-deployments)
+- [Automated CI/CD with Path Filtering](#automated-cicd-with-path-filtering)
+- [Security: Credential Management](#security-credential-management)
+- [Monitoring and Observability](#monitoring-and-observability)
+- [Failure Handling](#failure-handling)
+- [The AWS Well-Architected Framework](#the-aws-well-architected-framework)
+- [The Measured Reality](#the-measured-reality)
+- [What Commercial Scale Adds](#what-commercial-scale-adds)
+- [Key Lessons](#key-lessons)
+- [Series Conclusion](#series-conclusion)
 
----
-
-## The Challenge
+## The Constraint
 
 Zero monthly cost doesn't mean amateur architecture. The same patterns that make systems production-grade at commercial scale apply within free tier limits: state locking, version history, zero-downtime deployments, automated CI/CD, and monitoring.
 
@@ -18,7 +28,7 @@ This forces better engineering. Not because free tier is virtuous, but because c
 
 ---
 
-## The Stakes
+## Why It Matters
 
 ```mermaid
 graph TB
@@ -465,7 +475,7 @@ resource "aws_sns_topic" "alerts" {
 resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
-  endpoint  = "{YOUR_EMAIL}"
+  endpoint  = "[your-email@example.com]"
 }
 ```
 

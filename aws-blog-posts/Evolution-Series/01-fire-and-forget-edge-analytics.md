@@ -1,12 +1,22 @@
-# Fire-and-Forget Analytics for Edge Systems
+# Fire-and-Forget Analytics for Edge Systems (Evolution Series: Production Analytics on AWS, Part II)
 
-**Series:** Edge Analytics at £0/month  
-**Part:** 1 of 4  
-**Reading time:** 10 minutes
+*Analytics shouldn’t add latency. Fire‑and‑forget decouples visibility from response paths, delivering 12ms edge speed with 99.97% reliability: all within AWS free‑tier limits*
 
----
+## Contents
 
-## The Challenge
+- [The Obstacle](#the-obstacle)
+- [Why It Matters](#why-it-matters)
+- [The Pattern: Fire-and-Forget](#the-pattern-fire-and-forget)
+- [The Measured Impact](#the-measured-impact)
+- [Platform Equivalence](#platform-equivalence)
+- [The Architecture Flow](#the-architecture-flow)
+- [Error Handling](#error-handling)
+- [Trade-offs and Limitations](#trade-offs-and-limitations)
+- [When Fire-and-Forget Isn't Appropriate](#when-fire-and-forget-isnt-appropriate)
+- [The Measured Reality](#the-measured-reality)
+- [Key Lessons](#key-lessons)
+
+## The Obstacle
 
 Adding analytics to an edge function should be straightforward: log the query, send it to a queue, return the response. In practice, this sequence creates a latency problem.
 
@@ -16,7 +26,7 @@ The solution wasn't to remove analytics. It was to decouple analytics from the r
 
 ---
 
-## The Stakes
+## Why It Matters
 
 ```mermaid
 sequenceDiagram
@@ -47,6 +57,7 @@ sequenceDiagram
 ### The Latency Problem
 
 **Before optimisation:**
+
 - Query processing: 12ms
 - Analytics logging: 100ms (blocking)
 - **Total response time:** 112ms

@@ -1,12 +1,21 @@
-# Microservices Architecture at £0/month
+# Microservices Architecture at £0/month (Evolution Series: Production Analytics on AWS, Part III)
 
-**Series:** Edge Analytics at £0/month  
-**Part:** 2 of 4  
-**Reading time:** 12 minutes
+## Contents
+ 
+- [The Barrier](#the-barrier)
+- [Why It Matters](#why-it-matters)
+- [The Architecture](#the-architecture)
+- [Repository Structure](#repository-structure)
+- [State Management](#state-management)
+- [Cross-Service Dependencies](#cross-service-dependencies)
+- [CI/CD Path Filtering](#cicd-path-filtering)
+- [Cost Analysis](#cost-analysis)
+- [Failure Isolation](#failure-isolation)
+- [When Microservices Add Complexity](#when-microservices-add-complexity)
+- [The Measured Reality](#the-measured-reality)
+- [Key Lessons](#key-lessons)
 
----
-
-## The Challenge
+## The Barrier
 
 Analytics infrastructure could be simple: one Terraform state file, one repository, all services deployed together. This works until it doesn't.
 
@@ -18,7 +27,7 @@ The constraint remained: £0/month operational cost.
 
 ---
 
-## The Stakes
+## Why It Matters
 
 ```mermaid
 graph TB
@@ -209,7 +218,7 @@ Each service uses Terraform Cloud for remote state with automatic locking and ve
 # worker-infra/main.tf
 terraform {
   cloud {
-    organization = "josejalvarezmterraform"
+    organization = "[your-terraform-organization]"
     
     workspaces {
       name = "cv-analytics-worker"

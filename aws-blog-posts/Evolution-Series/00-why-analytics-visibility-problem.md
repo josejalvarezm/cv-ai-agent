@@ -1,12 +1,22 @@
-# Why Analytics? The Visibility Problem
+# Why Analytics? The Visibility Problem (Evolution Series: Production Analytics on AWS, Part I)
 
-**Series:** Edge Analytics at £0/month  
-**Part:** 0 of 4  
-**Reading time:** 8 minutes
+*Fast systems don’t guarantee impact. Analytics reveal user intent and business value that performance alone cannot.*
+
+## Contents
+
+- [Contents](#contents)
+- [The Dilemma](#the-dilemma)
+- [Why It Matters](#why-it-matters)
+- [The Constraint](#the-constraint)
+- [What Analytics Must Provide](#what-analytics-must-provide)
+- [The Architecture Decision](#the-architecture-decision)
+- [What This Series Covers](#what-this-series-covers)
+- [The Measured Outcome](#the-measured-outcome)
+- [The Core Principle](#the-core-principle)
 
 ---
 
-## The Challenge
+## The Dilemma
 
 My CV chatbot responds in 12ms. Users ask about my experience with TypeScript, AWS, or specific projects. The system performs semantic search over vectorised skills, retrieves relevant context, and generates natural language responses using an LLM. Fast, functional, and deployed at the edge.
 
@@ -18,7 +28,7 @@ Performance is measurable. Impact is invisible.
 
 ---
 
-## The Stakes
+## Why It Matters
 
 ```mermaid
 graph LR
@@ -255,6 +265,4 @@ The rest of this series shows how to build that visibility at £0/month without 
 
 ---
 
-**Next:** [Part 1: Fire-and-Forget Edge Analytics →](./01-fire-and-forget-edge-analytics.md)
-
-**Series index:** [README →](./README.md)
+**Next:** [Part 1: Fire-and-Forget Edge Analytics →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-1)

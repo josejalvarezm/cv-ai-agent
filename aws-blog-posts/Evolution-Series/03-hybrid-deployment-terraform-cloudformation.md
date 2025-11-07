@@ -1,12 +1,21 @@
-# Hybrid Deployment: Terraform + CloudFormation
+# Hybrid Deployment: Terraform + CloudFormation (Evolution Series: Production Analytics on AWS, Part IV)
 
-**Series:** Edge Analytics at £0/month  
-**Part:** 3 of 4  
-**Reading time:** 11 minutes
+## Contents
 
----
+- [The Hurdle](#the-hurdle)
+- [Why It Matters](#why-it-matters)
+- [The Hybrid Pattern](#the-hybrid-pattern)
+- [The Deployment Flow](#the-deployment-flow)
+- [The Interface: Outputs and Parameters](#the-interface-outputs-and-parameters)
+- [Real-World Deployment Scenarios](#real-world-deployment-scenarios)
+- [Why CloudFormation for Lambda](#why-cloudformation-for-lambda)
+- [Why Terraform for Infrastructure](#why-terraform-for-infrastructure)
+- [Trade-offs and Limitations](#trade-offs-and-limitations)
+- [When Hybrid Isn't Worth It](#when-hybrid-isnt-worth-it)
+- [The Measured Reality](#the-measured-reality)
+- [Key Lessons](#key-lessons)
 
-## The Challenge
+## The Hurdle
 
 Terraform can deploy Lambda functions. CloudFormation can deploy Lambda functions. After evaluating both approaches, I chose both.
 
@@ -18,7 +27,7 @@ The solution: use Terraform for infrastructure, CloudFormation for application d
 
 ---
 
-## The Stakes
+## Why It Matters
 
 ```mermaid
 graph TB

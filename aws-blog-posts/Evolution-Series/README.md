@@ -384,7 +384,7 @@ The system described continues to run in production, processing queries from my 
 
 Found an error? Have questions? Want to discuss trade-offs?
 
-- **Email:** {YOUR_EMAIL}
+- **Email:** [your-email@example.com]
 - **Portfolio:** {YOUR_DOMAIN}
 - **LinkedIn:** [Jose Alvarez](https://www.linkedin.com/in/jose-joaquin-alvarez-munoz/)
 

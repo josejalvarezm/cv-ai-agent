@@ -416,8 +416,4 @@ The fire-and-forget pattern isn't about avoiding `await`. It's about understandi
 
 ---
 
-**Previous:** [Part 0: Why Analytics? →](./00-why-analytics-visibility-problem.md)
-
-**Next:** [Part 2: Microservices Architecture at £0/month →](./02-microservices-architecture-zero-cost.md)
-
-**Series index:** [README →](./README.md)
+**Next:** [Part 2: Microservices Architecture at £0/month →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-2)

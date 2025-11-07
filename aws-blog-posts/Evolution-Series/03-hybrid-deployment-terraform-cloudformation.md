@@ -1,8 +1,11 @@
 # Hybrid Deployment: Terraform + CloudFormation (Evolution Series: Production Analytics on AWS, Part IV)
 
+*Infrastructure as code isn’t one‑size‑fits‑all. This post shows how Terraform and CloudFormation can coexist — balancing portability with native AWS features. Hybrid deployment patterns let teams evolve without lock‑in, while still staying at £0/month within the free‑tier.*
+
 ## Contents
 
-- [The Hurdle](#the-hurdle)
+- [Contents](#contents)
+- [The Challenge](#the-challenge)
 - [Why It Matters](#why-it-matters)
 - [The Hybrid Pattern](#the-hybrid-pattern)
 - [The Deployment Flow](#the-deployment-flow)
@@ -15,7 +18,7 @@
 - [The Measured Reality](#the-measured-reality)
 - [Key Lessons](#key-lessons)
 
-## The Hurdle
+## The Challenge
 
 Terraform can deploy Lambda functions. CloudFormation can deploy Lambda functions. After evaluating both approaches, I chose both.
 
@@ -686,8 +689,6 @@ The hybrid pattern isn't about avoiding limitations. It's about using each tool'
 
 ---
 
-**Previous:** [Part 2: Microservices Architecture →](./02-microservices-architecture-zero-cost.md)
+**Previous:** [Part 3: Microservices Architecture →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-3)
 
-**Next:** [Part 4: Production Patterns at £0/month →](./04-production-patterns-free-tier.md)
-
-**Series index:** [README →](./README.md)
+**Next:** [Part 4: Production Patterns at £0/month →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-5)

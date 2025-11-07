@@ -1,5 +1,7 @@
 # Microservices Architecture at £0/month (Evolution Series: Production Analytics on AWS, Part III)
 
+*Monoliths couple everything: deployments, failures, and blast radius. This post shows how microservices at £0/month create clear boundaries, independent deployments, and isolated failures, all while staying within AWS free‑tier limit*
+
 ## Contents
  
 - [The Barrier](#the-barrier)
@@ -518,8 +520,7 @@ Microservices architecture isn't about scale. It's about boundaries, ownership, 
 
 ---
 
-**Previous:** [Part 1: Fire-and-Forget Analytics →](./01-fire-and-forget-edge-analytics.md)
+**Previous:** [Part II: Fire-and-Forget Analytics →](aws-chatbot-analytics-2)
 
-**Next:** [Part 3: Hybrid Deployment Pattern →](./03-hybrid-deployment-terraform-cloudformation.md)
+**Next:** [Part IV: Hybrid Deployment Pattern →](aws-chatbot-analytics-4)
 
-**Series index:** [README →](./README.md)

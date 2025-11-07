@@ -1,7 +1,10 @@
 # Production Patterns at £0/month (Evolution Series: Production Analytics on AWS, Part V)
 
+*Constraints sharpen discipline. State locking, CI/CD, zero downtime, and monitoring prove production reliability is possible at free‑tier scale.*
+
 ## Contents
  
+- [Contents](#contents)
 - [The Constraint](#the-constraint)
 - [Why It Matters](#why-it-matters)
 - [State Management: Terraform Cloud](#state-management-terraform-cloud)
@@ -87,7 +90,7 @@ Terraform Cloud solves these problems whilst remaining free.
 # processor-infra/main.tf
 terraform {
   cloud {
-    organization = "josejalvarezmterraform"
+    organization = "[your-terraform-organization]"
     
     workspaces {
       name = "cv-analytics-processor"
@@ -748,6 +751,5 @@ The constraint forced better engineering. Not because free tier is virtuous, but
 
 ---
 
-**Previous:** [Part 3: Hybrid Deployment →](./03-hybrid-deployment-terraform-cloudformation.md)
+**Previous:** [Part 3: Hybrid Deployment →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-4)
 
-**Series index:** [README →](./README.md)

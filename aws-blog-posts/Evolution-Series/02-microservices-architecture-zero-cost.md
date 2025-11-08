@@ -3,7 +3,7 @@
 *Monoliths couple everything: deployments, failures, and blast radius. This post shows how microservices at £0/month create clear boundaries, independent deployments, and isolated failures, all while staying within AWS free‑tier limit*
 
 ## Contents
- 
+
 - [The Barrier](#the-barrier)
 - [Why It Matters](#why-it-matters)
 - [The Architecture](#the-architecture)
@@ -299,6 +299,203 @@ The processor service doesn't depend on worker state. It queries AWS directly fo
 
 ---
 
+## Event Correlation: The Hidden Complexity
+
+Analytics isn't just logging events. It's correlating two-stage events (query, then response) into a complete record. This correlation happens in the Processor service and reveals why distributed architectures need careful data modelling.
+
+### The Two-Event Problem
+
+Each user query generates two separate events:
+
+**Event 1: Query Event** (Immediate)
+
+```json
+{
+  "eventType": "query",
+  "requestId": "c5ddb9b5-d0d3-4401-85ec-62994f28311b",
+  "timestamp": 1762607658821,
+  "query": "What databases have you used?",
+  "sessionId": "user-session-123"
+}
+```
+
+**Event 2: Response Event** (After 150ms)
+
+```json
+{
+  "eventType": "response",
+  "requestId": "c5ddb9b5-d0d3-4401-85ec-62994f28311b",
+  "timestamp": 1762607658971,
+  "matchType": "full",
+  "matchScore": 84,
+  "reasoning": "Excellent match with SQL Server, PostgreSQL experience"
+}
+```
+
+Both events arrive independently at SQS. The Processor Lambda must match them by `requestId` and combine them into a single analytics record.
+
+### Two-Table DynamoDB Design
+
+This matching happens across two DynamoDB tables:
+
+**Table 1: `cv-analytics-query-events` (Interim Storage)**
+
+| Column | Type | Purpose | TTL |
+|--------|------|---------|-----|
+| `requestId` | PK | Unique query identifier | 24h |
+| `timestamp` | SK | Event timestamp | |
+| `query` | String | User's question | |
+| `sessionId` | String | Session reference | |
+| `status` | String | "awaiting_response" | |
+
+**Table 2: `cv-analytics-analytics` (Final Storage)**
+
+| Column | Type | Purpose | TTL |
+|--------|------|---------|-----|
+| `requestId` | PK | Unique identifier | 90d |
+| `timestamp` | SK | Query timestamp | |
+| `query` | String | User's question | |
+| `matchType` | String | "full" / "partial" / "none" | |
+| `matchScore` | Number | 0-100 confidence | |
+| `reasoning` | String | Match explanation | |
+| `sessionId` | String | Session reference | |
+| `week` | GSI | "2025-W46" for weekly reports | |
+
+### Query Lifecycle
+
+```mermaid
+graph TB
+    A[Query Event<br/>12ms] --> B["SQS FIFO Queue<br/>(Ordered delivery)"]
+    B --> C["Lambda Processor<br/>(Batch: 10 messages)"]
+    
+    C --> D["Store in<br/>cv-analytics-query-events<br/>(Interim, 24h TTL)"]
+    D --> E["Status:<br/>awaiting_response"]
+    
+    F[Response Event<br/>+150ms] --> B
+    B --> C
+    
+    C --> G{Query Event<br/>Found?}
+    
+    G -->|Yes| H["Correlate:<br/>Query + Response"]
+    H --> I["Store in<br/>cv-analytics-analytics<br/>(Final, 90d TTL)"]
+    I --> J["DELETE interim<br/>record from<br/>query-events"]
+    
+    G -->|No| K["Log Orphaned<br/>Response Event"]
+    K --> L["Message returned<br/>to SQS for retry"]
+    
+    E -.->|After 24h| M["Auto-delete<br/>via TTL"]
+    
+    style A fill:#f97316,color:#fff
+    style D fill:#3b82f6,color:#fff
+    style I fill:#8b5cf6,color:#fff
+    style J fill:#10b981,color:#fff
+    style M fill:#ef4444,color:#fff
+```
+
+### Implementation Details
+
+**Lambda Handler Logic:**
+
+```typescript
+// Simplified from cv-analytics-processor
+async function processEvent(event: AnalyticsEvent) {
+  if (event.eventType === 'query') {
+    // Stage 1: Store query event
+    await queryEventsTable.put({
+      requestId: event.requestId,
+      timestamp: event.timestamp,
+      query: event.query,
+      sessionId: event.sessionId,
+      status: 'awaiting_response',
+      ttl: Math.floor(Date.now() / 1000) + 24 * 60 * 60
+    });
+    
+  } else if (event.eventType === 'response') {
+    // Stage 2: Look up matching query
+    const queryEvent = await queryEventsTable.get(event.requestId);
+    
+    if (!queryEvent) {
+      // Orphaned response: no matching query found
+      console.warn(`Orphaned response event: ${event.requestId}`);
+      throw new Error('Query event not found'); // Retry later
+    }
+    
+    // Stage 3: Correlate query + response
+    const analyticsRecord = {
+      requestId: event.requestId,
+      timestamp: queryEvent.timestamp,
+      query: queryEvent.query,
+      matchType: event.matchType,
+      matchScore: event.matchScore,
+      sessionId: queryEvent.sessionId,
+      week: getWeekIdentifier(queryEvent.timestamp),
+      ttl: Math.floor(Date.now() / 1000) + 90 * 24 * 60 * 60
+    };
+    
+    // Stage 4: Store correlated record
+    await analyticsTable.put(analyticsRecord);
+    
+    // Stage 5: Clean up interim record
+    await queryEventsTable.delete({
+      requestId: event.requestId,
+      timestamp: queryEvent.timestamp
+    });
+  }
+}
+```
+
+### Failure Scenarios
+
+#### Scenario 1: Response Event Arrives First
+
+Response event is queued before query event. Lambda looks for query event in Step 2, finds nothing, throws error. Message goes to DLQ after 3 retries. Query event eventually arrives but has no matching response (orphaned).
+
+**Solution:** Query event is stored with 24-hour TTL, so orphaned query events auto-delete.
+
+#### Scenario 2: Query Event Deleted Before Response Arrives
+
+Query event reaches TTL and auto-deletes. Response event arrives, Lambda looks for query, finds nothing. Response marked as orphaned, returned to DLQ.
+
+**Occurrence:** Rare, only if response event delayed > 24 hours (client hung, network interrupted).
+
+#### Scenario 3: Lambda Failure During Correlation
+
+Lambda crashes after storing analytics record but before deleting query event. Duplicate record exists: query-events table and analytics table both contain the data.
+
+**Solution:** Processor Lambda is idempotent (SQS deduplication ID ensures same message isn't processed twice).
+
+### Data Quality Implications
+
+**Query-Events Table (After Processing):**
+
+Only orphaned records remain:
+
+- Query event arrived, status set to "awaiting_response"
+- Response event never arrived (within 24 hours)
+- Record auto-deletes via TTL
+
+**Analytics Table (Permanent History):**
+
+Only successfully correlated records:
+
+- Query event + Response event both arrived
+- Correlation succeeded
+- Interim query record deleted
+- 90-day retention for reporting
+
+This two-table design ensures:
+
+- ✅ Complete records only in final table
+- ✅ No duplicate data across tables
+- ✅ Automatic cleanup of orphaned records
+- ✅ Weekly reports include only successful correlations
+
+---
+
+## Failure Isolation
+
+---
+
 ## CI/CD Path Filtering
 
 GitHub Actions deploy only services that changed, using path filters to trigger relevant jobs.
@@ -523,4 +720,3 @@ Microservices architecture isn't about scale. It's about boundaries, ownership, 
 **Previous:** [Part II: Fire-and-Forget Analytics →](aws-chatbot-analytics-2)
 
 **Next:** [Part IV: Hybrid Deployment Pattern →](aws-chatbot-analytics-4)
-

@@ -17,6 +17,8 @@
 
 import { type ServiceContainer } from './container';
 import { generateCacheKey, getCachedResponse, setCachedResponse } from './cacheService';
+import { ValidationError, ExternalServiceError } from '../types/errors';
+import { getLogger } from '../utils/logger';
 import { CACHE_CONFIG, SEARCH_CONFIG } from '../config';
 
 /**
@@ -71,25 +73,27 @@ export class QueryService {
     request: QueryRequest,
     requestUrl: string
   ): Promise<QueryResponse> {
+    const logger = getLogger();
     const { query } = request;
     const topK = request.topK || SEARCH_CONFIG.TOP_K;
 
     // Validate query
     if (!query || query.trim().length === 0) {
-      throw new Error('Query parameter "q" is required');
+      logger.apiError('Query validation failed: empty query');
+      throw new ValidationError('Query parameter "q" is required');
     }
 
-    console.log(`Processing query: "${query}"`);
+    logger.apiRequest('QUERY', query);
 
     // Check cache
     const cacheKey = generateCacheKey(query);
     const cachedData = await getCachedResponse(cacheKey, requestUrl);
     if (cachedData) {
-      console.log('Cache hit');
+      logger.cacheHit(cacheKey);
       return cachedData as QueryResponse;
     }
 
-    console.log('Cache miss, processing query...');
+    logger.cacheMiss(cacheKey);
 
     // Generate embedding for query
     const queryEmbedding = await this.services.embeddingService.generate(query);
@@ -122,11 +126,13 @@ export class QueryService {
    * Search vectors using configured store
    */
   private async searchVectors(embedding: number[], topK: number): Promise<QueryResultEntry[]> {
+    const logger = getLogger();
     const results: QueryResultEntry[] = [];
 
     try {
       // Query vector store (with automatic fallback)
       const vectorMatches = await this.services.vectorStore.query(embedding, topK);
+      logger.vectorOperation('query', vectorMatches.length, 0);
 
       // Fetch canonical data for each match
       for (const match of vectorMatches) {
@@ -149,12 +155,16 @@ export class QueryService {
             });
           }
         } catch (error) {
-          console.error(`Error fetching skill data for id ${match.metadata.id}:`, error);
+          logger.repositoryError(`Error fetching skill data for id ${match.metadata.id}`, undefined, {
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
     } catch (error) {
-      console.error('Vector search failed:', error);
-      throw new Error(`Vector search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.vectorError('Vector search failed', undefined, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new ExternalServiceError('Vectorize', 'Vector search failed');
     }
 
     return results;
@@ -164,6 +174,8 @@ export class QueryService {
    * Generate AI reply using Workers AI
    */
   private async generateAssistantReply(query: string, results: QueryResultEntry[]): Promise<string> {
+    const logger = getLogger();
+
     try {
       if (results.length === 0) {
         return '';
@@ -191,13 +203,15 @@ Provide a short 2-3 sentence answer that:
 - Suggests one practical follow-up action
 - Keep it conversational and helpful`;
 
-      console.log('Generating AI reply...');
+      logger.service('Generating AI reply...');
 
       // This would need the AI binding passed in
       // For now, return empty
       return '';
     } catch (error) {
-      console.error('AI reply generation failed:', error);
+      logger.serviceError('AI reply generation failed', undefined, {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return '';
     }
   }

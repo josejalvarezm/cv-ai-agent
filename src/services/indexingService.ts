@@ -18,6 +18,8 @@
 
 import { type ServiceContainer } from './container';
 import { generateEmbedding } from './embeddingService';
+import { ConflictError } from '../types/errors';
+import { getLogger } from '../utils/logger';
 import { INDEX_CONFIG } from '../config';
 import { createSkillText, type Skill } from '../utils';
 
@@ -56,17 +58,19 @@ export class IndexingService {
    * Execute indexing operation
    */
   async execute(request: IndexingRequest): Promise<IndexingResponse> {
+    const logger = getLogger();
     const itemType = request.type === 'technology' ? 'technology' : 'skills';
     const lockKey = `index:lock:${itemType}`;
 
     // Acquire lock
     const acquired = await this.services.kvRepository.acquireLock(lockKey, this.lockTimeout);
     if (!acquired) {
-      throw new Error(`Indexing already in progress for ${itemType}`);
+      logger.serviceError(`Indexing already in progress for ${itemType}`);
+      throw new ConflictError(`Indexing already in progress for ${itemType}`);
     }
 
     try {
-      console.log(`Starting indexing for ${itemType}`);
+      logger.service(`Starting indexing for ${itemType}`);
 
       // Ensure metadata table exists
       await this.services.d1Repository.ensureIndexMetadataTable();
@@ -128,6 +132,7 @@ export class IndexingService {
    * Index a batch of items
    */
   private async indexBatch(items: any[], version: number, itemType: string, batchSize: number): Promise<number> {
+    const logger = getLogger();
     const vectors: Array<{ id: string; values: number[]; metadata: any }> = [];
 
     for (const item of items) {
@@ -158,9 +163,11 @@ export class IndexingService {
           metadata,
         });
 
-        console.log(`Embedded ${idKey} (${vectors.length}/${batchSize})`);
+        logger.vector(`Embedded ${idKey} (${vectors.length}/${batchSize})`);
       } catch (error) {
-        console.error(`Error indexing ${itemType} item ${item.id}:`, error);
+        logger.vectorError(`Error indexing ${itemType} item ${item.id}`, undefined, {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -168,9 +175,11 @@ export class IndexingService {
     if (vectors.length > 0) {
       try {
         await this.services.vectorStore.upsert(vectors);
-        console.log(`Upserted ${vectors.length} vectors`);
+        logger.vectorOperation('upsert', vectors.length, 0);
       } catch (error) {
-        console.error('Error upserting vectors:', error);
+        logger.vectorError('Error upserting vectors', undefined, {
+          error: error instanceof Error ? error.message : String(error),
+        });
         throw error;
       }
     }
@@ -182,6 +191,8 @@ export class IndexingService {
    * Get indexing progress
    */
   async getProgress(_itemType: string = 'skills'): Promise<any> {
+    const logger = getLogger();
+
     try {
       const metadata = await this.services.d1Repository.getLastIndexMetadata();
       return metadata
@@ -193,7 +204,9 @@ export class IndexingService {
           }
         : { error: 'No indexing metadata found', status: 'never' };
     } catch (error) {
-      console.error('Error getting index progress:', error);
+      logger.databaseError('Error getting index progress', undefined, {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }

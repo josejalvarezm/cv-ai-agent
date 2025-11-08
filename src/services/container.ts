@@ -21,6 +21,8 @@ import { UnifiedSkillRepository } from '../repositories/skillRepository';
 import { VectorizeAdapter, KVVectorAdapter, CompositeVectorStore, type IVectorStore } from '../repositories/vectorStore';
 import { EmbeddingService, cosineSimilarity } from './embeddingService';
 import { CacheService } from './cacheService';
+import { QueryService } from './queryService';
+import { IndexingService } from './indexingService';
 import { type FullEnv } from '../types/env';
 
 /**
@@ -40,6 +42,8 @@ export interface ServiceContainer {
   // Services
   embeddingService: EmbeddingService;
   cacheService: CacheService;
+  queryService: QueryService;
+  indexingService: IndexingService;
 }
 
 /**
@@ -69,6 +73,21 @@ export function createServiceContainer(env: FullEnv): ServiceContainer {
   const kvAdapter = new KVVectorAdapter(env.KV, cosineSimilarity);
   const vectorStore = new CompositeVectorStore(vectorizeAdapter, kvAdapter);
 
+  // Create base container for orchestration services
+  const baseContainer = {
+    d1Repository,
+    vectorizeRepository,
+    kvRepository,
+    skillRepository,
+    vectorStore,
+    embeddingService,
+    cacheService,
+  } as unknown as ServiceContainer;
+
+  // Create high-level orchestration services
+  const queryService = new QueryService(baseContainer, true);
+  const indexingService = new IndexingService(baseContainer, env.AI);
+
   return {
     d1Repository,
     vectorizeRepository,
@@ -77,6 +96,8 @@ export function createServiceContainer(env: FullEnv): ServiceContainer {
     vectorStore,
     embeddingService,
     cacheService,
+    queryService,
+    indexingService,
   };
 }
 
@@ -95,5 +116,7 @@ export function createMockServiceContainer(): ServiceContainer {
     vectorStore: undefined as any,
     embeddingService: undefined as any,
     cacheService: undefined as any,
+    queryService: undefined as any,
+    indexingService: undefined as any,
   };
 }

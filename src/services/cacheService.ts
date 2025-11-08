@@ -85,3 +85,31 @@ export async function invalidateCache(cacheKey: string, requestUrl: string): Pro
   
   return await cache.delete(cacheUrl.toString());
 }
+
+/**
+ * CacheService class wrapper
+ * Provides object-oriented interface for dependency injection
+ */
+export class CacheService {
+  constructor(private _kv?: KVNamespace) {
+    // KV namespace optional for distributed caching
+    // This service primarily uses Cache API
+  }
+
+  generateKey(query: string): string {
+    return generateCacheKey(query);
+  }
+
+  async get(cacheKey: string, requestUrl: string): Promise<any | null> {
+    return getCachedResponse(cacheKey, requestUrl);
+  }
+
+  async set(cacheKey: string, requestUrl: string, data: any, ttl?: number): Promise<void> {
+    return setCachedResponse(cacheKey, requestUrl, data, ttl);
+  }
+
+  async invalidate(cacheKey: string, requestUrl: string): Promise<boolean> {
+    return invalidateCache(cacheKey, requestUrl);
+  }
+}
+

@@ -65,3 +65,28 @@ export function cosineSimilarity(vecA: number[] | Float32Array, vecB: number[] |
 export function blobToFloat32Array(blob: ArrayBuffer): Float32Array {
   return new Float32Array(blob);
 }
+
+/**
+ * EmbeddingService class wrapper
+ * Provides object-oriented interface for dependency injection
+ */
+export class EmbeddingService {
+  constructor(private ai: Ai) {}
+
+  async generate(text: string): Promise<number[]> {
+    return generateEmbedding(text, this.ai);
+  }
+
+  async generateBatch(texts: string[]): Promise<number[][]> {
+    return generateEmbeddingsBatch(texts, this.ai);
+  }
+
+  similarity(vecA: number[] | Float32Array, vecB: number[] | Float32Array): number {
+    return cosineSimilarity(vecA, vecB);
+  }
+
+  toFloat32Array(blob: ArrayBuffer): Float32Array {
+    return blobToFloat32Array(blob);
+  }
+}
+

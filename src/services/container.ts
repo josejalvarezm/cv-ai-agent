@@ -17,7 +17,9 @@
 import { D1Repository } from '../repositories/d1Repository';
 import { VectorizeRepository } from '../repositories/vectorizeRepository';
 import { KVRepository } from '../repositories/kvRepository';
-import { EmbeddingService } from './embeddingService';
+import { UnifiedSkillRepository } from '../repositories/skillRepository';
+import { VectorizeAdapter, KVVectorAdapter, CompositeVectorStore, type IVectorStore } from '../repositories/vectorStore';
+import { EmbeddingService, cosineSimilarity } from './embeddingService';
 import { CacheService } from './cacheService';
 import { type FullEnv } from '../types/env';
 
@@ -26,10 +28,14 @@ import { type FullEnv } from '../types/env';
  * Exposes all services available to handlers
  */
 export interface ServiceContainer {
-  // Repositories
+  // Data Access Repositories
   d1Repository: D1Repository;
   vectorizeRepository: VectorizeRepository;
   kvRepository: KVRepository;
+  skillRepository: UnifiedSkillRepository;
+
+  // Vector Store (abstraction layer)
+  vectorStore: IVectorStore;
 
   // Services
   embeddingService: EmbeddingService;
@@ -46,19 +52,29 @@ export interface ServiceContainer {
  * @returns Configured ServiceContainer ready for use
  */
 export function createServiceContainer(env: FullEnv): ServiceContainer {
-  // Instantiate repositories (data access layer)
+  // Instantiate base repositories (data access layer)
   const d1Repository = new D1Repository(env.DB);
   const vectorizeRepository = new VectorizeRepository(env.VECTORIZE);
   const kvRepository = new KVRepository(env.KV);
+
+  // Instantiate specialized repositories
+  const skillRepository = new UnifiedSkillRepository(d1Repository, true);
 
   // Instantiate services (business logic layer)
   const embeddingService = new EmbeddingService(env.AI);
   const cacheService = new CacheService(env.KV);
 
+  // Create composite vector store with fallback
+  const vectorizeAdapter = new VectorizeAdapter(env.VECTORIZE);
+  const kvAdapter = new KVVectorAdapter(env.KV, cosineSimilarity);
+  const vectorStore = new CompositeVectorStore(vectorizeAdapter, kvAdapter);
+
   return {
     d1Repository,
     vectorizeRepository,
     kvRepository,
+    skillRepository,
+    vectorStore,
     embeddingService,
     cacheService,
   };
@@ -75,6 +91,8 @@ export function createMockServiceContainer(): ServiceContainer {
     d1Repository: undefined as any,
     vectorizeRepository: undefined as any,
     kvRepository: undefined as any,
+    skillRepository: undefined as any,
+    vectorStore: undefined as any,
     embeddingService: undefined as any,
     cacheService: undefined as any,
   };

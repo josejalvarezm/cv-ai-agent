@@ -19,6 +19,7 @@ This document tracks all changes made to implement SOLID best practices in the M
 **File:** `src/types/env.ts` (NEW)
 
 **Problem Addressed:**
+
 - Monolithic `Env` interface forced handlers to depend on all 12 bindings
 - Handlers received bindings they didn't need (e.g., health check received AI binding)
 - Difficult to mock specific environments for testing
@@ -43,6 +44,7 @@ interface SessionEnv extends AuthEnv, CacheEnv {}
 ```
 
 **Benefits:**
+
 - ✓ Handlers now explicitly show dependencies
 - ✓ Easier to mock: provide only needed bindings
 - ✓ Type safety: IDE suggests only relevant properties
@@ -57,6 +59,7 @@ interface SessionEnv extends AuthEnv, CacheEnv {}
 **File:** `src/services/container.ts` (NEW)
 
 **Problem Addressed:**
+
 - Repositories instantiated manually in each handler
 - Difficult to manage dependency graph
 - No single place to understand all service dependencies
@@ -82,12 +85,14 @@ export function createServiceContainer(env: FullEnv): ServiceContainer {
 ```
 
 **Benefits:**
+
 - ✓ Single source of truth for service creation
 - ✓ Easy to swap implementations (testing, refactoring)
 - ✓ Reduces coupling between handlers and constructors
 - ✓ Mock container available for testing
 
 **Supporting Changes:**
+
 - Enhanced `EmbeddingService` with class wrapper
 - Enhanced `CacheService` with class wrapper
 - Maintained backward compatibility with existing function exports
@@ -99,6 +104,7 @@ export function createServiceContainer(env: FullEnv): ServiceContainer {
 **File:** `src/repositories/skillRepository.ts` (NEW)
 
 **Problem Addressed:**
+
 - `skills` and `technology` tables treated inconsistently
 - Fallback logic required by callers
 - Field mapping scattered across code
@@ -117,12 +123,14 @@ export class UnifiedSkillRepository {
 ```
 
 **Key Features:**
+
 - Tries `skills` table first, falls back to `technology`
 - Field mapping centralized (one source of truth)
 - Error handling per-source
 - All inconsistency hidden from callers
 
 **Before:**
+
 ```typescript
 // In index.ts - caller had to handle both sources
 const s = await env.DB.prepare('SELECT * FROM skills WHERE id = ?').bind(id).first<Skill>();
@@ -133,6 +141,7 @@ const mapped: Skill = { id: t.id, name: t.name, ... }; // Manual mapping
 ```
 
 **After:**
+
 ```typescript
 // In handlers - simple, consistent interface
 const skillRepo = new UnifiedSkillRepository(d1Repo);
@@ -140,6 +149,7 @@ const skill = await skillRepo.getById(id); // Works regardless of source
 ```
 
 **Benefits:**
+
 - ✓ Consistent interface regardless of data source
 - ✓ Centralized fallback logic
 - ✓ Single mapping location (maintainable)
@@ -152,6 +162,7 @@ const skill = await skillRepo.getById(id); // Works regardless of source
 **File:** `src/repositories/vectorStore.ts` (NEW)
 
 **Problem Addressed:**
+
 - Vectorize and KV treated as fundamentally different
 - Fallback logic required special handling in query code
 - Metadata structure wasn't consistently typed
@@ -173,6 +184,7 @@ export class CompositeVectorStore implements IVectorStore { /* Auto-fallback */ 
 ```
 
 **Key Features:**
+
 - Consistent interface for all vector stores
 - Safe metadata casting
 - Error handling per-implementation
@@ -180,6 +192,7 @@ export class CompositeVectorStore implements IVectorStore { /* Auto-fallback */ 
 - Health checks for resilience
 
 **Before:**
+
 ```typescript
 // Caller had to know about both implementations
 try {
@@ -195,6 +208,7 @@ try {
 ```
 
 **After:**
+
 ```typescript
 // Caller uses unified interface
 const vectorStore = new CompositeVectorStore(
@@ -205,6 +219,7 @@ const results = await vectorStore.query(embedding, topK);
 ```
 
 **Benefits:**
+
 - ✓ True substitutability: any IVectorStore works
 - ✓ Fallback is automatic and transparent
 - ✓ Health checks enable resilience
@@ -229,11 +244,13 @@ const results = await vectorStore.query(embedding, topK);
 ## Files Modified
 
 ### New Files (3)
+
 1. `src/types/env.ts` - Segregated environment interfaces
 2. `src/services/container.ts` - Service container factory
 3. `src/repositories/vectorStore.ts` - Vector store abstraction
 
 ### Enhanced Files (2)
+
 1. `src/services/embeddingService.ts` - Added `EmbeddingService` class wrapper
 2. `src/services/cacheService.ts` - Added `CacheService` class wrapper
 
@@ -242,6 +259,7 @@ const results = await vectorStore.query(embedding, topK);
 ## Testing Recommendations
 
 ### Unit Tests to Add
+
 ```typescript
 // Test segregated interfaces
 describe('EmbeddingService', () => {
@@ -329,18 +347,21 @@ git revert <commit-sha>
 ## Next Steps
 
 ### Immediate (Today)
+
 - [ ] Review Phase 1 changes
 - [ ] Add unit tests for new components
 - [ ] Verify TypeScript compilation
 - [ ] Benchmark performance (no regression)
 
 ### Short Term (This Week)
+
 - [ ] Begin Phase 2 implementation
 - [ ] Update handler signatures
 - [ ] Create route registry
 - [ ] Extract services
 
 ### Medium Term (Next Week)
+
 - [ ] Refactor `index.ts` entry point
 - [ ] Complete Phase 3 polish
 - [ ] Full integration testing
@@ -351,6 +372,7 @@ git revert <commit-sha>
 ## Decision Log
 
 ### Decision: Function-Based → Class-Based Services
+
 **Context:** `EmbeddingService` and `CacheService` were function-based  
 **Decision:** Added class wrappers while maintaining function exports  
 **Rationale:** Enables dependency injection while preserving backward compatibility  
@@ -358,6 +380,7 @@ git revert <commit-sha>
 **Status:** ✓ Implemented
 
 ### Decision: Composite Vector Store Pattern
+
 **Context:** Multiple vector store backends with fallback requirement  
 **Decision:** Implemented `CompositeVectorStore` wrapping primary + fallback  
 **Rationale:** Allows automatic fallback without duplicating logic  
@@ -365,6 +388,7 @@ git revert <commit-sha>
 **Status:** ✓ Implemented
 
 ### Decision: Unified Skill Repository with Fallback
+
 **Context:** Skills and technology data from different tables  
 **Decision:** Created `UnifiedSkillRepository` with priority-ordered fetching  
 **Rationale:** Centralizes inconsistency, maintains backward compatibility  
@@ -378,6 +402,7 @@ git revert <commit-sha>
 **Expected:** None (refactoring only)
 
 **Validation Plan:**
+
 - [ ] Measure latency of new service creation
 - [ ] Benchmark vector store queries (Vectorize vs KV)
 - [ ] Profile memory usage

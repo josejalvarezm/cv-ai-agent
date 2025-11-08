@@ -12,19 +12,7 @@
  */
 
 import { generateEmbedding } from '../services/embeddingService';
-
-interface Env {
-  DB: D1Database;
-  AI: Ai;
-}
-
-interface Technology {
-  id: number;
-  name: string;
-  experience?: string;
-  summary?: string;
-  category?: string;
-}
+import type { IndexEnv, Technology } from '../types';
 
 /**
  * POST /index - Index all technology skills into vectors table
@@ -35,7 +23,7 @@ interface Technology {
  * 3. Store embeddings in vectors table
  * 
  * @param request - Incoming request
- * @param env - Worker environment bindings
+ * @param env - Worker environment bindings (only needs DB and AI)
  * @returns JSON response with indexing results
  * 
  * @example
@@ -47,7 +35,7 @@ interface Technology {
  * //   "message": "Indexed 15 skills successfully"
  * // }
  */
-export async function handleIndex(request: Request, env: Env): Promise<Response> {
+export async function handleIndex(request: Request, env: IndexEnv): Promise<Response> {
   try {
     console.log('Starting indexing process...');
 

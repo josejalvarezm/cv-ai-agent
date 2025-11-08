@@ -5,10 +5,7 @@
  * Use this to verify the Worker is running and database is accessible.
  */
 
-interface Env {
-  DB: D1Database;
-  KV?: KVNamespace;
-}
+import type { HealthEnv } from '../types';
 
 /**
  * Handle health check requests
@@ -19,7 +16,7 @@ interface Env {
  * - Skill count (from database)
  * - Timestamp
  * 
- * @param env - Worker environment bindings
+ * @param env - Worker environment bindings (only needs DB access)
  * @returns JSON response with health status
  * 
  * @example
@@ -32,7 +29,7 @@ interface Env {
  * //   "timestamp": "2025-10-23T16:00:00.000Z"
  * // }
  */
-export async function handleHealth(env: Env): Promise<Response> {
+export async function handleHealth(env: HealthEnv): Promise<Response> {
   try {
     // Check D1 connection by querying skill count
     let skillCount = 0;

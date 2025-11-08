@@ -10,10 +10,7 @@
  * The JWT can then be used in Authorization header for subsequent requests.
  */
 
-interface Env {
-  TURNSTILE_SECRET_KEY?: string;
-  JWT_SECRET?: string;
-}
+import type { SessionEnv } from '../types';
 
 /**
  * Handle session creation requests
@@ -30,10 +27,10 @@ interface Env {
  * }
  * 
  * @param request - Incoming request with Turnstile token
- * @param _env - Worker environment bindings  
+ * @param _env - Worker environment bindings (only security config)
  * @returns JSON response with session token
  */
-export async function handleSession(request: Request, _env: Env): Promise<Response> {
+export async function handleSession(request: Request, _env: SessionEnv): Promise<Response> {
   try {
     // Parse request body
     const body = await request.json() as { turnstileToken?: string };

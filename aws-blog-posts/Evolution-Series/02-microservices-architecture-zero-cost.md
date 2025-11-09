@@ -10,9 +10,11 @@
 - [Repository Structure](#repository-structure)
 - [State Management](#state-management)
 - [Cross-Service Dependencies](#cross-service-dependencies)
+- [Event Correlation: The Hidden Complexity](#event-correlation-the-hidden-complexity)
+- [Failure Isolation](#failure-isolation)
 - [CI/CD Path Filtering](#cicd-path-filtering)
 - [Cost Analysis](#cost-analysis)
-- [Failure Isolation](#failure-isolation)
+- [Failure Isolation](#failure-isolation-1)
 - [When Microservices Add Complexity](#when-microservices-add-complexity)
 - [The Measured Reality](#the-measured-reality)
 - [Key Lessons](#key-lessons)
@@ -717,6 +719,6 @@ Microservices architecture isn't about scale. It's about boundaries, ownership, 
 
 ---
 
-**Previous:** [Part II: Fire-and-Forget Analytics →](aws-chatbot-analytics-2)
+**Previous:** [Part II: Fire-and-Forget Analytics →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-2)
 
-**Next:** [Part IV: Hybrid Deployment Pattern →](aws-chatbot-analytics-4)
+**Next:** [Part IV: Hybrid Deployment Pattern →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-4)

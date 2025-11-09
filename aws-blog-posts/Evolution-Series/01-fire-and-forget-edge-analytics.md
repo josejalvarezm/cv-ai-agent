@@ -4,6 +4,7 @@
 
 ## Contents
 
+- [Contents](#contents)
 - [The Obstacle](#the-obstacle)
 - [Why It Matters](#why-it-matters)
 - [The Pattern: Fire-and-Forget](#the-pattern-fire-and-forget)
@@ -416,4 +417,4 @@ The fire-and-forget pattern isn't about avoiding `await`. It's about understandi
 
 ---
 
-**Next:** [Part 2: Microservices Architecture at £0/month →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-2)
+**Next:** [Part III: Microservices Architecture at £0/month →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-3)

@@ -3,7 +3,7 @@
 *Constraints sharpen discipline. State locking, CI/CD, zero downtime, and monitoring prove production reliability is possible at free‑tier scale.*
 
 ## Contents
- 
+
 - [Contents](#contents)
 - [The Constraint](#the-constraint)
 - [Why It Matters](#why-it-matters)
@@ -13,6 +13,7 @@
 - [Security: Credential Management](#security-credential-management)
 - [Monitoring and Observability](#monitoring-and-observability)
 - [Failure Handling](#failure-handling)
+- [Testing Without AWS: Dependency Inversion](#testing-without-aws-dependency-inversion)
 - [The AWS Well-Architected Framework](#the-aws-well-architected-framework)
 - [The Measured Reality](#the-measured-reality)
 - [What Commercial Scale Adds](#what-commercial-scale-adds)
@@ -572,6 +573,172 @@ This prevents head-of-line blocking where one poison message stops all processin
 
 ---
 
+## Testing Without AWS: Dependency Inversion
+
+Production code should be testable without AWS credentials. The Dependency Inversion Principle enables testing business logic in isolation.
+
+### Repository Interface Pattern
+
+```typescript
+// IEventRepository.ts - Abstraction
+export interface IEventRepository {
+  storeQuery(event: QueryEventRecord): Promise<void>;
+  getQuery(requestId: string): Promise<QueryEventRecord | null>;
+  deleteQuery(requestId: string): Promise<void>;
+  storeAnalytics(record: AnalyticsRecord): Promise<void>;
+}
+
+// DynamoDBEventRepository.ts - AWS Implementation
+export class DynamoDBEventRepository implements IEventRepository {
+  private client: DynamoDBClient;
+  
+  async storeQuery(event: QueryEventRecord): Promise<void> {
+    const command = new PutItemCommand({
+      TableName: this.queryEventsTable,
+      Item: marshall(event),
+    });
+    await this.client.send(command);
+  }
+  // ... other methods
+}
+
+// MockEventRepository.ts - Test Implementation
+export class MockEventRepository implements IEventRepository {
+  private data = new Map<string, QueryEventRecord>();
+  
+  async storeQuery(event: QueryEventRecord): Promise<void> {
+    this.data.set(event.requestId, event);
+  }
+  
+  async getQuery(requestId: string): Promise<QueryEventRecord | null> {
+    return this.data.get(requestId) || null;
+  }
+  // ... other methods (in-memory, instant, free)
+}
+```
+
+### Service Layer (Business Logic)
+
+```typescript
+// EventCorrelationService.ts
+export class EventCorrelationService {
+  constructor(private repository: IEventRepository) {}
+  
+  async processResponseEvent(event: ResponseEvent): Promise<CorrelationResult> {
+    // Business logic depends on interface, not AWS
+    const queryRecord = await this.repository.getQuery(event.requestId);
+    
+    if (!queryRecord) {
+      return { success: false, action: 'orphaned' };
+    }
+    
+    const analyticsRecord = this.correlate(queryRecord, event);
+    await this.repository.storeAnalytics(analyticsRecord);
+    await this.repository.deleteQuery(event.requestId);
+    
+    return { success: true, action: 'correlated' };
+  }
+}
+```
+
+### Unit Tests (Zero AWS Cost)
+
+```typescript
+// EventCorrelationService.test.ts
+describe('EventCorrelationService', () => {
+  it('should correlate query + response events', async () => {
+    const mockRepo = new MockEventRepository();
+    const service = new EventCorrelationService(mockRepo);
+    
+    // Stage 1: Store query
+    await service.processEvent({
+      eventType: 'query',
+      requestId: 'test-123',
+      query: 'Python experience?',
+    });
+    
+    // Stage 2: Process response
+    const result = await service.processEvent({
+      eventType: 'response',
+      requestId: 'test-123',
+      matchType: 'full',
+      matchScore: 95,
+    });
+    
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('correlated');
+  });
+});
+```
+
+**Benefits:**
+
+- ✓ Tests run in milliseconds (no AWS API calls)
+- ✓ No AWS credentials required (CI/CD simplified)
+- ✓ Tests work offline (development experience improved)
+- ✓ Deterministic results (no eventual consistency issues)
+- ✓ Free to run (no Lambda invocation costs)
+
+### Test Coverage
+
+**Processor Service:**
+
+- 4/4 unit tests passing
+- MockRepository enables testing without DynamoDB
+- Correlation logic fully tested
+
+**Reporter Service:**
+
+- 8/13 unit tests passing
+- MockAnalyticsProvider enables testing without DynamoDB
+- Aggregation logic fully tested
+- Template rendering needs work (5 tests failing)
+
+**Infrastructure:**
+
+- Terraform validated via `terraform plan` in CI/CD
+- No unit tests needed (declarative configuration)
+
+**Coverage:** ~60% of critical business logic paths tested without AWS.
+
+### The SOLID Architecture Pattern
+
+```mermaid
+graph TB
+    subgraph "HIGH LEVEL: Business Logic"
+        BL[EventCorrelationService<br/>Pure TypeScript]
+    end
+    
+    subgraph "ABSTRACTION: Interface"
+        I[IEventRepository<br/>Contract Definition]
+    end
+    
+    subgraph "LOW LEVEL: Implementations"
+        AWS[DynamoDBRepository<br/>Production]
+        Mock[MockRepository<br/>Testing]
+    end
+    
+    BL -->|depends on| I
+    AWS -->|implements| I
+    Mock -->|implements| I
+    
+    style BL fill:#8b5cf6,color:#fff
+    style I fill:#3b82f6,color:#fff
+    style AWS fill:#10b981,color:#fff
+    style Mock fill:#f59e0b,color:#fff
+```
+
+**Service depends on abstraction, not implementation.** This enables:
+
+- Swapping DynamoDB for PostgreSQL (change one class)
+- Testing without AWS (inject mock implementation)
+- Local development (use in-memory storage)
+- Performance testing (measure business logic separately)
+
+**Cost impact:** Zero. Better architecture doesn't cost money.
+
+---
+
 ## The AWS Well-Architected Framework
 
 Production systems satisfy the five pillars regardless of budget.
@@ -752,4 +919,3 @@ The constraint forced better engineering. Not because free tier is virtuous, but
 ---
 
 **Previous:** [Part 3: Hybrid Deployment →](https://blog.{YOUR_DOMAIN}/blog/aws-chatbot-analytics-4)
-

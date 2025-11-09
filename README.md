@@ -47,7 +47,7 @@ graph TD
     N -->|CORS| T
 ```
 
-### Service Architecture (SOLID Design)
+### Service Architecture
 
 ```mermaid
 graph TB
@@ -56,31 +56,29 @@ graph TB
         QUERY["query-d1-vectors.ts<br/>Query Orchestrator"]
     end
     
-    subgraph "Services (SRP)"
-        ES["embeddingService.ts<br/>Generate & Calculate<br/>Embeddings"]
-        VS["vectorSearchService.ts<br/>Vector Similarity<br/>Search"]
-        AR["aiResponseService.ts<br/>LLM Response<br/>Generation"]
-        CS["cacheService.ts<br/>Caching Operations"]
+    subgraph "Services"
+        ES["embeddingService.ts<br/>Embedding Generation"]
+        VS["vectorSearchService.ts<br/>Vector Similarity"]
+        AR["aiResponseService.ts<br/>LLM Response Gen"]
+        CS["cacheService.ts<br/>Response Caching"]
     end
     
-    subgraph "Handlers (ISP)"
-        HH["healthHandler<br/>Health Checks"]
-        IH["indexHandler<br/>Vector Indexing"]
-        SH["sessionHandler<br/>Session Mgmt"]
+    subgraph "Handlers"
+        HH["healthHandler.ts"]
+        IH["indexHandler.ts"]
+        SH["sessionHandler.ts"]
     end
     
     subgraph "Middleware"
-        CORS["cors.ts<br/>CORS Headers"]
-        ERROR["errorHandler.ts<br/>Error Response"]
-        RATE["rateLimiter.ts<br/>Rate Limiting"]
+        CORS["cors.ts"]
+        ERROR["errorHandler.ts"]
+        RATE["rateLimiter.ts"]
     end
     
-    subgraph "Abstractions (DIP)"
-        PROV["providers.ts<br/>Interface Contracts"]
-    end
-    
-    subgraph "Types (LSP)"
-        TYPES["types.d.ts<br/>Type-Safe Env"]
+    subgraph "Configuration"
+        CONFIG["config.ts"]
+        TYPES["types.d.ts"]
+        PROV["providers.ts"]
     end
     
     INDEX --> QUERY
@@ -95,24 +93,12 @@ graph TB
     QUERY --> VS
     QUERY --> AR
     QUERY --> CS
+    INDEX_H --> EMBED
     
-    PROV -.->|Enables| ES
-    PROV -.->|Enables| VS
-    PROV -.->|Enables| AR
-    PROV -.->|Enables| CS
-    
-    TYPES -.->|Guides| INDEX
-    TYPES -.->|Guides| QUERY
-    TYPES -.->|Guides| HH
-    TYPES -.->|Guides| IH
-    TYPES -.->|Guides| SH
-    
-    style PROV fill:#e1f5ff
-    style TYPES fill:#f3e5f5
-    style ES fill:#e8f5e9
-    style VS fill:#e8f5e9
-    style AR fill:#e8f5e9
-    style CS fill:#e8f5e9
+    EMBED --> CF
+    AIRESP --> CF
+    VSEARCH --> D1
+    CACHE --> D1
 ```
 
 ### Data Flow - Query Execution
@@ -324,7 +310,7 @@ cv-ai-agent/
 │   ├── index.ts                      # Main Worker entry point & routing
 │   ├── config.ts                     # Configuration constants
 │   ├── types.d.ts                    # Type-safe environment interfaces
-│   ├── providers.ts                  # ✨ DIP abstraction interfaces
+│   ├── providers.ts                  # Abstraction contracts
 │   ├── query-d1-vectors.ts           # Query handler (orchestrator)
 │   ├── handlers/
 │   │   ├── healthHandler.ts          # Health check endpoint
@@ -332,8 +318,8 @@ cv-ai-agent/
 │   │   └── sessionHandler.ts         # Session management endpoint
 │   ├── services/
 │   │   ├── embeddingService.ts       # Embedding generation & similarity
-│   │   ├── vectorSearchService.ts    # ✨ Vector search operations
-│   │   ├── aiResponseService.ts      # ✨ LLM response generation
+│   │   ├── vectorSearchService.ts    # Vector search operations
+│   │   ├── aiResponseService.ts      # LLM response generation
 │   │   ├── cacheService.ts           # Response caching
 │   │   └── embeddingService.test.ts  # Unit tests
 │   └── middleware/
@@ -352,9 +338,6 @@ cv-ai-agent/
 ├── wrangler.toml.example             # Cloudflare config template
 └── README.md                         # This file
 ```
-
-**Legend:**
-- ✨ = Newly created during SOLID refactoring
 
 ---
 
@@ -436,89 +419,6 @@ await setCachedResponse(cacheKey, responseData, ttlSeconds);
 
 ---
 
-## Architecture & Design Principles
-
-This project follows **SOLID principles** for maintainability and extensibility:
-
-### SOLID Implementation
-
-```mermaid
-graph TB
-    subgraph "Single Responsibility Principle"
-        SRP["Each service has ONE clear purpose:<br/>embeddingService → Embeddings<br/>vectorSearchService → Search<br/>aiResponseService → AI Responses<br/>cacheService → Caching"]
-    end
-    
-    subgraph "Open/Closed Principle"
-        OCP["New search strategies or AI models<br/>can be added without modifying<br/>existing code - vectorSearchService<br/>& aiResponseService are extensible"]
-    end
-    
-    subgraph "Liskov Substitution Principle"
-        LSP["Type-safe environment interfaces<br/>prevent runtime errors:<br/>QueryEnv, IndexEnv, HealthEnv, etc.<br/>Each handler gets only what it needs"]
-    end
-    
-    subgraph "Interface Segregation Principle"
-        ISP["Handlers receive focused interfaces:<br/>healthHandler → HealthEnv<br/>indexHandler → IndexEnv<br/>No bloated env objects"]
-    end
-    
-    subgraph "Dependency Inversion Principle"
-        DIP["Abstract interfaces in providers.ts:<br/>EmbeddingProvider, VectorStore,<br/>DataRepository, LLMProvider<br/>Enable dependency injection & testing"]
-    end
-    
-    style SRP fill:#e8f5e9
-    style OCP fill:#e8f5e9
-    style LSP fill:#e8f5e9
-    style ISP fill:#e8f5e9
-    style DIP fill:#e8f5e9
-```
-
-### Dependency Injection & Testability
-
-```mermaid
-graph TB
-    subgraph "Abstraction Layer (providers.ts)"
-        EP["EmbeddingProvider"]
-        VS["VectorStore"]
-        DR["DataRepository"]
-        LP["LLMProvider"]
-        CP["CacheProvider"]
-    end
-    
-    subgraph "Concrete Implementations"
-        EP_IMPL["CloudflareEmbeddings<br/>(Workers AI)"]
-        VS_IMPL["D1VectorStore"]
-        DR_IMPL["D1Repository"]
-        LP_IMPL["CloudflareLLM<br/>(Llama 3.2)"]
-        CP_IMPL["CloudflareCache"]
-    end
-    
-    subgraph "Test Implementations"
-        EP_MOCK["MockEmbeddings"]
-        VS_MOCK["MockVectorStore"]
-        DR_MOCK["MockRepository"]
-        LP_MOCK["MockLLM"]
-        CP_MOCK["MockCache"]
-    end
-    
-    EP --> EP_IMPL
-    EP --> EP_MOCK
-    VS --> VS_IMPL
-    VS --> VS_MOCK
-    DR --> DR_IMPL
-    DR --> DR_MOCK
-    LP --> LP_IMPL
-    LP --> LP_MOCK
-    CP --> CP_IMPL
-    CP --> CP_MOCK
-    
-    style EP fill:#e1f5ff
-    style VS fill:#e1f5ff
-    style DR fill:#e1f5ff
-    style LP fill:#e1f5ff
-    style CP fill:#e1f5ff
-```
-
----
-
 ## Customization
 
 ### Adding Your Own Skills
@@ -578,76 +478,6 @@ This repository accompanies a technical blog series on building production-ready
 
 ---
 
-## Code Quality & Testing
-
-### Refactoring Results
-
-```mermaid
-graph LR
-    A["Before SOLID<br/>Refactoring"] -->|280+ Lines<br/>Removed| B["After SOLID<br/>Refactoring"]
-    
-    A -->|❌ Duplicate<br/>Code| C["✅ Single<br/>Responsibility"]
-    A -->|❌ Hard to<br/>Extend| D["✅ Open/<br/>Closed"]
-    A -->|❌ Coupled<br/>Types| E["✅ Type-Safe<br/>Env"]
-    A -->|❌ Fat<br/>Interfaces| F["✅ Focused<br/>Interfaces"]
-    A -->|❌ Hard to<br/>Test| G["✅ Dependency<br/>Injection"]
-    
-    C --> H["Code Quality<br/>+ 40%"]
-    D --> H
-    E --> H
-    F --> H
-    G --> H
-    
-    H --> I["All Tests<br/>Passing ✓"]
-    
-    style A fill:#ffebee
-    style B fill:#e8f5e9
-    style C fill:#e8f5e9
-    style D fill:#e8f5e9
-    style E fill:#e8f5e9
-    style F fill:#e8f5e9
-    style G fill:#e8f5e9
-    style H fill:#c8e6c9
-    style I fill:#81c784
-```
-
-### New Service Modules
-
-| Module | Purpose | Lines | Status |
-|--------|---------|-------|--------|
-| `vectorSearchService.ts` | Vector similarity search | ~110 | ✅ New |
-| `aiResponseService.ts` | LLM response generation | ~130 | ✅ New |
-| `providers.ts` | DIP abstraction interfaces | ~150 | ✅ New |
-| `types.d.ts` | Type-safe environment bindings | ~150 | ✅ Enhanced |
-| `query-d1-vectors.ts` | Query orchestrator | ~90 | ✅ Simplified (60% reduction) |
-| `index.ts` | Main router | ~70 | ✅ Cleaned up (280 lines removed) |
-
-### Test Results
-
-```bash
-✓ src/services/embeddingService.test.ts (5 tests)
-  ✓ cosineSimilarity
-    ✓ returns 1.0 for identical vectors
-    ✓ returns 0.0 for orthogonal vectors
-    ✓ returns -1.0 for opposite vectors
-    ✓ calculates correct similarity for known vectors
-    ✓ handles zero vectors gracefully
-
-Test Files: 1 passed
-Tests: 5 passed
-```
-
-### Type Safety
-
-```bash
-✓ TypeScript compilation successful
-✓ No compile errors
-✓ Strict mode enabled
-✓ Full type coverage
-```
-
----
-
 ## Testing
 
 ```bash
@@ -656,68 +486,6 @@ npm test
 
 # Run with coverage
 npm run test:coverage
-```
-
----
-
-## Before vs After SOLID Refactoring
-
-### Code Organization Comparison
-
-```mermaid
-graph TB
-    subgraph "BEFORE: Monolithic"
-        BEFORE["index.ts (380 lines)<br/>├── Router logic<br/>├── handleQuery() [DUPLICATE]<br/>├── fetchCanonicalById()<br/>├── Vector search logic<br/>├── Similarity calculations<br/>├── AI response generation<br/>├── Caching logic<br/>└── Multiple concerns mixed"]
-    end
-    
-    subgraph "AFTER: SOLID Design"
-        ROUTER["index.ts (70 lines)<br/>└── Routing only"]
-        ORCHES["query-d1-vectors.ts (90 lines)<br/>└── Orchestration only"]
-        SERVICES["Services (SRP)<br/>├── embeddingService<br/>├── vectorSearchService<br/>├── aiResponseService<br/>└── cacheService"]
-        HANDLERS["Handlers (ISP)<br/>├── healthHandler<br/>├── indexHandler<br/>└── sessionHandler"]
-        CONFIG["Config & Types<br/>├── config.ts<br/>├── types.d.ts<br/>└── providers.ts"]
-        
-        ROUTER --> ORCHES
-        ROUTER --> HANDLERS
-        ROUTER --> CONFIG
-        ORCHES --> SERVICES
-        ORCHES --> CONFIG
-    end
-    
-    BEFORE -->|Refactor| AFTER
-    
-    style BEFORE fill:#ffebee,stroke:#c62828
-    style AFTER fill:#e8f5e9,stroke:#2e7d32
-    style ROUTER fill:#e3f2fd
-    style ORCHES fill:#e3f2fd
-    style SERVICES fill:#f3e5f5
-    style HANDLERS fill:#fff3e0
-    style CONFIG fill:#fce4ec
-```
-
-### Complexity Reduction
-
-```mermaid
-graph LR
-    A["Monolithic<br/>index.ts"] -->|Split into| B["7 Focused<br/>Modules"]
-    
-    A -->|280 lines<br/>removed| C["Reduced<br/>Duplication"]
-    A -->|Mixed concerns| D["Clear<br/>Boundaries"]
-    A -->|Hard to test| E["Testable<br/>Services"]
-    A -->|Tight coupling| F["Loose<br/>Coupling"]
-    
-    C --> G["Code Quality<br/>+40%"]
-    D --> G
-    E --> G
-    F --> G
-    
-    style A fill:#ffcdd2
-    style B fill:#c8e6c9
-    style C fill:#c8e6c9
-    style D fill:#c8e6c9
-    style E fill:#c8e6c9
-    style F fill:#c8e6c9
-    style G fill:#81c784
 ```
 
 ---

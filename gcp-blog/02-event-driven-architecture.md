@@ -21,6 +21,7 @@ Event-driven architecture breaks this coupling. Services communicate through eve
 This post explains the event-driven patterns in CV Analytics: how GitHub webhooks trigger real-time dashboard updates through Firestore, how DynamoDB Streams feed SQS queues for Lambda processing, and how event correlation tracks workflows across distributed services.
 
 **What you'll learn:**
+
 - ✓ Why synchronous HTTP calls create cascading failures
 - ✓ How message queues (SQS) buffer traffic and enable async processing
 - ✓ How event streams (DynamoDB Streams) capture state changes
@@ -365,6 +366,7 @@ DynamoDB Streams is a time-ordered log of item-level changes. Every `PutItem`, `
 **New image:** The item's state after the change (optional)
 
 **Stream view type:** Controls what data appears in records:
+
 - `KEYS_ONLY`: Only keys
 - `NEW_IMAGE`: Keys + new item state
 - `OLD_IMAGE`: Keys + old item state
@@ -460,12 +462,14 @@ function computeAnalytics(queryData) {
 **How batching reduces costs:**
 
 **Without batching:**
+
 - 1,000 queries per day
 - 1 Lambda invocation per query
 - 1,000 Lambda invocations
 - Cost: Within free tier (1M requests/month)
 
 **With batching (batch size 10):**
+
 - 1,000 queries per day
 - 1 Lambda invocation per 10 queries
 - 100 Lambda invocations
@@ -700,6 +704,7 @@ CloudWatch alarm triggers when DLQ message count > 0. This indicates a systemic 
 When a downstream service (DynamoDB, external API) is temporarily unavailable, immediate retry often fails again. Exponential backoff spaces out retries with increasing delays.
 
 **Retry schedule:**
+
 - Attempt 1: Immediate
 - Attempt 2: Wait 1 second
 - Attempt 3: Wait 2 seconds
@@ -799,6 +804,7 @@ CloudWatch metrics track Lambda errors:
 **Duration metric:** Processing time (watch for timeouts)
 
 **Target thresholds:**
+
 - Error rate: <1% (alarm if >1%)
 - DLQ message count: 0 (alarm if >0)
 - Lambda duration: <3 seconds (alarm if >10 seconds)
@@ -817,6 +823,7 @@ For CV Analytics, this is acceptable. Dashboard users don't expect instant updat
 For financial transactions, this isn't acceptable. Bank transfers require immediate consistency. Debit account A and credit account B in the same transaction. Event-driven patterns don't work here.
 
 **When eventual consistency is acceptable:**
+
 - Analytics and reporting
 - Social media feeds and notifications
 - Email delivery
@@ -824,6 +831,7 @@ For financial transactions, this isn't acceptable. Bank transfers require immedi
 - Audit logging
 
 **When eventual consistency is unacceptable:**
+
 - Financial transactions (double-spend prevention)
 - Inventory management (overselling prevention)
 - Seat reservations (double-booking prevention)
@@ -848,6 +856,7 @@ Distributed systems are hard to debug. Events flow through multiple services. No
 ### Operational Complexity: More Moving Parts
 
 Event-driven systems have more components:
+
 - Message queues (SQS)
 - Event streams (DynamoDB Streams)
 - Routing rules (EventBridge)
@@ -921,6 +930,7 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
 ### Implementation Guidance
 
 **Start with these patterns:**
+
 - ✓ Async communication via queues (SQS, RabbitMQ)
 - ✓ Event streams for state change propagation (DynamoDB Streams, Kinesis)
 - ✓ Correlation IDs in all events and logs
@@ -928,6 +938,7 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
 - ✓ Structured logging (JSON) for queryability
 
 **Monitor these metrics:**
+
 - ✓ Queue depth (messages waiting to be processed)
 - ✓ Lambda errors and throttles
 - ✓ DLQ message count (should be 0)
@@ -935,6 +946,7 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
 - ✓ End-to-end latency (webhook to dashboard update)
 
 **Avoid these pitfalls:**
+
 - ✗ Synchronous HTTP calls between microservices (creates coupling)
 - ✗ Infinite retries on failed messages (use DLQ after N attempts)
 - ✗ Processing messages without idempotency (causes duplicates)
@@ -944,6 +956,7 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
 ### When to Use Event-Driven Architecture
 
 **Use it for:**
+
 - ✓ Analytics and reporting pipelines
 - ✓ Background processing (image resize, email send)
 - ✓ Multi-service workflows with loose coupling
@@ -951,6 +964,7 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
 - ✓ Systems requiring resilience to service failures
 
 **Don't use it for:**
+
 - ✗ Simple CRUD applications
 - ✗ Real-time collaboration (Google Docs-style)
 - ✗ Strong consistency requirements (financial transactions)
@@ -966,6 +980,7 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
 Services communicate through events. Now: how to secure webhooks, secrets, and data across clouds.
 
 Part 3 covers:
+
 - ✓ HMAC signature validation for webhooks
 - ✓ GCP service accounts and AWS IAM roles
 - ✓ Secrets management in GitHub Actions

@@ -4,9 +4,13 @@
 
 ## The Dilemma
 
-I needed visibility into my portfolio projects. Which repositories get the most activity? What events happen most frequently? Are GitHub webhooks reliable, or do they occasionally fail? Without analytics, every question about my work became guesswork.
+My CV chatbot responds in 12ms. Users ask about my TypeScript experience, AWS expertise, or specific projects. The system performs semantic search, retrieves context, and generates responses using an LLM. Fast, functional, and deployed.
 
-Building analytics seemed straightforward: capture GitHub webhooks, store events, generate reports. The complication was cost. My portfolio projects run on free tiers. Analytics couldn't change that.
+But I had no idea what people were actually asking.
+
+Which skills generate the most interest? Are users finding what they need? Do certain questions indicate gaps in my CV? Is the chatbot useful, or just technically impressive? Without analytics, every question about impact became guesswork.
+
+Building analytics seemed straightforward: capture every query, store metadata, visualize patterns. The complication was cost. My chatbot runs at £0/month on free tiers. Analytics couldn't change that.
 
 **The constraint:** £0/month operational cost. No exceptions.
 
@@ -20,106 +24,144 @@ What remained was harder but more valuable: patterns that work regardless of bud
 
 ## What This Series Covers
 
-### Part 1: Pure Microservices Architecture (87.5% Score)
+### Part 1: Pure Microservices Architecture (6 Services, 3 Clouds)
 
-I called my system "microservices" because it had multiple services. Then I measured it.
+I called my system "microservices" because it had multiple services across three clouds. Then I measured it.
 
-Shared databases? Services couldn't deploy independently. Synchronous API calls? One service down, entire system down. Coupled deployments? "Microservices" in name only.
+**The 6 services:**
+
+1. **Angular CV Site** (user-facing portfolio) - Vercel hosting
+2. **Cloudflare Worker** (chatbot API, 12ms responses) - Edge compute
+3. **AWS Lambda Processor** (analytics aggregation) - Batch processing
+4. **AWS Lambda Reporter** (weekly email reports) - Scheduled task
+5. **GCP Cloud Function** (webhook receiver) - Real-time ingestion
+6. **React Dashboard** (Firebase Hosting) - Live visualization
+
+Shared databases? Services couldn't deploy independently. Synchronous API calls? Cloudflare Worker timeouts. Coupled deployments? "Microservices" in name only.
 
 **The scoring system forced honesty:**
 
-- Can services deploy independently? (Yes: 6 separate pipelines)
-- Do services own their data? (Mostly: shared DynamoDB table docked points)
-- Are failures isolated? (Yes: webhook receiver crashes don't affect dashboard)
-- Can services use different technologies? (Yes: Go, TypeScript, Python)
+- Can services deploy independently? (Yes: 6 separate deployment pipelines)
+- Do services own their data? (Mostly: AWS DynamoDB shared between Processor/Reporter)
+- Are failures isolated? (Yes: Dashboard works even if AWS Lambda fails)
+- Can services use different clouds? (Yes: Cloudflare + AWS + GCP)
+- Can services use different technologies? (Yes: Angular, Go, TypeScript, Node.js)
 
 **Result:** 87.5% purity score. Not perfect, but honest about trade-offs.
 
 **What you'll learn:**
 
-- Why "microservices" doesn't mean "multiple services"
-- How to measure service independence (deployment, data, versioning)
-- Which pure microservices patterns cost too much (skipped API gateway, saved £30/month)
-- Why shared infrastructure isn't the same as tight coupling
+- Why "multi-cloud microservices" isn't vendor lock-in avoidance theater
+- How to measure service independence across three cloud providers
+- Which pure microservices patterns cost too much (API Gateway £30/month per cloud)
+- Why Cloudflare Workers force async design (50ms CPU limit)
 
 ---
 
-### Part 2: Event-Driven Architecture (Why Queues Beat API Calls)
+### Part 2: Event-Driven Architecture (Cloudflare → AWS → GCP Pipeline)
 
-My first implementation used direct HTTP calls. Webhook receiver → Processor Lambda. Simple, synchronous, and completely broken.
+My first implementation: Cloudflare Worker tried calling AWS Lambda directly after each chatbot query. Simple, synchronous, and completely broken.
 
 **What failed:**
 
-- Processor Lambda cold start: 800ms
-- Webhook receiver timeout: 500ms
-- GitHub retry policy: exponential backoff → webhook floods
-- Result: 60% of events dropped
+- Cloudflare Worker timeout: 50ms CPU limit
+- AWS Lambda cold start: 800ms
+- Result: Worker timeouts, lost events, angry users waiting
 
-**Queue-based solution:**
+**Event-driven solution (three clouds working together):**
 
-- Webhook receiver writes to SQS (5ms latency)
-- Returns HTTP 200 immediately
-- Lambda processes batches asynchronously
-- Retry logic handled by queue
-- Result: 0% dropped events, £0 additional cost
+1. **Cloudflare Worker** responds to user in 12ms (no blocking)
+2. Worker writes analytics event to **AWS DynamoDB** (`Query Events` table)
+3. **DynamoDB Streams** automatically triggers **SQS** (FIFO queue)
+4. **AWS Lambda** processes batches of 10 events asynchronously
+5. Lambda posts processed analytics to **GCP Cloud Function** via HMAC-signed webhook
+6. GCP writes to **Firestore** → **React Dashboard** updates in real-time
 
-**What you'll learn:**
-
-- Why async beats sync for non-critical paths (analytics don't need instant processing)
-- How SQS FIFO ordering prevents duplicate events
-- When eventual consistency is acceptable (weekly reports tolerate 5-second delay)
-- What dead letter queues catch (malformed payloads, transient failures)
-
----
-
-### Part 3: Multi-Cloud Security (The Friday Afternoon Mistake)
-
-I deployed the webhook receiver on Friday afternoon. No HMAC validation—"I'll add that Monday."
-
-By Monday morning: 347 fake events in my database. Someone discovered the endpoint and flooded it. My analytics were useless.
-
-**What I should have done:**
-
-- HMAC-SHA256 validation (GitHub signs webhooks, I verify signature)
-- Cost: £0 (just cryptographic comparison)
-- Implementation time: 20 minutes
-- Prevented: 100% of fake events
+**Result:** 0% dropped events, instant user responses, £0 additional cost across three clouds
 
 **What you'll learn:**
 
-- Why webhook authentication isn't optional (endpoints are discoverable)
-- How HMAC signatures work without API gateway costs
-- Why GCP service accounts beat IAM users (no long-lived credentials)
-- Which secrets belong in environment variables vs GitHub Secrets
-- What I chose not to build: API gateway (£30/month), VPC (£15/month), Web Application Firewall (£5/month)
+- Why Cloudflare Workers can't call Lambda directly (CPU time limits)
+- How DynamoDB Streams eliminate polling (push-based event sourcing)
+- Why SQS FIFO batching reduces Lambda costs by 90%
+- How cross-cloud webhooks work (AWS → GCP with HMAC signatures)
+- When to use three clouds instead of one (play to each platform's strengths)
 
 ---
 
-### Part 4: Terraform Multi-Cloud (Never Click Through Consoles)
+### Part 3: Multi-Cloud Security (Cross-Cloud Webhook Authentication)
+
+I deployed the GCP webhook receiver on Friday afternoon. No HMAC validation—"AWS Lambda is internal, it's fine."
+
+By Monday morning: 347 fake events in my Firestore database. Someone discovered the public Cloud Function URL and flooded it. My dashboard showed garbage.
+
+**The security problem:** AWS Lambda needs to call GCP Cloud Function across cloud boundaries. How do you authenticate cross-cloud requests without exposing credentials?
+
+**The solution (HMAC signatures):**
+
+1. **Shared secret** stored in AWS Secrets Manager + GCP Secret Manager
+2. **AWS Lambda** signs payload with HMAC-SHA256 before sending
+3. **GCP Cloud Function** validates signature with same secret
+4. If signature matches → trusted AWS request. If not → reject
+5. **Cost:** £0 (cryptographic hashing is free)
+6. **Implementation:** 20 minutes
+7. **Result:** 100% fake events blocked
+
+**What you'll learn:**
+
+- Why public Cloud Functions need authentication (discoverable URLs)
+- How HMAC-SHA256 works for cross-cloud webhook security
+- Why Cloudflare Worker doesn't need HMAC (it writes directly to DynamoDB with IAM)
+- How to store secrets across three clouds (AWS Secrets Manager, GCP Secret Manager, Cloudflare env vars)
+- What I chose not to build: VPN tunnel between AWS/GCP (£50/month), API Gateway per cloud (£60/month combined), mTLS certificates (complexity)
+
+---
+
+### Part 4: Terraform Multi-Cloud (AWS + GCP in One Codebase)
 
 I provisioned my first Cloud Function through the GCP console. Seven clicks, two dropdown menus, one confused moment about VPC settings. It worked.
 
-Then I needed to replicate it for staging. I clicked through again. Different memory setting. Forgot to set timeout. Spent 30 minutes debugging why staging behaved differently.
+Then I provisioned AWS Lambda through the console. Different UI, different concepts, different settings. When I needed staging environments, I clicked through both consoles twice. Different memory settings. Forgot AWS timeout. Spent 45 minutes debugging why staging behaved differently.
 
-**The Terraform solution:**
+**The Terraform solution (two clouds, one codebase):**
 
 ```hcl
-resource "google_cloudfunctions_function" "webhook" {
-  name        = "cv-webhook-receiver"
-  runtime     = "go121"
-  memory      = 256
-  timeout     = 60
+# AWS Provider
+provider "aws" {
+  region = "us-east-1"
+}
+
+# GCP Provider
+provider "google" {
+  project = "cv-analytics-dashboard"
+  region  = "us-central1"
+}
+
+# AWS Lambda
+resource "aws_lambda_function" "processor" {
+  function_name = "cv-analytics-processor"
+  runtime       = "nodejs20.x"
+  memory_size   = 512
+  timeout       = 60
+}
+
+# GCP Cloud Function
+resource "google_cloudfunctions2_function" "webhook" {
+  name     = "cv-analytics-webhook"
+  runtime  = "go122"
+  location = "us-central1"
 }
 ```
 
-One definition, infinite environments. Change `memory = 256` to `memory = 512`, run `terraform apply`, done. No clicking. No drift.
+One definition, infinite environments. Change memory, run `terraform apply`, both clouds update. No clicking. No drift.
 
 **What you'll learn:**
 
-- Why console clicks don't version control (Terraform does)
-- How to manage AWS + GCP in same codebase (separate providers, shared state)
-- Which Terraform features free tier supports (all of them—Terraform CLI is free)
-- What I chose not to build: Terraform Cloud paid features (£0 constraint), custom modules marketplace
+- Why multi-cloud Terraform beats console clicking (version control + repeatability)
+- How to manage AWS + GCP providers in same codebase (separate state, shared variables)
+- How to handle cross-cloud dependencies (AWS Lambda needs GCP webhook URL)
+- Which Terraform features free tier supports (all of them—Terraform CLI is free, both cloud APIs free tier)
+- What I chose not to build: Pulumi (less mature), CloudFormation + Deployment Manager (vendor lock-in), Terraform Cloud paid (£0 constraint)
 
 ---
 
@@ -180,11 +222,11 @@ Seeing v2.0.0 would have warned me: "Wait, this breaks downstream services."
 
 ---
 
-### Part 7: Real-Time Dashboard (Polling vs WebSockets)
+### Part 7: Real-Time Dashboard (Cross-Cloud WebSocket Updates)
 
-First dashboard implementation: Poll Firestore every 5 seconds.
+First dashboard implementation: Poll Firestore every 5 seconds to check for new chatbot queries.
 
-**Cost calculation:**
+**Cost calculation (polling):**
 
 - 5-second poll interval = 12 requests/minute = 720 requests/hour
 - 10 hours active dashboard per week = 7,200 reads/week
@@ -193,53 +235,79 @@ First dashboard implementation: Poll Firestore every 5 seconds.
 
 **WebSocket implementation (Firestore onSnapshot):**
 
-- 1 connection per session
-- Real-time updates pushed instantly
-- 50 reads on initial load + 1 read per new event
+**The complete real-time flow:**
+
+1. User asks question in **Angular app**
+2. **Cloudflare Worker** responds in 12ms
+3. Worker writes event to **AWS DynamoDB**
+4. **AWS Lambda** processes analytics (2-5 seconds later)
+5. Lambda posts to **GCP Cloud Function** webhook
+6. GCP writes to **Firestore**
+7. **React Dashboard** subscribed via `onSnapshot` → **Instant update** (200ms from Firestore write)
+
+**Cost:**
+
+- 1 WebSocket connection per dashboard session
+- 50 reads on initial load + 1 read per new query
 - 10 hours per week = ~100 reads/week
-- **Result: 98% reduction in reads, instant updates**
+- **Result: 98% reduction in reads, updates appear 200ms after AWS processes**
 
 **What you'll learn:**
 
 - Why polling wastes free tier quota (720 req/hr vs 1 connection)
-- How Firestore onSnapshot works (WebSocket under the hood, free tier counts initial load + changes)
-- When real-time isn't worth it (batch reports—weekly email better than live dashboard)
-- Performance: Vite HMR <1s vs webpack 30s rebuild times
-- What I chose not to build: Custom WebSocket server (£5/month EC2), GraphQL subscriptions (complexity), Socket.io (additional dependency)
+- How Firestore onSnapshot enables cross-cloud real-time (AWS → GCP → Browser)
+- When 2-5 second delay is acceptable (analytics don't need instant, but dashboard does)
+- Why React + Firebase Hosting is perfect for real-time dashboards (built-in WebSocket support)
+- What I chose not to build: Custom WebSocket server (£5/month EC2), Pusher (£10/month), Socket.io self-hosted (operational overhead)
 
 ---
 
-### Part 8: Cost Optimization (6 Months at £0/Month)
+### Part 8: Cost Optimization (Three Clouds at £0/Month for 6 Months)
 
 **Actual costs (May - November 2025):**
 
-```
+```plaintext
+Cloudflare:
+- Workers: £0.00 (10,000 requests / 100K free tier = 10%)
+- CPU time: £0.00 (120ms total / 10ms per request)
+
 AWS:
-- Lambda: £0.00 (500 invocations / 1M free tier = 0.05%)
+- Lambda (Processor): £0.00 (500 invocations / 1M free tier = 0.05%)
+- Lambda (Reporter): £0.00 (4 invocations/month weekly reports)
 - DynamoDB: £0.00 (0.8 GB / 25 GB always-free = 3.2%)
-- SQS: £0.00 (100 messages / 1M free tier = 0.01%)
+- SQS: £0.00 (1,000 messages / 1M free tier = 0.1%)
+- SES: £0.00 (4 emails/month / 3,000 free with EC2 = N/A, pay £0.10/1000)
 
 GCP:
-- Cloud Functions: £0.00 (100 invocations / 2M free tier = 0.005%)
-- Firestore: £0.00 (500 reads/month / 50K reads/day = 0.3%)
-- Firebase Hosting: £0.00 (150 KB bundle / 10 GB free tier = 0.001%)
+- Cloud Functions: £0.00 (500 invocations / 2M free tier = 0.025%)
+- Firestore: £0.00 (2,000 reads/month / 50K reads/day free = 0.13%)
+- Firebase Hosting: £0.00 (150 KB bundle / 10 GB free tier = 0.0015%)
 
-Total: £0.00 for 6 consecutive months
+Total across three clouds: £0.00 for 6 consecutive months
 ```
 
-**The batching discovery:**
+**The batching discovery (90% cost reduction):**
 
-Before batching: 1,000 events = 1,000 Lambda invocations.
+Before batching: 1,000 DynamoDB events = 1,000 Lambda invocations.
 After batching (size 10): 1,000 events = 100 Lambda invocations.
-**90% cost reduction** (and 0% → 0% is still 0%, but scales better).
+**Result:** 90% fewer Lambda executions (and 0% → 0% is still 0%, but scales 10x further).
+
+**The cross-cloud efficiency insight:**
+
+Using three clouds costs the same as using one (£0), but leverages each platform's strengths:
+
+- **Cloudflare:** Edge compute with 50ms CPU limit → Forces fire-and-forget pattern
+- **AWS:** Best batch processing + email (Lambda + DynamoDB + SES mature ecosystem)
+- **GCP:** Best real-time database (Firestore native WebSocket support)
 
 **What you'll learn:**
 
-- How batching saves 90% of Lambda costs (batch size 10 → 1,000 messages = 100 invocations instead of 1,000)
-- Why DynamoDB on-demand beats provisioned (always-free vs 12-month free tier)
-- Which free tiers are permanent vs temporary (DynamoDB 25 GB = forever, RDS free tier = 12 months)
-- When to scale up (>10,000 queries/month → £5-15/month acceptable with revenue)
-- What I chose not to build: Reserved capacity (requires commitment), Savings Plans (requires scale), Provisioned concurrency (£5.40/month per function)
+- How to run production workload across three clouds at £0/month
+- Why batching saves 90% Lambda costs (SQS batch size 10 vs individual events)
+- Which free tiers are permanent vs temporary (DynamoDB 25 GB forever, Cloudflare Workers 100K req/day forever, GCP Cloud Functions 2M/month forever)
+- When multi-cloud makes sense (free tier limits reset per cloud → 3x capacity)
+- When to scale up (>100K queries/month → Cloudflare £5, AWS £5-10, GCP £5 = £15-20/month)
+- What I chose not to build: Single cloud (hits limits faster), Reserved capacity (requires commitment), Provisioned concurrency (£5.40/month per Lambda)
 
 ---
 

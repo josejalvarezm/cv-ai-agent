@@ -18,15 +18,18 @@ Clicking through cloud consoles works until it doesn't. You provision a Cloud Fu
 
 Infrastructure-as-code (IaC) solves this problem. Terraform describes infrastructure in declarative configuration files. You define what you want (Lambda function with specific memory, DynamoDB table with specific capacity), and Terraform figures out how to create it. Changes are versioned in git. Deployments are reproducible. Team members see exactly what's running in production.
 
-CV Analytics uses Terraform to provision 100% of its infrastructure across GCP and AWS. Six microservices, two databases, four message queues, multiple IAM roles, all defined in 800 lines of Terraform configuration. No manual clicking. No configuration drift. No "works on my machine" problems.
+CV Analytics uses Terraform to provision 100% of its infrastructure across **three clouds** (Cloudflare, AWS, GCP). Six microservices (Angular app, Cloudflare Worker, AWS Lambda×2, GCP Cloud Function, React Dashboard), three databases (DynamoDB×2, Firestore), SQS queue, EventBridge scheduler, all IAM roles, all defined in 1,200 lines of Terraform configuration. No manual clicking. No configuration drift. No "works on my machine" problems.
 
-This post explains how Terraform manages multi-cloud infrastructure: how providers abstract cloud-specific APIs, how remote state enables team collaboration, how modules reduce duplication, and how rollback strategies protect against failed deployments.
+**The cross-cloud challenge:** AWS Lambda needs to call GCP Cloud Function URL (output from `google_cloudfunctions_function` resource). Terraform handles this dependency automatically across providers. When GCP Cloud Function deploys, its URL becomes available to AWS Lambda configuration.
+
+This post explains how Terraform manages multi-cloud infrastructure: how providers abstract GCP and AWS APIs, how to handle cross-cloud dependencies (AWS Lambda needs GCP webhook URL), how remote state enables team collaboration across clouds, how to manage secrets securely in three cloud providers, and how rollback strategies protect against failed deployments.
 
 **What you'll learn:**
-- ✓ How Terraform providers abstract GCP and AWS APIs
-- ✓ How to structure multi-cloud Terraform configurations
-- ✓ How remote state management enables team collaboration
-- ✓ How to handle secrets securely in Terraform
+- ✓ How Terraform providers abstract GCP and AWS APIs (multi-cloud in one codebase)
+- ✓ How to handle cross-cloud dependencies (AWS Lambda → GCP Cloud Function)
+- ✓ How to structure multi-cloud Terraform configurations (3 clouds, 6 services)
+- ✓ How remote state management enables team collaboration across clouds
+- ✓ How to handle secrets securely across three providers (AWS, GCP, Cloudflare)
 - ✓ How rollback strategies protect against deployment failures
 
 ---
@@ -335,7 +338,8 @@ resource "google_cloudfunctions_function_iam_member" "webhook_invoker" {
 # Output Cloud Function URL
 output "webhook_url" {
   value       = google_cloudfunctions_function.webhook_receiver.https_trigger_url
-  description = "Webhook endpoint URL for GitHub webhook configuration"
+  description = "Webhook endpoint URL for AWS Lambda to call (cross-cloud webhook)"
+  sensitive   = false  # URL is public but HMAC-protected
 }
 ```
 
@@ -437,8 +441,8 @@ variable "gcp_project_id" {
   type        = string
 }
 
-variable "github_webhook_secret" {
-  description = "GitHub webhook secret for HMAC validation"
+variable "webhook_shared_secret" {
+  description = "HMAC shared secret for AWS Lambda → GCP Cloud Function cross-cloud authentication (must match AWS Secrets Manager value)"
   type        = string
   sensitive   = true
 }
@@ -468,7 +472,7 @@ output "service_account_email" {
 # Pass variables
 terraform apply \
   -var="gcp_project_id=cv-analytics-prod" \
-  -var="github_webhook_secret=$WEBHOOK_SECRET"
+  -var="webhook_shared_secret=$WEBHOOK_SECRET"  # Same value as AWS Secrets Manager
 
 # Access outputs
 terraform output webhook_url
@@ -767,6 +771,8 @@ resource "aws_lambda_function" "processor" {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.analytics_aggregated.name
       AWS_REGION     = var.aws_region
+      # Cross-cloud webhook URL from GCP Cloud Function
+      GCP_WEBHOOK_URL = var.gcp_webhook_url  # Output from GCP Terraform
     }
   }
   
@@ -783,6 +789,69 @@ resource "aws_lambda_event_source_mapping" "processor_sqs_trigger" {
   
   scaling_config {
     maximum_concurrency = 5  # Max 5 concurrent Lambda executions
+  }
+}
+```
+
+### Cross-Cloud Dependency: AWS Lambda → GCP Cloud Function
+
+**The challenge:** AWS Lambda Processor needs to call GCP Cloud Function webhook URL after processing analytics. This URL is an output from GCP Terraform configuration.
+
+**Solution: Terraform outputs + variables**
+
+**In GCP Terraform (outputs.tf):**
+```hcl
+output "webhook_url" {
+  value       = google_cloudfunctions_function.webhook_receiver.https_trigger_url
+  description = "GCP Cloud Function webhook URL for AWS Lambda"
+}
+```
+
+**In AWS Terraform (variables.tf):**
+```hcl
+variable "gcp_webhook_url" {
+  description = "GCP Cloud Function webhook URL (output from GCP Terraform)"
+  type        = string
+}
+```
+
+**How to pass the value:**
+
+**Option 1: Terraform Cloud (recommended for teams)**
+1. Deploy GCP infrastructure first: `terraform apply` in `gcp/` directory
+2. Copy webhook URL from GCP Terraform outputs
+3. Set `gcp_webhook_url` variable in AWS Terraform Cloud workspace
+4. Deploy AWS infrastructure: `terraform apply` in `aws/` directory
+
+**Option 2: Command line**
+```bash
+# Deploy GCP first
+cd terraform/gcp
+terraform apply
+GCP_WEBHOOK_URL=$(terraform output -raw webhook_url)
+
+# Deploy AWS with GCP webhook URL
+cd ../aws
+terraform apply -var="gcp_webhook_url=$GCP_WEBHOOK_URL"
+```
+
+**Option 3: Unified Terraform workspace (advanced)**
+Deploy both clouds in one Terraform configuration. GCP resources create outputs directly available to AWS resources:
+
+```hcl
+# Both providers in same configuration
+provider "google" { ... }
+provider "aws" { ... }
+
+# GCP Cloud Function
+resource "google_cloudfunctions_function" "webhook_receiver" { ... }
+
+# AWS Lambda can reference GCP output directly
+resource "aws_lambda_function" "processor" {
+  environment {
+    variables = {
+      GCP_WEBHOOK_URL = google_cloudfunctions_function.webhook_receiver.https_trigger_url
+    }
   }
 }
 ```

@@ -130,16 +130,16 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
     }
     defer r.Body.Close()
 
-    // Extract GitHub signature from header
-    githubSignature := r.Header.Get("X-Hub-Signature-256")
-    if githubSignature == "" {
-        log.Printf("Missing X-Hub-Signature-256 header")
+    // Extract AWS Lambda webhook signature from header
+    lambdaSignature := r.Header.Get("X-Webhook-Signature")
+    if lambdaSignature == "" {
+        log.Printf("Missing X-Webhook-Signature header")
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
         return
     }
 
-    // Validate HMAC signature
-    webhookSecret := os.Getenv("GITHUB_WEBHOOK_SECRET")
+    // Validate HMAC signature (shared secret with AWS Lambda)
+    webhookSecret := os.Getenv("WEBHOOK_SHARED_SECRET")
     if !validateHMAC(payload, githubSignature, webhookSecret) {
         log.Printf("HMAC validation failed for signature: %s", githubSignature)
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -163,14 +163,14 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprintf(w, "Webhook processed successfully")
 }
 
-// validateHMAC computes HMAC-SHA256 and compares with GitHub's signature
-func validateHMAC(payload []byte, githubSignature string, secret string) bool {
-    // GitHub signature format: "sha256=<hex_digest>"
+// validateHMAC computes HMAC-SHA256 and compares with AWS Lambda's signature
+func validateHMAC(payload []byte, lambdaSignature string, secret string) bool {
+    // AWS Lambda signature format: "sha256=<hex_digest>"
     // Strip the "sha256=" prefix
-    if !strings.HasPrefix(githubSignature, "sha256=") {
+    if !strings.HasPrefix(lambdaSignature, "sha256=") {
         return false
     }
-    signatureHex := strings.TrimPrefix(githubSignature, "sha256=")
+    signatureHex := strings.TrimPrefix(lambdaSignature, "sha256=")
 
     // Compute HMAC-SHA256 of payload with secret
     mac := hmac.New(sha256.New, []byte(secret))
@@ -186,7 +186,7 @@ func validateHMAC(payload []byte, githubSignature string, secret string) bool {
 
 **Key security practices:**
 
-**Environment variables for secrets:** Never hardcode the webhook secret. Use `os.Getenv("GITHUB_WEBHOOK_SECRET")` to read from environment variables set via Terraform or Cloud Console.
+**Environment variables for secrets:** Never hardcode the webhook secret. Use `os.Getenv("WEBHOOK_SHARED_SECRET")` to read from GCP Secret Manager (accessed as environment variable via Terraform).
 
 **Log failed attempts:** Log HMAC validation failures with timestamps and source IPs. Monitor for repeated failures (indicates attack attempts).
 
@@ -196,20 +196,20 @@ func validateHMAC(payload []byte, githubSignature string, secret string) bool {
 
 ### Preventing Replay Attacks
 
-HMAC validates that GitHub sent the webhook, but it doesn't prevent replay attacks. An attacker could capture a legitimate webhook and resend it.
+HMAC validates that AWS Lambda sent the webhook, but it doesn't prevent replay attacks. An attacker could capture a legitimate webhook and resend it.
 
 **Solution: Timestamp validation**
 
-GitHub includes a `X-Hub-Signature` timestamp (Unix seconds) in some webhook payloads. Validate that the timestamp is recent (within 5 minutes). Reject old webhooks.
+AWS Lambda includes a `timestamp` field (Unix seconds) in the webhook payload. Validate that the timestamp is recent (within 5 minutes). Reject old webhooks.
 
 ```go
 func validateTimestamp(webhookData map[string]interface{}) bool {
     // Extract timestamp from payload (if present)
     timestamp, ok := webhookData["timestamp"].(float64)
     if !ok {
-        // No timestamp in payload, accept anyway
-        // (not all GitHub events include timestamps)
-        return true
+        // No timestamp in payload, reject for security
+        // (AWS Lambda should always include timestamp)
+        return false
     }
 
     now := time.Now().Unix()
@@ -227,19 +227,22 @@ func validateTimestamp(webhookData map[string]interface{}) bool {
 
 **Alternative: Idempotency keys**
 
-Store processed webhook IDs in a database or cache. When a webhook arrives, check if you've processed it before. If yes, return HTTP 200 but don't process again. This prevents duplicate processing from any source (replay attacks or legitimate GitHub retries).
+Store processed webhook IDs (requestId from AWS Lambda payload) in Firestore or Memorystore. When a webhook arrives, check if you've processed it before. If yes, return HTTP 200 but don't process again. This prevents duplicate processing from any source (replay attacks or legitimate AWS Lambda retries).
 
 ### Secret Rotation Strategies
 
-Webhook secrets should rotate periodically (every 90 days) to limit exposure if compromised.
+Webhook shared secrets should rotate periodically (every 90 days) to limit exposure if compromised.
 
-**Rotation process:**
+**Cross-cloud rotation process:**
 
-1. Generate new secret in GitHub webhook settings
-2. Update `GITHUB_WEBHOOK_SECRET` environment variable in Cloud Functions via Terraform
-3. Redeploy Cloud Function
-4. Test webhook delivery
-5. Delete old secret from GitHub
+1. Generate new secret (32+ random bytes)
+2. Update secret in **both clouds simultaneously**:
+   - AWS Secrets Manager: `cv-analytics/webhook-secret`
+   - GCP Secret Manager: `webhook-shared-secret`
+3. Redeploy AWS Lambda Processor (reads new secret from AWS Secrets Manager)
+4. Redeploy GCP Cloud Function (reads new secret from GCP Secret Manager)
+5. Test webhook delivery end-to-end
+6. Delete old secret versions from both clouds
 
 **Zero-downtime rotation:**
 
@@ -247,8 +250,8 @@ Support two secrets simultaneously during rotation. Validate against both old an
 
 ```go
 func validateHMACWithRotation(payload []byte, signature string) bool {
-    oldSecret := os.Getenv("GITHUB_WEBHOOK_SECRET_OLD")
-    newSecret := os.Getenv("GITHUB_WEBHOOK_SECRET_NEW")
+    oldSecret := os.Getenv("WEBHOOK_SHARED_SECRET_OLD")
+    newSecret := os.Getenv("WEBHOOK_SHARED_SECRET_NEW")
 
     // Try new secret first
     if newSecret != "" && validateHMAC(payload, signature, newSecret) {
@@ -267,30 +270,141 @@ func validateHMACWithRotation(payload []byte, signature string) bool {
 
 ```mermaid
 sequenceDiagram
-    participant GH as GitHub<br/>(Webhook)
-    participant CF as Cloud Function<br/>(Go)
+    participant Lambda as AWS Lambda<br/>(Processor)
+    participant CF as GCP Cloud Function<br/>(Webhook Receiver)
     participant FS as Firestore<br/>(Database)
     
-    GH->>GH: Compute signature<br/>HMAC-SHA256(payload, secret)
-    GH->>CF: POST /webhook<br/>X-Hub-Signature-256: sha256=abc123...
+    Lambda->>Lambda: Read secret from<br/>AWS Secrets Manager
+    Lambda->>Lambda: Compute signature<br/>HMAC-SHA256(payload, secret)
+    Lambda->>CF: POST https://<region>-<project>.cloudfunctions.net<br/>X-Webhook-Signature: sha256=abc123...
     
     CF->>CF: Read raw payload bytes
     CF->>CF: Extract signature from header
+    CF->>CF: Read secret from<br/>GCP Secret Manager
     CF->>CF: Compute expected signature<br/>HMAC-SHA256(payload, secret)
     
     alt Signatures match
         CF->>CF: Parse JSON payload
-        CF->>FS: Write webhook data
-        CF->>GH: 200 OK
+        CF->>FS: Write analytics data
+        CF->>Lambda: 200 OK
     else Signatures don't match
-        CF->>CF: Log failed attempt<br/>(timestamp, IP, signature)
-        CF->>GH: 401 Unauthorized
-        Note over CF,GH: Possible attack<br/>Monitor logs
+        CF->>CF: Log failed attempt<br/>(timestamp, source IP)
+        CF->>Lambda: 401 Unauthorized
+        Note over CF,Lambda: Cross-cloud security failure<br/>Alert DevOps team
     end
     
     style CF fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
     style FS fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
 ```
+
+---
+
+## Cloudflare Worker Authentication to AWS
+
+### The Edge-to-Cloud Security Challenge
+
+**The architecture:** Cloudflare Worker runs at the edge (250+ global locations) and processes CV chatbot queries in 12ms. After returning the answer to the user, it needs to write analytics events to AWS DynamoDB (us-east-1) for later processing by AWS Lambda.
+
+**The constraint:** Cloudflare Workers have a **50ms CPU time limit**. Every millisecond counts. Fire-and-forget pattern required: Worker writes to DynamoDB but doesn't wait for Lambda processing.
+
+**The security challenge:** How does a Cloudflare Worker authenticate to AWS DynamoDB across cloud boundaries without storing long-lived IAM keys in code?
+
+### IAM Credentials in Cloudflare Environment Variables
+
+**Solution:** Store AWS IAM credentials as **Cloudflare Worker secrets** (encrypted environment variables). The Worker uses these credentials to sign AWS API requests with IAM Signature Version 4 (SigV4).
+
+**AWS IAM user for Cloudflare Worker:**
+
+```json
+// AWS IAM Policy: cv-chatbot-worker-policy
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:123456789:table/cv-analytics-queries"
+    }
+  ]
+}
+```
+
+**Least privilege principle:**
+- ✅ Only `PutItem` (can't read existing data or delete)
+- ✅ Only on Query Events table (can't access Analytics table)
+- ✅ No Lambda permissions, no S3, no other AWS services
+- ✅ If Worker credentials leak, damage limited to fake query events (not analytics or financial data)
+
+### Setting Cloudflare Worker Secrets
+
+```bash
+# Set AWS IAM credentials (encrypted by Cloudflare)
+wrangler secret put AWS_ACCESS_KEY_ID
+# Enter: AKIA... (IAM access key)
+
+wrangler secret put AWS_SECRET_ACCESS_KEY
+# Enter: (40-character secret key)
+
+wrangler secret put AWS_REGION
+# Enter: us-east-1
+```
+
+**Worker code (TypeScript):**
+
+```typescript
+// cv-chatbot-worker/src/index.ts
+import { DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // Process chatbot query (semantic search, LLM)
+    const answer = await processQuery(request);
+    
+    // Write analytics event to AWS DynamoDB (fire-and-forget)
+    const dynamodb = new DynamoDBClient({
+      region: env.AWS_REGION,
+      credentials: {
+        accessKeyId: env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
+    
+    // Don't await - fire-and-forget to stay under 50ms CPU limit
+    dynamodb.send(new PutItemCommand({
+      TableName: 'cv-analytics-queries',
+      Item: {
+        requestId: { S: crypto.randomUUID() },
+        timestamp: { N: String(Date.now()) },
+        query: { S: request.body.query },
+        // ... other fields
+      },
+    })).catch(err => console.error('DynamoDB write failed:', err));
+    
+    // Return answer immediately (don't wait for DynamoDB)
+    return Response.json({ answer });
+  }
+};
+```
+
+**Key security practices:**
+
+- **Environment variables, not hardcoded:** Never commit AWS credentials to git. Use `wrangler secret put` to encrypt and store in Cloudflare's infrastructure.
+- **Fire-and-forget pattern:** Worker doesn't wait for DynamoDB response. If write fails, logs error but doesn't block user response. Acceptable for analytics (occasional missing events OK).
+- **IAM key rotation:** Rotate AWS IAM keys every 90 days. Update Cloudflare secrets via `wrangler secret put` (zero downtime).
+- **Monitor failed writes:** CloudWatch Logs captures DynamoDB `PutItem` failures. Alert if failure rate exceeds 1% (indicates credential or network issues).
+
+### Why Not AWS Cognito or OIDC?
+
+**Alternative:** AWS Cognito Identity Pools or OIDC token exchange could avoid long-lived IAM keys. But:
+
+- ❌ **Latency:** Token exchange adds 50-100ms (unacceptable for 12ms Worker)
+- ❌ **Complexity:** Requires Cognito setup, token refresh logic, error handling
+- ❌ **Cost:** Cognito Identity Pool charges per token exchange
+- ✅ **IAM credentials:** Simple, zero latency, £0 cost, acceptable risk with least privilege
+
+**Risk mitigation:** If IAM credentials leak, attacker can only write fake events to Query Events table. Can't read Analytics table, can't access other AWS services, can't escalate privileges. DynamoDB TTL (24 hours) limits damage. Monitor CloudWatch Logs for unusual write patterns (e.g., 10,000 events in 1 minute).
 
 ---
 
@@ -341,7 +455,7 @@ Grant the minimum permissions required for a service to function. Don't use `rol
 resource "google_service_account" "webhook_receiver" {
   account_id   = "webhook-receiver"
   display_name = "Webhook Receiver Cloud Function"
-  description  = "Service account for GitHub webhook receiver"
+  description  = "Service account for AWS Lambda webhook receiver (cross-cloud analytics)"
   project      = var.project_id
 }
 
@@ -654,32 +768,116 @@ sequenceDiagram
 
 ---
 
-## Secrets Management: GitHub Secrets
+## Secrets Management: Multi-Cloud Strategy
 
 ### The Secrets Challenge
 
-CI/CD pipelines need credentials to deploy to cloud platforms. These credentials must be stored securely, never committed to git, and accessible only to authorized workflows.
+Microservices across 3 clouds need credentials and shared secrets. These must be stored securely, never committed to git, accessible only to authorized services, and synchronized across cloud providers.
 
-GitHub Secrets provides encrypted storage for sensitive values. Secrets are encrypted at rest and only exposed to workflows as environment variables during execution.
+**Three types of secrets:**
 
-### CV Analytics Secrets Configuration
+1. **Cross-cloud shared secrets:** HMAC webhook secret (AWS Secrets Manager + GCP Secret Manager)
+2. **Cloud-specific credentials:** Cloudflare Worker IAM keys (environment variables), AWS IAM access keys, GCP service account keys
+3. **CI/CD secrets:** GitHub Secrets for deployment automation (stores credentials for all 3 clouds)
 
-**7 secrets across 4 repositories:**
+### AWS Secrets Manager (Runtime Secrets)
+
+**AWS Lambda Processor needs:**
+
+1. **HMAC Webhook Shared Secret**
+   - Secret name: `cv-analytics/webhook-secret`
+   - Used by: Lambda Processor when calling GCP Cloud Function
+   - Rotation: Every 90 days (coordinated with GCP)
+   - Access: Lambda execution role with `secretsmanager:GetSecretValue`
+
+2. **DynamoDB Table Names** (not sensitive, but centralized)
+   - Secret name: `cv-analytics/config`
+   - JSON: `{"queryTable": "cv-analytics-queries", "analyticsTable": "cv-analytics-analytics"}`
+
+**Creating secrets with AWS CLI:**
+
+```bash
+# Create webhook shared secret
+aws secretsmanager create-secret \
+  --name cv-analytics/webhook-secret \
+  --description "HMAC shared secret for AWS Lambda → GCP Cloud Function webhooks" \
+  --secret-string "$(openssl rand -hex 32)"
+
+# Grant Lambda access
+aws secretsmanager put-resource-policy \
+  --secret-id cv-analytics/webhook-secret \
+  --resource-policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::123456789:role/lambda-processor-role"},"Action":"secretsmanager:GetSecretValue"}]}'
+```
+
+### GCP Secret Manager (Runtime Secrets)
+
+**GCP Cloud Function needs:**
+
+1. **HMAC Webhook Shared Secret** (same value as AWS)
+   - Secret name: `webhook-shared-secret`
+   - Used by: Cloud Function to validate AWS Lambda signatures
+   - Rotation: Every 90 days (coordinated with AWS)
+   - Access: Cloud Function service account with `secretmanager.secretAccessor`
+
+**Creating secrets with gcloud CLI:**
+
+```bash
+# Create webhook shared secret (MUST match AWS secret value)
+echo -n "<same-32-byte-hex-from-aws>" | gcloud secrets create webhook-shared-secret \
+  --data-file=- \
+  --replication-policy="automatic" \
+  --labels="service=webhook-receiver,cloud=gcp"
+
+# Grant Cloud Function access
+gcloud secrets add-iam-policy-binding webhook-shared-secret \
+  --member="serviceAccount:webhook-receiver@project-id.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+### Cloudflare Worker Secrets (Environment Variables)
+
+**CV Chatbot Worker needs:**
+
+1. **AWS IAM Credentials** (for DynamoDB writes)
+   - Variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
+   - Used by: Worker to write query events to DynamoDB
+   - IAM Policy: Least privilege (only `dynamodb:PutItem` on Query Events table)
+
+**Setting Cloudflare Worker secrets:**
+
+```bash
+# Set environment variables (encrypted by Cloudflare)
+wrangler secret put AWS_ACCESS_KEY_ID
+wrangler secret put AWS_SECRET_ACCESS_KEY
+wrangler secret put AWS_REGION
+```
+
+### GitHub Secrets (CI/CD Deployment)
+
+**Deployment credentials for all 6 services across 4 repositories:**
 
 **Dashboard repository (React + Firebase Hosting):**
-- `FIREBASE_TOKEN`: Firebase CLI authentication token for deploying to Firebase Hosting
 
-**Webhook repository (Go Cloud Functions):**
-- `GCP_SA_KEY`: GCP service account JSON key for deploying Cloud Functions (alternative: Workload Identity Federation)
+- `FIREBASE_TOKEN`: Firebase CLI authentication token
 - `GCP_PROJECT_ID`: GCP project identifier
 
-**Processor repository (Node.js Lambda):**
-- `AWS_ACCESS_KEY_ID`: AWS credentials for deploying Lambda functions
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key for authentication
+**Webhook Receiver repository (Go Cloud Function):**
 
-**Reporter repository (Node.js Lambda):**
-- `AWS_ACCESS_KEY_ID`: AWS credentials for deploying Lambda functions
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key for authentication
+- `GCP_SA_KEY`: GCP service account JSON key (or Workload Identity Federation)
+- `GCP_PROJECT_ID`: GCP project identifier
+- `WEBHOOK_SECRET_NAME`: Secret Manager secret name (`webhook-shared-secret`)
+
+**Processor repository (Node.js Lambda - AWS):**
+
+- `AWS_ACCESS_KEY_ID`: AWS credentials for Lambda deployment
+- `AWS_SECRET_ACCESS_KEY`: AWS secret key
+- `AWS_REGION`: Deployment region
+
+**Reporter repository (Node.js Lambda - AWS):**
+
+- `AWS_ACCESS_KEY_ID`: AWS credentials for Lambda deployment
+- `AWS_SECRET_ACCESS_KEY`: AWS secret key
+- `AWS_REGION`: Deployment region
 
 ### Creating GitHub Secrets
 
@@ -1003,10 +1201,21 @@ All network communication in CV Analytics uses TLS (Transport Layer Security) 1.
 
 **TLS is enforced:**
 
-**GitHub webhooks → Cloud Functions:**
-- GitHub sends webhooks over HTTPS
-- Cloud Functions endpoint: `https://region-project.cloudfunctions.net/webhook-receiver`
-- Certificate: Managed by Google (automatic renewal)
+**AWS Lambda → GCP Cloud Functions (cross-cloud webhooks):**
+
+- AWS Lambda sends webhooks over HTTPS (TLS 1.3)
+- GCP Cloud Function endpoint: `https://us-central1-project.cloudfunctions.net/cv-analytics-webhook`
+- Certificate: Managed by Google (automatic renewal, Let's Encrypt)
+- HMAC signature in header: `X-Webhook-Signature: sha256=...`
+- Cost: £0 (TLS included in Cloud Functions)
+
+**Cloudflare Worker → AWS DynamoDB:**
+
+- Cloudflare Worker uses AWS SDK v3 over HTTPS
+- DynamoDB endpoint: `https://dynamodb.us-east-1.amazonaws.com`
+- IAM SigV4 signing (request authentication)
+- Certificate: Managed by AWS
+- Cost: £0 (TLS included)
 
 **Dashboard → Firestore:**
 - Firebase SDK uses HTTPS for all API calls

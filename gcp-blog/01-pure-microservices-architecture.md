@@ -5,7 +5,7 @@
 - ✓ **Pure microservices** have measurable independence criteria (8 dimensions)
 - ✓ **CV Analytics scores 87.5%** across 6 independent services
 - ✓ **Shared infrastructure** is a pragmatic trade-off, not an architectural failure
-- ✓ **Multi-cloud deployment** (GCP + AWS) proves service independence
+- ✓ **Multi-cloud deployment** (Cloudflare + AWS + GCP) proves service independence
 - ✓ **Event-driven communication** eliminates direct service coupling
 
 ---
@@ -53,52 +53,76 @@ If the answer is "yes, but only if...", you've found coupling.
 
 ```mermaid
 graph TB
-    subgraph GCP["Google Cloud Platform"]
-        WH["Webhook Receiver<br/>(Go + Cloud Functions)<br/>v1.0.0"]
-        FS["Firestore<br/>(Real-time Database)"]
-        DASH["Dashboard<br/>(React + TypeScript)<br/>v1.0.0"]
+    subgraph Cloudflare["Cloudflare Edge"]
+        WORKER["CV Chatbot Worker<br/>(TypeScript + Workers)<br/>v2.1.3<br/>12ms response"]
     end
     
     subgraph AWS["Amazon Web Services"]
-        DB["DynamoDB<br/>(NoSQL Database)"]
+        DDB_QUERY["DynamoDB<br/>Query Events<br/>(TTL 24h)"]
+        DDB_ANALYTICS["DynamoDB<br/>Analytics<br/>(Permanent)"]
         STREAM["DynamoDB Streams"]
-        SQS["SQS Queue"]
-        PROC["Processor<br/>(Node.js + Lambda)<br/>v1.0.0"]
-        REPORTER["Reporter<br/>(Node.js + Lambda)<br/>v1.0.0"]
+        SQS["SQS FIFO Queue"]
+        PROC["Processor Lambda<br/>(Node.js)<br/>v3.1.0<br/>Batching"]
+        REPORTER["Reporter Lambda<br/>(Node.js)<br/>v1.0.3<br/>Weekly"]
     end
     
-    GH["GitHub Webhook<br/>(External Event)"]
+    subgraph GCP["Google Cloud Platform"]
+        CF["Cloud Function<br/>(Go + Webhook)<br/>v1.5.0<br/>HMAC Auth"]
+        FS["Firestore<br/>(Real-time Database)"]
+        DASH["Analytics Dashboard<br/>(React + TypeScript)<br/>v2.3.0"]
+    end
     
-    GH -->|POST /webhook| WH
-    WH -->|Write| FS
-    FS -.->|Real-time Listener| DASH
+    subgraph Frontend["Frontend (Vercel)"]
+        ANGULAR["Angular CV Site<br/>v1.2.0<br/>Portfolio Interface"]
+    end
     
-    WH -->|Write Analytics| DB
-    DB -->|Stream Changes| STREAM
-    STREAM -->|Trigger| SQS
-    SQS -->|Poll| PROC
-    PROC -->|Write Results| DB
+    USER["User Query"] -->|HTTP Request| ANGULAR
+    ANGULAR -->|API Call| WORKER
+    WORKER -->|12ms Response| ANGULAR
+    WORKER -->|Fire-and-Forget Write| DDB_QUERY
     
-    REPORTER -->|Weekly Schedule| DB
+    DDB_QUERY -->|Stream Changes| STREAM
+    STREAM -->|Batch Messages| SQS
+    SQS -->|Poll (up to 10)| PROC
+    PROC -->|Aggregate & Write| DDB_ANALYTICS
+    PROC -->|HMAC Webhook| CF
+    
+    CF -->|Validate & Write| FS
+    FS -.->|WebSocket Listener| DASH
+    
+    REPORTER -->|Weekly Schedule| DDB_ANALYTICS
     REPORTER -->|Send Email| EMAIL["AWS SES"]
     
-    style WH fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style DASH fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style PROC fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style REPORTER fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style ANGULAR fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style WORKER fill:#f4a742,stroke:#f68333,stroke-width:3px
+    style PROC fill:#ff9900,stroke:#ec7211,stroke-width:3px
+    style REPORTER fill:#ff9900,stroke:#ec7211,stroke-width:2px
+    style CF fill:#4285f4,stroke:#1967d2,stroke-width:3px
+    style DASH fill:#4285f4,stroke:#1967d2,stroke-width:3px
     style FS fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
-    style DB fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style DDB_QUERY fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style DDB_ANALYTICS fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
 ```
 
-**6 independent services:**
-1. **Dashboard** (React + TypeScript + Firestore)
-2. **Webhook Receiver** (Go + Cloud Functions)
-3. **Processor** (Node.js + Lambda)
-4. **Reporter** (Node.js + Lambda)
-5. **Infrastructure** (Terraform)
-6. **Emulator** (Development environment)
+**6 independent services across 3 clouds:**
 
-Each service: separate repository, independent version, isolated CI/CD, service-specific cloud resources.
+**Cloudflare:**
+1. **CV Chatbot Worker** (TypeScript, edge compute, 12ms response, v2.1.3)
+
+**AWS (us-east-1):**
+2. **Processor Lambda** (Node.js, SQS batching, HMAC signing, v3.1.0)
+3. **Reporter Lambda** (Node.js, weekly emails via SES, v1.0.3)
+
+**GCP (us-central1):**
+4. **Cloud Function Webhook** (Go, HMAC validation from AWS Lambda, v1.5.0)
+
+**Frontend:**
+5. **Angular CV Site** (Vercel, portfolio interface, v1.2.0)
+6. **React Analytics Dashboard** (Firebase Hosting, real-time WebSocket, v2.3.0)
+
+**Infrastructure:** Terraform (multi-cloud: AWS + GCP providers in one config)
+
+Each service: separate repository, independent version, isolated CI/CD, service-specific cloud resources across 3 providers.
 
 ---
 
@@ -108,84 +132,111 @@ Each service: separate repository, independent version, isolated CI/CD, service-
 
 **Score: 1/1**
 
-Each service deploys without coordination:
-- Dashboard: Firebase Hosting (`firebase deploy`)
-- Webhook Receiver: Cloud Functions (`gcloud functions deploy`)
-- Processor: AWS Lambda (via GitHub Actions)
-- Reporter: AWS Lambda (via GitHub Actions)
+Each service deploys without coordination across 3 clouds:
+- **Angular CV Site:** Vercel CLI (`vercel deploy`)
+- **Cloudflare Worker:** Wrangler CLI (`wrangler deploy`)
+- **AWS Lambda Processor:** GitHub Actions → AWS (`aws lambda update-function-code`)
+- **AWS Lambda Reporter:** GitHub Actions → AWS (independent pipeline)
+- **GCP Cloud Function:** GitHub Actions → GCP (`gcloud functions deploy`)
+- **React Dashboard:** Firebase Hosting (`firebase deploy`)
 
-Deploy dashboard at 3am? No impact on processor. Roll back webhook receiver? Dashboard keeps running. This is independence.
+Deploy Cloudflare Worker at 3am? No impact on AWS Lambda or GCP. Roll back GCP Cloud Function? Cloudflare and React Dashboard keep running. Update Angular site? Zero impact on backend services. This is true cross-cloud independence.
 
 ### Criterion 2: Independent Versioning ✓
 
 **Score: 1/1**
 
-Each service maintains semantic versioning:
-- Dashboard: v1.0.0
-- Webhook Receiver: v1.0.0
-- Processor: v1.0.0
-- Reporter: v1.0.0
+Each service maintains semantic versioning across 3 clouds:
+- **Angular CV Site:** v1.2.0 (portfolio interface updates)
+- **Cloudflare Worker:** v2.1.3 (12ms optimization, MAJOR rewrite)
+- **AWS Processor Lambda:** v3.1.0 (GCP webhook integration, 2 MAJOR bumps)
+- **AWS Reporter Lambda:** v1.0.3 (only bug fixes, stable)
+- **GCP Cloud Function:** v1.5.0 (HMAC validation, stable API)
+- **React Dashboard:** v2.3.0 (TypeScript rewrite, frequent UI updates)
 
-Git tags track releases per repository. Breaking changes in one service don't force version bumps in others.
+Git tags track releases per repository. Breaking changes in AWS Lambda don't force version bumps in GCP Cloud Function. Cloudflare Worker v2.0.0 (12ms optimization) didn't require changes to any other service.
 
 ### Criterion 3: Separate Version Control ✓
 
 **Score: 1/1**
 
-5 GitHub repositories:
-- `cv-analytics-dashboard-private`
-- `cv-analytics-webhook-receiver-private`
-- `cv-analytics-processor-private`
-- `cv-analytics-reporter-private`
-- `cv-analytics-infrastructure-private`
+7 GitHub repositories across 3 clouds:
 
-No monorepo. Each service team (even if it's the same person) owns their codebase.
+**Cloudflare:**
+- `cv-chatbot-worker-private` (TypeScript, edge compute)
+
+**AWS:**
+- `cv-analytics-processor-private` (Node.js Lambda, SQS batching)
+- `cv-analytics-reporter-private` (Node.js Lambda, weekly reports)
+
+**GCP:**
+- `cv-analytics-webhook-receiver-private` (Go Cloud Function, HMAC)
+
+**Frontend:**
+- `cv-site-angular-private` (Angular, Vercel)
+- `cv-analytics-dashboard-private` (React, Firebase)
+
+**Infrastructure:**
+- `cv-analytics-infrastructure-private` (Terraform multi-cloud)
+
+No monorepo. Each service team (even if it's the same person) owns their codebase. Cross-cloud independence proven by separate repositories per provider.
 
 ### Criterion 4: Independent Scaling ✓
 
 **Score: 1/1**
 
-Services scale based on their own load:
-- Webhook receiver: Auto-scales with Cloud Functions (0-1000 instances)
-- Processor: Lambda concurrency limits (per-function)
-- Dashboard: CDN caching (Firebase Hosting)
-- Reporter: Scheduled invocation (weekly, not load-based)
+Services scale based on their own load across 3 clouds:
+- **Cloudflare Worker:** Auto-scales globally (250+ edge locations, unlimited instances)
+- **AWS Lambda Processor:** Concurrency limits per function (default 1000)
+- **AWS Lambda Reporter:** Scheduled invocation (weekly, not load-based)
+- **GCP Cloud Function:** Auto-scales (0-1000 instances based on webhook volume)
+- **Angular Site:** Vercel CDN caching (global edge network)
+- **React Dashboard:** Firebase Hosting CDN (automatic global distribution)
 
-Spike in webhook traffic? Only webhook receiver scales. Processor unaffected.
+Spike in CV chatbot queries? Only Cloudflare Worker scales at the edge. AWS Lambda and GCP Cloud Function scale independently based on their own processing load. Frontend CDNs handle static assets separately.
 
 ### Criterion 5: Independent CI/CD ✓
 
 **Score: 1/1**
 
-Each repository has GitHub Actions workflow:
-- Dashboard: Build React → Deploy Firebase
-- Webhook: Build Go → Deploy Cloud Functions
-- Processor/Reporter: Build Node.js → Deploy Lambda
+Each repository has independent CI/CD pipeline:
+- **Angular Site:** Build Angular → Deploy Vercel
+- **Cloudflare Worker:** Build TypeScript → Deploy Wrangler
+- **AWS Processor:** Build Node.js → Deploy Lambda (AWS credentials)
+- **AWS Reporter:** Build Node.js → Deploy Lambda (separate pipeline)
+- **GCP Cloud Function:** Build Go → Deploy gcloud (GCP credentials)
+- **React Dashboard:** Build React → Deploy Firebase
 
-Push to dashboard repo? Only dashboard builds and deploys. Other pipelines idle.
+Push to Cloudflare Worker repo? Only Worker builds and deploys to edge. AWS and GCP pipelines idle. Push to GCP Cloud Function? Zero impact on Cloudflare or AWS builds. True cross-cloud CI/CD independence.
 
 ### Criterion 6: Independent Management ✓
 
 **Score: 1/1**
 
-Separate codebases, dependencies, configurations:
-- Dashboard: `package.json` (React, TypeScript, Vite)
-- Webhook: `go.mod` (Go dependencies)
-- Processor/Reporter: `package.json` (Node.js, AWS SDK)
+Separate codebases, dependencies, configurations across 3 clouds:
+- **Angular Site:** `package.json` (Angular, TypeScript, RxJS)
+- **Cloudflare Worker:** `package.json` (TypeScript, AWS SDK for DynamoDB, Wrangler)
+- **AWS Processor:** `package.json` (Node.js 20.x, AWS SDK v3, HMAC crypto)
+- **AWS Reporter:** `package.json` (Node.js, AWS SDK, SES email)
+- **GCP Cloud Function:** `go.mod` (Go 1.21, Firestore SDK, HMAC validation)
+- **React Dashboard:** `package.json` (React, TypeScript, Vite, Firestore SDK)
 
-No shared code imports. No dependency coupling. Change processor's Node version? Dashboard unaffected.
+No shared code imports across clouds. No dependency coupling. Change AWS Lambda Node version to 22.x? Cloudflare Worker and GCP Cloud Function unaffected. Update GCP Go runtime to 1.22? Zero impact on AWS or Cloudflare services.
 
 ### Criterion 7: Async Event-Driven Communication ✓
 
 **Score: 1/1**
 
-No direct HTTP calls between services:
-- GitHub → Webhook (external trigger, not inter-service)
-- Webhook → Firestore → Dashboard (event-driven)
-- DynamoDB Streams → SQS → Processor (queue-based)
-- EventBridge → Reporter (scheduled event)
+No direct HTTP calls between services (except cross-cloud webhooks with HMAC auth):
+- **User → Angular → Cloudflare Worker:** User-facing HTTP (not inter-service)
+- **Cloudflare → AWS DynamoDB:** Fire-and-forget writes (async, no response needed)
+- **DynamoDB Streams → SQS → AWS Lambda:** Event-driven, queue-based
+- **AWS Lambda → GCP Cloud Function:** Cross-cloud webhook (HMAC-signed, not service coupling)
+- **GCP Cloud Function → Firestore:** Event-driven writes
+- **Firestore → React Dashboard:** Real-time WebSocket listeners
+- **EventBridge → Reporter:** Scheduled event (weekly)
 
-Services don't know each other's URLs. No service discovery needed. Communication through events and queues.
+Services don't know each other's internal URLs. AWS Lambda only knows GCP webhook URL (public endpoint, HMAC-authenticated). No service discovery needed. Cross-cloud communication through signed webhooks and event streams.
 
 ### Criterion 8: Independent Infrastructure ✗
 
@@ -390,9 +441,9 @@ Ask these questions for each service:
    - Async patterns enable independence
 
 4. **Multi-cloud proves service isolation**
-   - GCP and AWS in one system
+   - Cloudflare Edge, AWS us-east-1, and GCP us-central1 in one system
    - Services don't care which cloud they run on
-   - True portability demonstrated
+   - True cross-cloud portability demonstrated (3 providers)
 
 ### Implementation Guidance
 
@@ -430,11 +481,13 @@ Part 2 covers:
 
 **Preview:**
 ```javascript
-// Services communicate through events, not HTTP calls
-DynamoDB → Streams → SQS → Lambda → Analytics
+// Cross-cloud event-driven flow
+User → Cloudflare Worker (12ms) → AWS DynamoDB (fire-and-forget)
+  → DynamoDB Streams → SQS → Lambda Processor (batch 10:1)
+  → HMAC webhook → GCP Cloud Function → Firestore → Dashboard (WebSocket)
 ```
 
-**Focus:** Decoupling services through events and queues.
+**Focus:** Decoupling services through events, queues, and cross-cloud webhooks.
 
 ---
 

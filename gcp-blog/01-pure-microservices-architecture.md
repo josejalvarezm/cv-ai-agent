@@ -2,6 +2,7 @@
 
 ## Quick Summary
 
+- ✓ **Why microservices?** Independent tech choices, deployment velocity, multi-cloud strategy, scaling requirements
 - ✓ **Pure microservices** have measurable independence criteria (8 dimensions)
 - ✓ **CV Analytics scores 87.5%** across 6 independent services
 - ✓ **Shared infrastructure** is a pragmatic trade-off, not an architectural failure
@@ -16,13 +17,94 @@ Most portfolio projects claim to be microservices. Few actually are.
 
 The difference isn't semantic. It's measurable. Pure microservices have specific characteristics: independent deployment, isolated data stores, separate version control, autonomous scaling. When you can measure these criteria, you can score architectural purity.
 
-This post explains the CV Analytics architecture: 6 services spanning GCP and AWS, communicating through events, deployed independently. The 87.5% purity score comes from objective evaluation against 8 independence criteria. The missing 12.5% reflects a deliberate choice about infrastructure management.
+This post explains the CV Analytics architecture: 6 services spanning Cloudflare, AWS, and GCP, communicating through events, deployed independently. First, we'll cover WHY microservices were chosen (not just for resume padding). Then we'll measure architectural purity: the 87.5% score comes from objective evaluation against 8 independence criteria. The missing 12.5% reflects a deliberate choice about infrastructure management.
 
 **What you'll learn:**
+- ✓ Why microservices were chosen for CV Analytics
 - ✓ The 8 criteria that define microservices independence
 - ✓ How to score your own architecture objectively
 - ✓ Why shared infrastructure repositories aren't architectural sins
 - ✓ When purity matters (and when pragmatism wins)
+
+---
+
+## Why Microservices?
+
+**The problem:** Portfolio projects often suffer from "resume-driven development" - using microservices because they look good on a CV, not because they solve real problems.
+
+**CV Analytics chose microservices for legitimate reasons:**
+
+### 1. Independent Technology Choices
+
+Each service uses the best tool for its job:
+- **Cloudflare Worker:** TypeScript on edge (12ms latency requirement)
+- **AWS Lambda Processor:** Node.js (native DynamoDB SDK, JSON processing)
+- **GCP Cloud Function:** Go (native Firestore SDK, HMAC validation performance)
+- **React Dashboard:** TypeScript (real-time UI with Firestore WebSocket)
+- **Angular Site:** TypeScript (static site, Cloudflare Pages CDN)
+
+**Monolith alternative:** Force Go/Node.js/TypeScript everywhere, or build polyglot monolith with shared dependencies.
+
+### 2. Independent Deployment Velocity
+
+Different services have different change frequencies:
+- **Angular CV Site:** Daily updates (content changes, new projects)
+- **React Dashboard:** Weekly UI improvements
+- **Cloudflare Worker:** Stable (12ms optimization done, minimal changes)
+- **AWS Lambda Processor:** Monthly (batching logic stable)
+- **GCP Cloud Function:** Quarterly (HMAC validation unchanged for months)
+- **Reporter Lambda:** Rarely (email templates stable)
+
+**Monolith alternative:** Deploy entire system for content changes. One bug in dashboard affects stable backend.
+
+### 3. Multi-Cloud Provider Strategy
+
+Services span 3 cloud providers with different strengths:
+- **Cloudflare:** Edge compute (12ms global latency, DDoS protection)
+- **AWS:** Event streams (DynamoDB Streams, SQS FIFO, mature Lambda ecosystem)
+- **GCP:** Real-time database (Firestore WebSocket, Firebase Hosting integration)
+
+**Monolith alternative:** Pick one cloud, lose provider-specific benefits. Can't optimize for edge + events + real-time.
+
+### 4. Independent Scaling Requirements
+
+Each service has unique scaling patterns:
+- **Cloudflare Worker:** 3,000 requests/month (chatbot queries)
+- **AWS Lambda Processor:** 300 invocations/month (10:1 batching)
+- **GCP Cloud Function:** 300 invocations/month (AWS webhook receiver)
+- **Reporter Lambda:** 4 invocations/month (weekly schedule)
+- **React Dashboard:** Static hosting (CDN, no compute scaling needed)
+
+**Monolith alternative:** One scaling configuration for all. Over-provision for peak (Reporter) or under-provision for chatbot spikes.
+
+### 5. Portfolio Demonstration Goals
+
+**What this architecture proves:**
+- ✓ Multi-cloud orchestration (3 providers in one system)
+- ✓ Event-driven patterns (DynamoDB Streams, SQS, Firestore WebSocket)
+- ✓ Cross-cloud security (HMAC webhooks, IAM credentials, SigV4)
+- ✓ Cost optimization (£0.00/month across 3 clouds for 6 months)
+- ✓ Independent CI/CD (7 repositories, separate pipelines)
+
+**What a monolith would hide:**
+- Cross-cloud communication patterns
+- Service independence trade-offs
+- Multi-provider IAM complexity
+- Independent versioning discipline
+
+---
+
+**When NOT to use microservices:**
+
+This architecture makes sense for CV Analytics. It wouldn't make sense for:
+- **CRUD apps** with simple database operations (monolith easier)
+- **Single-team startups** with <5 engineers (coordination overhead too high)
+- **Tight-coupling domains** where services share complex business logic
+- **Low-traffic MVPs** where free tier limits don't matter
+
+**The decision isn't "microservices vs monolith" - it's "what problems am I solving?"**
+
+For CV Analytics: multi-cloud, edge latency, independent deployment, portfolio demonstration. Microservices solve these. For a simple blog? Monolith wins.
 
 ---
 

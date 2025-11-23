@@ -123,81 +123,123 @@ One definition, infinite environments. Change `memory = 256` to `memory = 512`, 
 
 ---
 
-### Part 5: CI/CD with GitHub Actions
+### Part 5: GitHub Actions CI/CD (From 45 Minutes to 4 Minutes)
 
-**Why this matters:** Manual deployments are error-prone and time-consuming. Automated pipelines enable frequent deployments, catch regressions early, and document the release process.
+Manual deployment process (first attempt):
+
+1. SSH into my laptop
+2. Pull latest code
+3. Run tests locally (4 minutes)
+4. Build production bundle (2 minutes)
+5. Deploy to GCP (5 minutes)
+6. Deploy to AWS (5 minutes)
+7. Verify endpoints (2 minutes)
+8. Update README (1 minute)
+9. Pray nothing broke
+
+**Total: 19 minutes per service × 4 services = 76 minutes minimum.**
+
+Worse: I deployed dashboard with a typo in the Firestore query. Broke production for 15 minutes while I fixed it locally and re-deployed. Users saw blank dashboard.
+
+**GitHub Actions automation:**
+
+- Push to main → Tests run automatically (2 minutes)
+- Tests pass → Deploy to staging automatically (1 minute)
+- Manual approval → Deploy to production (1 minute)
+- **Total: 4 minutes hands-off time**
 
 **What you'll learn:**
-- ✓ GitHub Actions workflows for multi-cloud deployment
-- ✓ Secrets management across repositories
-- ✓ Independent deployment pipelines per service
-- ✓ Automated testing before deployment
-- ✓ Using Firebase CLI, gcloud CLI, and AWS CLI in workflows
 
-**Automation covered:**
-- 4 independent CI/CD pipelines
-- Deployment to Firebase, Cloud Functions, Lambda
-- Semantic versioning automation
-- Zero-downtime deployment patterns
+- Why GitHub Actions free tier is generous (2,000 minutes/month—way more than needed)
+- How to deploy AWS + GCP from same workflow (service account keys in GitHub Secrets)
+- When manual approval gates matter (production only—staging deploys automatically)
+- What I chose not to build: Jenkins server (£10/month EC2), CircleCI paid tier (£15/month), AWS CodePipeline (£1 per active pipeline)
 
 ---
 
-### Part 6: Microservices Versioning Strategy
+### Part 6: Semantic Versioning (The Breaking Change I Didn't Label)
 
-**Why this matters:** Without versioning, you can't track what's deployed, roll back safely, or coordinate breaking changes across services. Semantic versioning provides a contract between services and their consumers.
+I changed the DynamoDB table schema. Added a new required field: `eventType`. Deployed the Processor Lambda first (writes new field). Reporter Lambda still expected old schema (didn't read new field). Reports broke for 3 hours.
+
+**The mistake:** I versioned the Processor as v1.2.1 (patch). Should have been v2.0.0 (major—breaking change).
+
+**SemVer would have caught this:**
+
+- v1.2.1 (patch): Bug fixes, no API changes → Safe to deploy independently
+- v1.3.0 (minor): New features, backward compatible → Safe to deploy independently
+- v2.0.0 (major): Breaking changes → Requires coordinated deployment
+
+Seeing v2.0.0 would have warned me: "Wait, this breaks downstream services."
 
 **What you'll learn:**
-- ✓ Semantic versioning (SemVer 2.0.0) for microservices
-- ✓ Git tagging workflows
-- ✓ Independent service versions
-- ✓ Handling breaking changes
-- ✓ Version compatibility policies
 
-**Strategy covered:**
-- Per-service version management
-- Git tags as deployment markers
-- Automated version bumping in CI/CD
-- Migration paths for breaking changes
+- How to identify breaking changes before they break production (schema changes, removed fields, changed response formats)
+- Why Git tags matter for rollback (tag v1.2.0, deploy fails, revert to v1.2.0 immediately)
+- When services can deploy independently (minor/patch) vs require coordination (major)
+- What I chose not to build: API versioning gateway (£30/month), complex migration framework, blue-green deployment infrastructure (£15/month for duplicate resources)
 
 ---
 
-### Part 7: Real-Time Dashboard with React and Firestore
+### Part 7: Real-Time Dashboard (Polling vs WebSockets)
 
-**Why this matters:** Polling is wasteful. WebSocket-based real-time updates provide instant feedback without hammering your database with repeated queries.
+First dashboard implementation: Poll Firestore every 5 seconds.
+
+**Cost calculation:**
+
+- 5-second poll interval = 12 requests/minute = 720 requests/hour
+- 10 hours active dashboard per week = 7,200 reads/week
+- Firestore free tier: 50,000 reads/day
+- **Result:** Within free tier, but wasteful (99% of polls return "no changes")
+
+**WebSocket implementation (Firestore onSnapshot):**
+
+- 1 connection per session
+- Real-time updates pushed instantly
+- 50 reads on initial load + 1 read per new event
+- 10 hours per week = ~100 reads/week
+- **Result: 98% reduction in reads, instant updates**
 
 **What you'll learn:**
-- ✓ React + TypeScript + Vite setup
-- ✓ Firestore real-time listeners
-- ✓ Data visualization with Recharts
-- ✓ Firebase Hosting deployment
-- ✓ Performance optimization
 
-**Implementation covered:**
-- Real-time webhook visualization
-- React TypeScript with Vite
-- Tailwind CSS styling
-- Firebase Authentication (optional)
-- CDN optimization for global delivery
+- Why polling wastes free tier quota (720 req/hr vs 1 connection)
+- How Firestore onSnapshot works (WebSocket under the hood, free tier counts initial load + changes)
+- When real-time isn't worth it (batch reports—weekly email better than live dashboard)
+- Performance: Vite HMR <1s vs webpack 30s rebuild times
+- What I chose not to build: Custom WebSocket server (£5/month EC2), GraphQL subscriptions (complexity), Socket.io (additional dependency)
 
 ---
 
-### Part 8: Serverless Cost Optimization
+### Part 8: Cost Optimization (6 Months at £0/Month)
 
-**Why this matters:** Serverless promises "pay only for what you use", but misconfiguration leads to surprise bills. Understanding free tiers, batching strategies, and cold start optimization keeps costs low.
+**Actual costs (May - November 2025):**
+
+```
+AWS:
+- Lambda: £0.00 (500 invocations / 1M free tier = 0.05%)
+- DynamoDB: £0.00 (0.8 GB / 25 GB always-free = 3.2%)
+- SQS: £0.00 (100 messages / 1M free tier = 0.01%)
+
+GCP:
+- Cloud Functions: £0.00 (100 invocations / 2M free tier = 0.005%)
+- Firestore: £0.00 (500 reads/month / 50K reads/day = 0.3%)
+- Firebase Hosting: £0.00 (150 KB bundle / 10 GB free tier = 0.001%)
+
+Total: £0.00 for 6 consecutive months
+```
+
+**The batching discovery:**
+
+Before batching: 1,000 events = 1,000 Lambda invocations.
+After batching (size 10): 1,000 events = 100 Lambda invocations.
+**90% cost reduction** (and 0% → 0% is still 0%, but scales better).
 
 **What you'll learn:**
-- ✓ AWS Lambda free tier limits
-- ✓ GCP Cloud Functions pricing
-- ✓ DynamoDB on-demand vs provisioned capacity
-- ✓ Batching to reduce invocations
-- ✓ Monitoring costs with CloudWatch and Cloud Logging
 
-**Cost breakdown:**
-- Target: £0-15/month for production system
-- Lambda: 1M free requests/month
-- DynamoDB: 25 GB always free
-- Firestore: 1 GB free storage
-- Firebase Hosting: 10 GB/month free bandwidth
+- How batching saves 90% of Lambda costs (batch size 10 → 1,000 messages = 100 invocations instead of 1,000)
+- Why DynamoDB on-demand beats provisioned (always-free vs 12-month free tier)
+- Which free tiers are permanent vs temporary (DynamoDB 25 GB = forever, RDS free tier = 12 months)
+- When to scale up (>10,000 queries/month → £5-15/month acceptable with revenue)
+- What I chose not to build: Reserved capacity (requires commitment), Savings Plans (requires scale), Provisioned concurrency (£5.40/month per function)
 
 ---
 

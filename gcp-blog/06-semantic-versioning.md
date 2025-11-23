@@ -1,5 +1,7 @@
 # Semantic Versioning for Microservices: Independent Evolution at Scale
 
+*Deployed breaking change as v1.2.1 patch. Production crashed for 4 hours. Should have been v2.0.0 major.*
+
 ## Quick Summary
 
 - ✓ **SemVer 2.0.0** (MAJOR.MINOR.PATCH) enables independent service evolution

@@ -1,5 +1,7 @@
 # Multi-Cloud Security: HMAC, IAM, and Secrets Management
 
+*Friday afternoon deployment without HMAC validation. Monday morning: 347 fake events in my database.*
+
 ## Quick Summary
 
 - ✓ **HMAC-SHA256** validates webhook authenticity (no replay attacks)

@@ -1,5 +1,7 @@
 # Serverless Cost Optimization: Running Production at £0/Month
 
+*Six consecutive months at £0.00. Production system. Real traffic. Batching reduced Lambda invocations by 90%.*
+
 ## Quick Summary
 
 - ✓ **£0/month** for production CV Analytics system

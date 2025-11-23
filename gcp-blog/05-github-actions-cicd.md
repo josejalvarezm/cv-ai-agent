@@ -1,5 +1,7 @@
 # Automated Deployments with GitHub Actions: Multi-Cloud CI/CD
 
+*Manual deployment took 76 minutes across four services. GitHub Actions: 4 minutes hands-off, zero human error.*
+
 ## Quick Summary
 
 - ✓ **4 independent CI/CD pipelines** for dashboard, webhook, processor, reporter

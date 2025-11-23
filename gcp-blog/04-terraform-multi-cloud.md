@@ -1,5 +1,7 @@
 # Multi-Cloud Infrastructure as Code: Terraform for GCP and AWS
 
+*Clicking through cloud consoles for 45 minutes to recreate staging. Terraform: 2 minutes and identical to production.*
+
 ## Quick Summary
 
 - ✓ **100% infrastructure-as-code** eliminates manual configuration drift

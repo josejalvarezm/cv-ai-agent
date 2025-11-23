@@ -173,7 +173,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
     // Process webhook (write to Firestore, etc.)
     log.Printf("Valid webhook received: %v", webhookData["action"])
     
-    // TODO: Write to Firestore
+    // In production: write validated webhook data to Firestore
+    // For this example, we've validated the signature successfully
     
     w.WriteHeader(http.StatusOK)
     fmt.Fprintf(w, "Webhook processed successfully")

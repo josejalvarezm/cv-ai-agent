@@ -1,5 +1,7 @@
 # Pure Microservices Architecture: What 87.5% Really Means
 
+*Claimed "microservices architecture" on my resume. Then measured it objectively. 87.5% independent. Learned that's actually excellent for a portfolio project.*
+
 ## Quick Summary
 
 - ✓ **Why microservices?** Independent tech choices, deployment velocity, multi-cloud strategy, scaling requirements

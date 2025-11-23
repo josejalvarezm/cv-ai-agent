@@ -1124,16 +1124,31 @@ Production system running at £0/month for 6 months (May - November 2025).
 ### Monthly Cost Summary
 
 ```text
+Cloudflare Services:
+├─ Workers
+│  ├─ Requests: 3,000 / 3,000,000 monthly free tier = 0.1%
+│  ├─ CPU: 8ms avg / 10ms free tier limit = Within limit
+│  └─ Cost: £0.00
+
 AWS Services:
-├─ Lambda
-│  ├─ Invocations: 500 / 1,000,000 free tier = 0.05%
-│  ├─ Compute: 50 GB-seconds / 400,000 free tier = 0.0125%
+├─ Lambda (Processor + Reporter)
+│  ├─ Processor: 300 invocations/month (batched from 3K events)
+│  ├─ Reporter: 4 invocations/month (weekly)
+│  ├─ Total: 304 / 1,000,000 free tier = 0.03%
+│  ├─ Compute: ~25 GB-seconds / 400,000 free tier = 0.006%
 │  └─ Cost: £0.00
 │
-├─ DynamoDB
-│  ├─ Storage: 0.8 GB / 25 GB always-free = 3.2%
-│  ├─ Reads: 500 / 25,000 RCU/month = 2%
-│  ├─ Writes: 100 / 25,000 WCU/month = 0.4%
+├─ DynamoDB (2 tables)
+│  ├─ Query Events: 0.2 GB (TTL 24h)
+│  ├─ Analytics: 0.6 GB (permanent)
+│  ├─ Total Storage: 0.8 GB / 25 GB always-free = 3.2%
+│  ├─ Reads: 3,050 / 25,000 RCU/month = 12.2%
+│  ├─ Writes: 3,300 / 25,000 WCU/month = 13.2%
+│  └─ Cost: £0.00
+│
+├─ SQS FIFO
+│  ├─ Messages: 3,000/month (DynamoDB Streams)
+│  ├─ Free tier: 1M requests/month
 │  └─ Cost: £0.00
 │
 └─ CloudWatch Logs
@@ -1142,23 +1157,29 @@ AWS Services:
    └─ Cost: £0.00
 
 GCP Services:
-├─ Cloud Functions
-│  ├─ Invocations: 100 / 2,000,000 free tier = 0.005%
-│  ├─ Compute: 1.25 GB-seconds / 400,000 free tier = 0.0003%
+├─ Cloud Functions (Go, webhook receiver)
+│  ├─ Invocations: 300 / 2,000,000 free tier = 0.015%
+│  ├─ Compute: 6 GB-seconds / 400,000 free tier = 0.0015%
+│  ├─ Cross-cloud webhooks from AWS Lambda
 │  └─ Cost: £0.00
 │
 ├─ Firestore
 │  ├─ Storage: 0.5 GB / 1 GB free tier = 50%
 │  ├─ Reads: ~16/day / 50,000/day free tier = 0.032%
-│  ├─ Writes: ~3/day / 20,000/day free tier = 0.015%
+│  ├─ Writes: ~10/day / 20,000/day free tier = 0.05%
 │  └─ Cost: £0.00
 │
-└─ Firebase Hosting
+└─ Firebase Hosting (React Dashboard)
    ├─ Storage: 0.15 GB / 10 GB free tier = 1.5%
    ├─ Bandwidth: 7.5 MB/day / 360 MB/day free tier = 2%
    └─ Cost: £0.00
 
-Total Monthly Cost: £0.00
+Vercel (Angular CV Site):
+└─ Hosting
+   ├─ Bandwidth: ~10 MB/month / 100 GB free tier = 0.01%
+   └─ Cost: £0.00
+
+Total Monthly Cost Across 3 Clouds: £0.00
 ```
 
 ### Cost Breakdown Visualization
@@ -1175,26 +1196,43 @@ pie title CV Analytics Monthly Costs by Service
 
 ```mermaid
 graph TB
-    subgraph Services["All Services"]
-        AWS1["AWS Lambda<br/>500 invocations<br/>£0.00"]
-        AWS2["DynamoDB<br/>0.8 GB storage<br/>£0.00"]
-        AWS3["CloudWatch<br/>0.5 GB logs<br/>£0.00"]
-        
-        GCP1["Cloud Functions<br/>100 invocations<br/>£0.00"]
-        GCP2["Firestore<br/>0.5 GB + 500 ops<br/>£0.00"]
+    subgraph Cloudflare["Cloudflare Edge"]
+        CF1["Workers<br/>3K requests/month<br/>£0.00"]
+    end
+    
+    subgraph AWS["AWS us-east-1"]
+        AWS1["Lambda Processor<br/>300 invocations<br/>£0.00"]
+        AWS2["Lambda Reporter<br/>4 invocations<br/>£0.00"]
+        AWS3["DynamoDB 2 tables<br/>0.8 GB storage<br/>£0.00"]
+        AWS4["SQS FIFO<br/>3K messages<br/>£0.00"]
+    end
+    
+    subgraph GCP["GCP us-central1"]
+        GCP1["Cloud Function<br/>300 invocations<br/>£0.00"]
+        GCP2["Firestore<br/>0.5 GB + 600 ops<br/>£0.00"]
         GCP3["Firebase Hosting<br/>225 MB bandwidth<br/>£0.00"]
     end
     
-    TOTAL["Total Cost<br/>£0.00/month<br/>6 months running<br/>100% uptime"]
+    subgraph Frontend["Frontend Hosting"]
+        V1["Vercel<br/>Angular CV Site<br/>£0.00"]
+    end
     
+    TOTAL["Total Cost<br/>£0.00/month<br/>3 Clouds + 6 Services<br/>6 months running<br/>100% uptime"]
+    
+    CF1 --> TOTAL
     AWS1 --> TOTAL
     AWS2 --> TOTAL
     AWS3 --> TOTAL
+    AWS4 --> TOTAL
     GCP1 --> TOTAL
     GCP2 --> TOTAL
     GCP3 --> TOTAL
+    V1 --> TOTAL
     
-    style Services fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Cloudflare fill:#f4a742,stroke:#f68333,stroke-width:2px
+    style AWS fill:#ff9900,stroke:#ec7211,stroke-width:2px
+    style GCP fill:#4285f4,stroke:#1967d2,stroke-width:2px
+    style Frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     style TOTAL fill:#c8e6c9,stroke:#388e3c,stroke-width:4px
 ```
 
@@ -1500,24 +1538,27 @@ graph TD
 
 **What We've Covered:**
 
+0. **Part 0:** Series overview (complete 3-cloud architecture)
 1. **Part 1:** Pure microservices architecture (87.5% score)
 2. **Part 2:** Multi-cloud infrastructure as code (Terraform)
-3. **Part 3:** Automated deployments (GitHub Actions)
-4. **Part 4:** Event-driven architecture (SQS, Streams)
-5. **Part 5:** Semantic versioning (independent evolution)
-6. **Part 6:** Multi-cloud security (HMAC, IAM, secrets)
-7. **Part 7:** Real-time dashboard (React, Firestore)
-8. **Part 8:** Cost optimization (£0/month production system)
+3. **Part 3:** Multi-cloud security (HMAC, IAM, cross-cloud secrets)
+4. **Part 4:** Terraform multi-cloud (AWS + GCP in one config)
+5. **Part 5:** GitHub Actions CI/CD (6 services, 3 clouds)
+6. **Part 6:** Semantic versioning (independent evolution across clouds)
+7. **Part 7:** Real-time dashboard (cross-cloud WebSocket updates)
+8. **Part 8:** Cost optimization (£0/month across 3 clouds)
 
 **What You've Learned:**
 - ✓ Design and score microservices architectures
+- ✓ Build CV chatbot with Cloudflare Workers (12ms, edge compute)
+- ✓ Implement fire-and-forget writes (AWS DynamoDB from Cloudflare)
+- ✓ Batch process events with AWS Lambda + SQS (90% reduction)
+- ✓ Authenticate cross-cloud webhooks (AWS Lambda → GCP HMAC)
 - ✓ Provision multi-cloud infrastructure with Terraform
-- ✓ Automate deployments with GitHub Actions
-- ✓ Build event-driven systems with queues and streams
+- ✓ Automate deployments across 3 clouds with GitHub Actions
 - ✓ Version services independently with SemVer
-- ✓ Secure webhooks and APIs across clouds
-- ✓ Create real-time dashboards with React
-- ✓ Optimize serverless costs for production
+- ✓ Create real-time dashboards with React + Firestore WebSocket
+- ✓ Optimize serverless costs: £0/month across Cloudflare + AWS + GCP
 
 **Next Steps:**
 - Clone the repositories and run locally
@@ -1525,12 +1566,24 @@ graph TD
 - Deploy to your own AWS/GCP accounts
 - Share your learnings
 
-**All repositories:**
-- [Dashboard](https://github.com/josejalvarezm/cv-analytics-dashboard-private)
-- [Webhook Receiver](https://github.com/josejalvarezm/cv-analytics-webhook-receiver-private)
-- [Processor](https://github.com/josejalvarezm/cv-analytics-processor-private)
-- [Reporter](https://github.com/josejalvarezm/cv-analytics-reporter-private)
-- [Infrastructure](https://github.com/josejalvarezm/cv-analytics-infrastructure-private)
+**All repositories (6 services across 3 clouds):**
+
+**Cloudflare:**
+- [CV Chatbot Worker](https://github.com/josejalvarezm/cv-chatbot-worker-private) (TypeScript, 12ms edge compute)
+
+**AWS:**
+- [Lambda Processor](https://github.com/josejalvarezm/cv-analytics-processor-private) (Node.js, SQS batching)
+- [Lambda Reporter](https://github.com/josejalvarezm/cv-analytics-reporter-private) (Node.js, weekly emails)
+
+**GCP:**
+- [Cloud Function Webhook](https://github.com/josejalvarezm/cv-analytics-webhook-receiver-private) (Go, HMAC validation)
+
+**Frontend:**
+- [Angular CV Site](https://github.com/josejalvarezm/cv-site-angular-private) (Vercel hosting)
+- [React Dashboard](https://github.com/josejalvarezm/cv-analytics-dashboard-private) (Firebase Hosting, WebSocket)
+
+**Infrastructure:**
+- [Terraform Multi-Cloud](https://github.com/josejalvarezm/cv-analytics-infrastructure-private) (AWS + GCP providers)
 
 ---
 

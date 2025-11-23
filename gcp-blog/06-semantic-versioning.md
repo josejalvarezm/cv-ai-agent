@@ -2030,12 +2030,13 @@ Services versioned independently. Now: building the frontend that visualizes eve
 
 Part 7 covers:
 - ✓ React + TypeScript + Vite setup
-- ✓ Firestore real-time listeners
+- ✓ Firestore real-time listeners (GCP WebSocket)
+- ✓ Cross-cloud data flow (AWS Lambda → GCP → Dashboard)
 - ✓ Data visualization with Recharts
 - ✓ Firebase Hosting with CDN
 - ✓ Performance optimization
 
-**Focus:** Real-time WebSocket updates without polling.
+**Focus:** Real-time WebSocket updates showing AWS-processed analytics instantly via GCP Firestore.
 
 ---
 

@@ -1431,6 +1431,7 @@ CV Analytics achieved these metrics with 2 weeks of focused development.
 Dashboard built. Now: how to keep it running at £0/month.
 
 Part 8 covers:
+- ✓ Cloudflare Workers free tier (100K req/day)
 - ✓ AWS Lambda free tier (1M requests/month)
 - ✓ DynamoDB always-free tier (25 GB)
 - ✓ GCP Cloud Functions free tier (2M invocations/month)

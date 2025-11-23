@@ -1,6 +1,6 @@
 # Multi-Cloud Infrastructure as Code: Terraform for GCP and AWS
 
-*Clicking through cloud consoles for 45 minutes to recreate staging. Terraform: 2 minutes and identical to production.*
+*Managing six microservices across Cloudflare, AWS, and GCP with 1,200 lines of Terraform configuration—eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
 
 ## Quick Summary
 

@@ -1,6 +1,6 @@
 # Real-Time Dashboard: React, TypeScript, and Firestore WebSockets
 
-*Polling Firestore every 5 seconds: 720 wasteful requests per hour. WebSocket listeners: 98% reduction, instant updates.*
+*Building a real-time analytics dashboard with React, TypeScript, Vite, and Firestore WebSocket listeners—eliminating polling overhead, achieving instant updates across cloud boundaries, and visualizing cross-cloud data flow from AWS Lambda to GCP to browser.*
 
 ## Quick Summary
 

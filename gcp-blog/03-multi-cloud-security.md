@@ -1,6 +1,6 @@
 # Multi-Cloud Security: HMAC, IAM, and Secrets Management
 
-*Friday afternoon deployment without HMAC validation. Monday morning: 347 fake events in my database.*
+*Securing cross-cloud webhooks with HMAC-SHA256, enforcing least-privilege IAM policies across AWS and GCP, managing secrets in GitHub Actions, and protecting databases with Firestore security rules—all validated under real attack attempts.*
 
 ## Quick Summary
 

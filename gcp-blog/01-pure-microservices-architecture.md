@@ -1,6 +1,6 @@
 # Pure Microservices Architecture: What 87.5% Really Means
 
-*Claimed "microservices architecture" on my resume. Then measured it objectively. 87.5% independent. Learned that's actually excellent for a portfolio project.*
+*Six services across three clouds scored against 8 independence criteria: deployment, versioning, storage, scaling, CI/CD, management, communication, and infrastructure—achieving 87.5% purity with measured trade-offs.*
 
 ## Quick Summary
 

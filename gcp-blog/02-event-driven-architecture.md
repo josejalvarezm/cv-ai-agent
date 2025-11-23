@@ -1,5 +1,7 @@
 # Event-Driven Architecture: Decoupling Microservices with Queues and Streams
 
+*Breaking synchronous coupling through DynamoDB Streams, SQS FIFO queues, Firestore WebSocket listeners, and event correlation—enabling independent service operation across Cloudflare, AWS, and GCP.*
+
 ## Quick Summary
 
 - ✓ **Event-driven communication** eliminates direct HTTP coupling between services

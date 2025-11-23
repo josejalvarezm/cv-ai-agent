@@ -1,6 +1,6 @@
 # Automated Deployments with GitHub Actions: Multi-Cloud CI/CD
 
-*Manual deployment took 76 minutes across six services and three clouds. GitHub Actions: 4 minutes hands-off, zero human error.*
+*Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2—with automated testing, secrets management, and zero-downtime deployments across three clouds.*
 
 ## Quick Summary
 

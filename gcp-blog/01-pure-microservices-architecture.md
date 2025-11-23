@@ -417,24 +417,24 @@ Ask these questions for each service:
 
 ## What's Next
 
-**Part 2: Multi-Cloud Infrastructure as Code with Terraform**
+**Part 2: Event-Driven Architecture Patterns**
 
-Now that we've established what makes microservices "pure", the next question is: how do you provision all this infrastructure consistently across GCP and AWS?
+Now that we've established what makes microservices "pure", the next question is: how do they communicate without coupling?
 
 Part 2 covers:
-- ✓ Terraform for multi-cloud provisioning
-- ✓ Remote state management with Terraform Cloud
-- ✓ Secrets handling and environment variables
-- ✓ Rollback strategies and disaster recovery
-- ✓ The pragmatic choice: one infrastructure repository
+- ✓ Async communication via SQS and DynamoDB Streams
+- ✓ Event correlation across distributed services
+- ✓ Real-time updates with Firestore listeners
+- ✓ Dead letter queues and error handling
+- ✓ When NOT to use event-driven patterns
 
 **Preview:**
-```bash
-terraform plan   # Review GCP Functions + AWS Lambda together
-terraform apply  # Provision everything in one command
+```javascript
+// Services communicate through events, not HTTP calls
+DynamoDB → Streams → SQS → Lambda → Analytics
 ```
 
-**Repository:** [cv-analytics-infrastructure-private](https://github.com/josejalvarezm/cv-analytics-infrastructure-private)
+**Focus:** Decoupling services through events and queues.
 
 ---
 

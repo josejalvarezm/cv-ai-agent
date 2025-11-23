@@ -137,11 +137,11 @@
 
 ## What's Next
 
-**Part 3: CI/CD with GitHub Actions**
+**Part 5: CI/CD with GitHub Actions**
 
 Infrastructure provisioned. Now: automated deployments.
 
-Part 3 covers:
+Part 5 covers:
 - ✓ GitHub Actions workflows per service
 - ✓ Secrets management across repositories
 - ✓ Deployment pipelines (React, Go, Node.js)

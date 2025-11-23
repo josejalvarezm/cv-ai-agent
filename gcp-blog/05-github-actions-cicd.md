@@ -190,18 +190,18 @@ jobs:
 
 ## What's Next
 
-**Part 4: Event-Driven Architecture Patterns**
+**Part 6: Semantic Versioning for Microservices**
 
-Deployments automated. Now: how services communicate without coupling.
+Deployments automated. Now: how to version services independently.
 
-Part 4 covers:
-- ✓ Async communication patterns
-- ✓ SQS and DynamoDB Streams
-- ✓ Webhook ingestion to Firestore
-- ✓ Event correlation strategies
-- ✓ Dealing with eventual consistency
+Part 6 covers:
+- ✓ SemVer 2.0.0 for microservices
+- ✓ Git tagging strategies
+- ✓ Breaking changes across services
+- ✓ Deprecation policies
+- ✓ Automated version bumps in CI/CD
 
-**Focus:** How microservices talk without knowing each other exist.
+**Focus:** Independent evolution without breaking consumers.
 
 ---
 

@@ -11,12 +11,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `01-pure-microservices-architecture.md`
 
 **At a glance:**
+
 - Define what makes microservices "pure" (measurable criteria)
 - Score the CV Analytics architecture (87.5% methodology)
 - Explain the shared infrastructure trade-off
 - Show when purity matters (and when it doesn't)
 
 **Structure:**
+
 1. **Quick Summary** (not TL;DR) - 4-5 bullet points
 2. **Introduction** - Why microservices purity matters
 3. **Defining Pure Microservices** - 8 independence criteria
@@ -29,11 +31,13 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 10. **Next Steps** - Bridge to Part 2
 
 **Mermaid diagrams:**
+
 - Service independence graph (colour-coded by cloud provider)
 - Dependency analysis (what's coupled, what's not)
 - Purity scoring breakdown (visual scorecard)
 
 **Key points:**
+
 - ✓ 6 independent services (separate repos, CI/CD, versions)
 - ✓ Event-driven communication (no direct HTTP between services)
 - ✓ Multi-cloud deployment (GCP + AWS)
@@ -47,12 +51,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `02-terraform-multi-cloud.md`
 
 **At a glance:**
+
 - Provision GCP and AWS resources with Terraform
 - Manage remote state with Terraform Cloud
 - Handle secrets and environment variables
 - Implement rollback strategies
 
 **Structure:**
+
 1. **Quick Summary**
 2. **Introduction** - Why IaC matters for multi-cloud
 3. **Terraform Fundamentals** - State, providers, modules
@@ -66,12 +72,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 11. **Next Steps** - Bridge to Part 3 (CI/CD)
 
 **Mermaid diagrams:**
+
 - Terraform workflow (init → plan → apply)
 - GCP resource dependencies
 - AWS resource dependencies
 - Multi-cloud state management
 
 **Key points:**
+
 - ✓ 100% infrastructure-as-code (no manual configuration)
 - ✓ Reproducible environments (identical dev/prod)
 - ✓ Version-controlled infrastructure
@@ -84,12 +92,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `03-github-actions-cicd.md`
 
 **At a glance:**
+
 - Automate deployments for 4 microservices
 - Use Firebase CLI, gcloud CLI, AWS CLI in workflows
 - Manage secrets across repositories
 - Implement independent deployment pipelines
 
 **Structure:**
+
 1. **Quick Summary**
 2. **Introduction** - Why CI/CD for microservices
 3. **GitHub Actions Fundamentals** - Workflows, jobs, steps
@@ -103,12 +113,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 11. **Next Steps** - Bridge to Part 4 (event-driven patterns)
 
 **Mermaid diagrams:**
+
 - GitHub Actions workflow (trigger → test → build → deploy)
 - Secrets flow (GitHub Secrets → workflow → cloud)
 - Multi-service deployment pipeline
 - Failure handling (retry logic, rollback)
 
 **Key points:**
+
 - ✓ 4 independent CI/CD pipelines
 - ✓ Automated testing before deployment
 - ✓ Zero-downtime deployments
@@ -121,12 +133,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `04-event-driven-patterns.md`
 
 **At a glance:**
+
 - Implement async communication with SQS and DynamoDB Streams
 - Handle webhook ingestion → real-time updates
 - Correlate events across distributed services
 - Deal with eventual consistency
 
 **Structure:**
+
 1. **Quick Summary**
 2. **Introduction** - Why event-driven for microservices
 3. **Synchronous vs Asynchronous** - Comparison with examples
@@ -140,12 +154,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 11. **Next Steps** - Bridge to Part 5 (versioning)
 
 **Mermaid diagrams:**
+
 - GCP pipeline (webhook → Firestore → dashboard)
 - AWS pipeline (chatbot → DynamoDB → SQS → processor → analytics)
 - Event correlation flow (query arrives, response arrives, match)
 - Failure scenarios (queue backup, Lambda timeout)
 
 **Key points:**
+
 - ✓ Services don't call each other directly
 - ✓ SQS handles traffic spikes
 - ✓ DynamoDB Streams capture changes
@@ -158,12 +174,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `05-semantic-versioning.md`
 
 **At a glance:**
+
 - Apply SemVer 2.0.0 to independent services
 - Tag releases with Git
 - Automate version bumps in CI/CD
 - Handle breaking changes across services
 
 **Structure:**
+
 1. **Quick Summary**
 2. **Introduction** - Why versioning matters for microservices
 3. **Semantic Versioning Basics** - MAJOR.MINOR.PATCH explained
@@ -177,12 +195,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 11. **Next Steps** - Bridge to Part 6 (security)
 
 **Mermaid diagrams:**
+
 - Version lifecycle (develop → tag → release → deploy)
 - Service version independence (6 services, 6 versions)
 - Breaking change workflow (announce → deprecate → remove)
 - CI/CD version automation
 
 **Key points:**
+
 - ✓ Each service has independent version
 - ✓ Git tags as deployment markers
 - ✓ Automated version tracking
@@ -195,12 +215,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `06-security-patterns.md`
 
 **At a glance:**
+
 - Validate webhooks with HMAC-SHA256
 - Configure GCP service accounts and AWS IAM roles
 - Manage secrets in GitHub Actions
 - Implement Firestore security rules
 
 **Structure:**
+
 1. **Quick Summary**
 2. **Introduction** - Security for multi-cloud microservices
 3. **Webhook Authentication** - HMAC signature validation
@@ -214,12 +236,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 11. **Next Steps** - Bridge to Part 7 (real-time dashboard)
 
 **Mermaid diagrams:**
+
 - HMAC validation flow (GitHub → webhook → signature check)
 - IAM role assumption (GitHub Actions → AWS/GCP)
 - Secrets flow (GitHub Secrets → CI/CD → deployment)
 - Security layers (authentication → authorization → encryption → audit)
 
 **Key points:**
+
 - ✓ HMAC prevents unauthorized webhooks
 - ✓ Service accounts have minimal permissions
 - ✓ Secrets never in code
@@ -232,12 +256,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `07-realtime-dashboard.md`
 
 **At a glance:**
+
 - Build React dashboard with TypeScript and Vite
 - Implement Firestore real-time listeners
 - Visualize data with Recharts
 - Deploy to Firebase Hosting with CDN
 
 **Structure:**
+
 1. **Quick Summary**
 2. **Introduction** - Why real-time for analytics
 3. **React Setup** - Vite, TypeScript, Tailwind
@@ -251,12 +277,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 11. **Next Steps** - Bridge to Part 8 (cost optimization)
 
 **Mermaid diagrams:**
+
 - Real-time data flow (Firestore → WebSocket → React state → chart)
 - Component architecture (App → Dashboard → Charts)
 - Deployment pipeline (build → Firebase Hosting → CDN)
 - Performance optimization (lazy loading, code splitting)
 
 **Key points:**
+
 - ✓ Real-time updates without polling
 - ✓ Firebase Hosting with global CDN
 - ✓ React TypeScript for type safety
@@ -269,12 +297,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ### File: `08-cost-optimization.md`
 
 **At a glance:**
+
 - Stay within free tiers (AWS Lambda, DynamoDB, GCP Cloud Functions)
 - Batch requests to reduce invocations
 - Monitor costs with CloudWatch and Cloud Logging
 - Optimize cold start times
 
 **Structure:**
+
 1. **Quick Summary**
 2. **Introduction** - Serverless cost model
 3. **AWS Free Tier** - Lambda, DynamoDB, SQS limits
@@ -288,12 +318,14 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 11. **Series Conclusion** - What we've covered
 
 **Mermaid diagrams:**
+
 - Cost breakdown by service
 - Batching impact (1000 invocations → 100 invocations)
 - Free tier limits (visual thresholds)
 - Cost monitoring dashboard
 
 **Key points:**
+
 - ✓ £0/month for production system
 - ✓ Lambda: 1M free requests/month
 - ✓ DynamoDB: 25 GB always free
@@ -304,6 +336,7 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 ## Writing Guidelines Summary
 
 **For all posts:**
+
 - ✓ Use British English (optimise, colour, analyse)
 - ✓ No em dashes (—) or unnecessary hyphens
 - ✓ Use ✓ for checkmarks (not ✅)
@@ -317,6 +350,7 @@ Based on the guidelines in `docs/guidelines.md` and `docs/BLOG_WRITING_GUIDELINE
 - ✓ Bridge to next post
 
 **Avoid:**
+
 - ❌ "Obviously", "clearly", "trivial"
 - ❌ "No PhD required"
 - ❌ Over-hyped language

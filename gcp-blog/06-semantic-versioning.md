@@ -187,18 +187,18 @@ jobs:
 
 ## What's Next
 
-**Part 6: Multi-Cloud Security Patterns**
+**Part 7: Real-Time Dashboard with React and Firestore**
 
-Services evolve independently. Now: how to secure them across GCP and AWS.
+Services versioned independently. Now: building the frontend that visualizes everything.
 
-Part 6 covers:
-- ✓ HMAC signature validation for webhooks
-- ✓ GCP service accounts and AWS IAM roles
-- ✓ Secrets management across clouds
-- ✓ Firestore security rules
-- ✓ Encryption at-rest and in-transit
+Part 7 covers:
+- ✓ React + TypeScript + Vite setup
+- ✓ Firestore real-time listeners
+- ✓ Data visualization with Recharts
+- ✓ Firebase Hosting with CDN
+- ✓ Performance optimization
 
-**Focus:** Security patterns that work across cloud providers.
+**Focus:** Real-time WebSocket updates without polling.
 
 ---
 

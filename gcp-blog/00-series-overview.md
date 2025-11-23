@@ -28,45 +28,7 @@ A technical deep-dive into building production-grade, event-driven microservices
 
 ---
 
-### Part 2: Infrastructure as Code with Terraform
-
-**Why this matters:** Clicking through cloud consoles doesn't scale. Manual configuration leads to drift, inconsistency, and "works on my machine" syndrome. Infrastructure-as-code makes environments reproducible, auditable, and testable.
-
-**What you'll learn:**
-- ✓ Multi-cloud Terraform patterns (GCP + AWS)
-- ✓ Remote state management with Terraform Cloud
-- ✓ Module organization for reusability
-- ✓ Handling secrets and environment variables
-- ✓ Rollback strategies and disaster recovery
-
-**Infrastructure covered:**
-- GCP: Cloud Functions, Firestore, Firebase Hosting
-- AWS: Lambda, DynamoDB, SQS, EventBridge, SES
-- Terraform modules for reproducible deployments
-- Cost optimization through serverless architecture
-
----
-
-### Part 3: CI/CD with GitHub Actions
-
-**Why this matters:** Manual deployments are error-prone and time-consuming. Automated pipelines enable frequent deployments, catch regressions early, and document the release process.
-
-**What you'll learn:**
-- ✓ GitHub Actions workflows for multi-cloud deployment
-- ✓ Secrets management across repositories
-- ✓ Independent deployment pipelines per service
-- ✓ Automated testing before deployment
-- ✓ Using Firebase CLI, gcloud CLI, and AWS CLI in workflows
-
-**Automation covered:**
-- 4 independent CI/CD pipelines
-- Deployment to Firebase, Cloud Functions, Lambda
-- Semantic versioning automation
-- Zero-downtime deployment patterns
-
----
-
-### Part 4: Event-Driven Architecture Patterns
+### Part 2: Event-Driven Architecture Patterns
 
 **Why this matters:** Synchronous service-to-service calls create tight coupling. When Service B is down, Service A fails. Event-driven architecture decouples services through message queues and streams, improving resilience and scalability.
 
@@ -85,7 +47,65 @@ A technical deep-dive into building production-grade, event-driven microservices
 
 ---
 
-### Part 5: Microservices Versioning Strategy
+### Part 3: Multi-Cloud Security Patterns
+
+**Why this matters:** Security can't be an afterthought. Webhooks need validation, secrets need protection, and IAM policies need least privilege. Multi-cloud security requires understanding both GCP and AWS patterns.
+
+**What you'll learn:**
+- ✓ HMAC signature validation for webhooks
+- ✓ GCP service accounts and AWS IAM roles
+- ✓ Secrets management in GitHub Actions
+- ✓ Firestore security rules
+- ✓ Encryption at-rest and in-transit
+
+**Security covered:**
+- Webhook authentication with HMAC-SHA256
+- Least privilege IAM policies
+- GitHub Secrets for CI/CD credentials
+- Database security rules
+- Audit logging and monitoring
+
+---
+
+### Part 4: Infrastructure as Code with Terraform
+
+**Why this matters:** Clicking through cloud consoles doesn't scale. Manual configuration leads to drift, inconsistency, and "works on my machine" syndrome. Infrastructure-as-code makes environments reproducible, auditable, and testable.
+
+**What you'll learn:**
+- ✓ Multi-cloud Terraform patterns (GCP + AWS)
+- ✓ Remote state management with Terraform Cloud
+- ✓ Module organization for reusability
+- ✓ Handling secrets and environment variables
+- ✓ Rollback strategies and disaster recovery
+
+**Infrastructure covered:**
+- GCP: Cloud Functions, Firestore, Firebase Hosting
+- AWS: Lambda, DynamoDB, SQS, EventBridge, SES
+- Terraform modules for reproducible deployments
+- Cost optimization through serverless architecture
+
+---
+
+### Part 5: CI/CD with GitHub Actions
+
+**Why this matters:** Manual deployments are error-prone and time-consuming. Automated pipelines enable frequent deployments, catch regressions early, and document the release process.
+
+**What you'll learn:**
+- ✓ GitHub Actions workflows for multi-cloud deployment
+- ✓ Secrets management across repositories
+- ✓ Independent deployment pipelines per service
+- ✓ Automated testing before deployment
+- ✓ Using Firebase CLI, gcloud CLI, and AWS CLI in workflows
+
+**Automation covered:**
+- 4 independent CI/CD pipelines
+- Deployment to Firebase, Cloud Functions, Lambda
+- Semantic versioning automation
+- Zero-downtime deployment patterns
+
+---
+
+### Part 6: Microservices Versioning Strategy
 
 **Why this matters:** Without versioning, you can't track what's deployed, roll back safely, or coordinate breaking changes across services. Semantic versioning provides a contract between services and their consumers.
 
@@ -104,35 +124,16 @@ A technical deep-dive into building production-grade, event-driven microservices
 
 ---
 
-### Part 6: Multi-Cloud Security Patterns
-
-**Why this matters:** Security isn't an afterthought. HMAC validation, IAM roles, secrets management, and encryption must be designed in from the start.
-
-**What you'll learn:**
-- ✓ HMAC-SHA256 webhook signature validation
-- ✓ GCP service accounts with least privilege
-- ✓ AWS IAM roles for Lambda
-- ✓ GitHub Secrets for CI/CD authentication
-- ✓ Firestore security rules
-
-**Security covered:**
-- Webhook authentication (HMAC validation)
-- Cloud IAM configuration (GCP service accounts, AWS roles)
-- Secrets management (GitHub Secrets, environment variables)
-- Database security (Firestore rules, DynamoDB policies)
-
----
-
 ### Part 7: Real-Time Dashboard with React and Firestore
 
 **Why this matters:** Polling is wasteful. WebSocket-based real-time updates provide instant feedback without hammering your database with repeated queries.
 
 **What you'll learn:**
+- ✓ React + TypeScript + Vite setup
 - ✓ Firestore real-time listeners
-- ✓ React state management for live data
-- ✓ Charting with Recharts
+- ✓ Data visualization with Recharts
 - ✓ Firebase Hosting deployment
-- ✓ Optimizing cold start times
+- ✓ Performance optimization
 
 **Implementation covered:**
 - Real-time webhook visualization

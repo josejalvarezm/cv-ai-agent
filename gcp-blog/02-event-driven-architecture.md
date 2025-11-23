@@ -163,18 +163,18 @@ exports.handler = async (event) => {
 
 ## What's Next
 
-**Part 5: Semantic Versioning for Microservices**
+**Part 3: Multi-Cloud Security Patterns**
 
-Services communicate through events. Now: how to evolve them independently.
+Services communicate through events. Now: how to secure webhooks, secrets, and data across clouds.
 
-Part 5 covers:
-- ✓ SemVer 2.0.0 for microservices
-- ✓ Git tagging strategies
-- ✓ Breaking changes across services
-- ✓ Deprecation policies
-- ✓ Automated version bumps in CI/CD
+Part 3 covers:
+- ✓ HMAC signature validation for webhooks
+- ✓ GCP service accounts and AWS IAM roles
+- ✓ Secrets management in GitHub Actions
+- ✓ Firestore security rules and DynamoDB policies
+- ✓ Encryption at-rest and in-transit
 
-**Focus:** Independent evolution without breaking consumers.
+**Focus:** Security patterns that work across cloud providers.
 
 ---
 

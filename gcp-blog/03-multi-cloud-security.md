@@ -182,18 +182,18 @@ service cloud.firestore {
 
 ## What's Next
 
-**Part 7: Real-Time Dashboard with React and Firestore**
+**Part 4: Infrastructure as Code with Terraform**
 
-Security patterns established. Now: building the frontend that visualizes everything.
+Security patterns established. Now: how to provision all this infrastructure consistently across GCP and AWS.
 
-Part 7 covers:
-- ✓ React + TypeScript + Vite setup
-- ✓ Firestore real-time listeners
-- ✓ Data visualization with Recharts
-- ✓ Firebase Hosting with CDN
-- ✓ Performance optimization
+Part 4 covers:
+- ✓ Multi-cloud Terraform patterns
+- ✓ Remote state management with Terraform Cloud
+- ✓ Secrets handling and environment variables
+- ✓ Rollback strategies and disaster recovery
+- ✓ Cost optimization through serverless architecture
 
-**Focus:** Real-time WebSocket updates without polling.
+**Focus:** Reproducible infrastructure across cloud providers.
 
 ---
 

@@ -1094,27 +1094,32 @@ terraform {
 
 ### The Secrets Problem
 
-Terraform needs secrets to provision infrastructure:
-- GitHub webhook secrets (for Cloud Function environment variables)
-- Database passwords (for connection strings)
-- API keys (for third-party services)
-- Service account keys (for authentication)
+Terraform needs secrets to provision infrastructure across 3 clouds:
+- **Cross-cloud shared secrets:** HMAC webhook secret (must be same value in AWS Secrets Manager + GCP Secret Manager)
+- **Cloud-specific credentials:** AWS IAM keys for Cloudflare Worker, GCP service account keys
+- **CI/CD credentials:** GitHub Secrets for deployment automation
+- **Database credentials:** Firestore and DynamoDB access keys (if needed)
 
-These secrets must never be committed to git. They must be injected at deployment time.
+These secrets must never be committed to git. They must be injected at deployment time and coordinated across multiple cloud providers.
 
 ### Environment Variables Pattern
 
 **Define variables in Terraform:**
 ```hcl
 # variables.tf
-variable "github_webhook_secret" {
-  description = "GitHub webhook secret for HMAC validation"
+variable "webhook_shared_secret" {
+  description = "HMAC shared secret for AWS Lambda → GCP Cloud Function webhooks (same value in both clouds)"
   type        = string
   sensitive   = true  # Terraform masks value in logs
 }
 
-variable "database_password" {
-  description = "Database admin password"
+variable "gcp_webhook_url" {
+  description = "GCP Cloud Function webhook URL (output from GCP Terraform)"
+  type        = string
+}
+
+variable "cloudflare_worker_aws_key" {
+  description = "AWS IAM access key for Cloudflare Worker (DynamoDB writes)"
   type        = string
   sensitive   = true
 }
@@ -1122,9 +1127,10 @@ variable "database_password" {
 
 **Pass secrets via environment variables:**
 ```bash
-# Set environment variables
-export TF_VAR_github_webhook_secret="$GITHUB_WEBHOOK_SECRET"
-export TF_VAR_database_password="$DATABASE_PASSWORD"
+# Set environment variables for multi-cloud secrets
+export TF_VAR_webhook_shared_secret="$(openssl rand -hex 32)"  # Generate 256-bit secret
+export TF_VAR_gcp_webhook_url="https://us-central1-project.cloudfunctions.net/cv-analytics-webhook"
+export TF_VAR_cloudflare_worker_aws_key="AKIA..."
 
 # Terraform reads TF_VAR_* automatically
 terraform apply
@@ -1132,12 +1138,28 @@ terraform apply
 
 **Use in resources:**
 ```hcl
-resource "google_cloudfunctions_function" "webhook_receiver" {
-  name = "webhook-receiver"
-  
-  environment_variables = {
-    WEBHOOK_SECRET = var.github_webhook_secret  # From environment variable
+# GCP Cloud Function uses secret from GCP Secret Manager
+resource "google_secret_manager_secret" "webhook_secret" {
+  secret_id = "webhook-shared-secret"
+  replication {
+    automatic = true
   }
+}
+
+resource "google_secret_manager_secret_version" "webhook_secret_version" {
+  secret      = google_secret_manager_secret.webhook_secret.id
+  secret_data = var.webhook_shared_secret  # From Terraform variable
+}
+
+# AWS Lambda uses same secret from AWS Secrets Manager
+resource "aws_secretsmanager_secret" "webhook_secret" {
+  name        = "cv-analytics/webhook-secret"
+  description = "HMAC shared secret for AWS Lambda → GCP Cloud Function webhooks"
+}
+
+resource "aws_secretsmanager_secret_version" "webhook_secret_version" {
+  secret_id     = aws_secretsmanager_secret.webhook_secret.id
+  secret_string = var.webhook_shared_secret  # SAME VALUE as GCP
 }
 ```
 
@@ -1150,11 +1172,15 @@ Terraform Cloud provides encrypted variable storage.
 **Configure in Terraform Cloud UI:**
 1. Navigate to workspace → Variables
 2. Add variable:
-   - Key: `github_webhook_secret`
-   - Value: (paste secret)
+   - Key: `webhook_shared_secret`
+   - Value: (paste 64-character hex string)
    - Category: Terraform variable
    - Sensitive: ✓ (checked)
-3. Save
+   - Description: "HMAC secret for AWS Lambda → GCP webhooks (must match in both clouds)"
+3. Repeat for other secrets:
+   - `gcp_webhook_url` (from GCP Terraform output)
+   - `cloudflare_worker_aws_key` (AWS IAM access key)
+4. Save
 
 **Benefits:**
 - Encrypted at-rest and in-transit
@@ -1195,8 +1221,10 @@ jobs:
       
       - name: Terraform Plan
         env:
-          TF_VAR_github_webhook_secret: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+          TF_VAR_webhook_shared_secret: ${{ secrets.WEBHOOK_SHARED_SECRET }}
+          TF_VAR_gcp_webhook_url: ${{ secrets.GCP_WEBHOOK_URL }}
           TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_cloudflare_worker_aws_key: ${{ secrets.CLOUDFLARE_WORKER_AWS_KEY }}
         run: terraform plan
       
       - name: Terraform Apply

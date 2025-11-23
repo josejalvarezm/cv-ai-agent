@@ -31,6 +31,7 @@ CV Analytics implements defense in depth: multiple security layers that work tog
 This post explains the security patterns used in CV Analytics: how IAM credentials authenticate Cloudflare Workers writing to AWS, how HMAC-SHA256 prevents cross-cloud webhook spoofing between AWS and GCP, how service accounts enforce least privilege, how GitHub Secrets manage multi-cloud credentials in automated deployments, and how database security rules protect sensitive data.
 
 **What you'll learn:**
+
 - ✓ How Cloudflare Workers authenticate to AWS DynamoDB (IAM credentials)
 - ✓ How HMAC signatures authenticate cross-cloud webhooks (AWS Lambda → GCP Cloud Function)
 - ✓ How GCP service accounts and AWS IAM roles enforce least privilege
@@ -62,6 +63,7 @@ This post explains the security patterns used in CV Analytics: how IAM credentia
 HMAC (Hash-based Message Authentication Code) creates a cryptographic signature from a message and a secret key. The same message and key always produce the same signature. Without the key, you can't forge the signature.
 
 **The shared secret:** Both AWS Lambda (sender) and GCP Cloud Function (receiver) have the same secret key:
+
 - **AWS:** Stored in AWS Secrets Manager
 - **GCP:** Stored in GCP Secret Manager
 - **Secret value:** Random 256-bit key (never committed to Git)
@@ -332,6 +334,7 @@ sequenceDiagram
 ```
 
 **Least privilege principle:**
+
 - ✅ Only `PutItem` (can't read existing data or delete)
 - ✅ Only on Query Events table (can't access Analytics table)
 - ✅ No Lambda permissions, no S3, no other AWS services
@@ -419,6 +422,7 @@ GCP service accounts are special Google accounts representing applications, not 
 **Identity:** A service account has an email address (e.g., `webhook-receiver@project-id.iam.gserviceaccount.com`) and unique ID.
 
 **Authentication:** Services authenticate as a service account using:
+
 - Service account keys (JSON files, avoid in production)
 - Workload Identity Federation (preferred for GitHub Actions)
 - Default Application Credentials (automatic in GCP services)
@@ -432,11 +436,13 @@ Grant the minimum permissions required for a service to function. Don't use `rol
 **CV Analytics service accounts:**
 
 **Webhook Receiver Cloud Function:**
+
 - Role: `roles/datastore.user` (read/write Firestore documents)
 - Why: Function writes webhook data to Firestore, doesn't need broader access
 - Doesn't need: Cloud Functions deployment, Firebase Hosting, other services
 
 **GitHub Actions (for deployment):**
+
 - Role: `roles/cloudfunctions.developer` (deploy Cloud Functions)
 - Role: `roles/iam.serviceAccountUser` (act as service account)
 - Role: `roles/firebase.admin` (deploy Firebase Hosting)
@@ -444,6 +450,7 @@ Grant the minimum permissions required for a service to function. Don't use `rol
 - Doesn't need: Firestore data access, other resources
 
 **Dashboard (Firebase Hosting):**
+
 - No service account needed
 - Firebase Authentication handles user identity
 - Firestore security rules control data access
@@ -482,6 +489,7 @@ resource "google_cloudfunctions_function" "webhook_receiver" {
 Service account keys are JSON files containing private keys. If leaked, an attacker gains full access to the service account's permissions.
 
 **Problems:**
+
 - Keys don't expire automatically (manual rotation required)
 - Keys can be accidentally committed to git
 - Keys can be stolen from developer machines
@@ -525,21 +533,25 @@ func writeToFirestore() error {
 ### IAM Role Reference for CV Analytics
 
 **roles/cloudfunctions.developer:**
+
 - Permissions: Deploy and update Cloud Functions
 - Used by: GitHub Actions CI/CD pipeline
 - Scope: Project-level
 
 **roles/datastore.user:**
+
 - Permissions: Read and write Firestore documents
 - Used by: Webhook receiver Cloud Function
 - Scope: Project-level
 
 **roles/firebase.admin:**
+
 - Permissions: Deploy to Firebase Hosting, configure Firebase
 - Used by: GitHub Actions CI/CD pipeline
 - Scope: Project-level
 
 **roles/iam.serviceAccountUser:**
+
 - Permissions: Act as a service account (impersonation)
 - Used by: GitHub Actions to deploy Cloud Functions as specific service accounts
 - Scope: Service account resource
@@ -561,6 +573,7 @@ AWS IAM roles are identities with permission policies. Unlike IAM users (permane
 **Temporary credentials:** When Lambda assumes a role, it gets temporary access keys (valid for duration of invocation)
 
 **Role assumption flow:**
+
 1. Lambda function starts
 2. Lambda service calls STS AssumeRole API
 3. STS validates trust policy
@@ -575,11 +588,13 @@ Every Lambda function has an execution role. This role grants permissions for th
 **CV Analytics Lambda roles:**
 
 **Processor Lambda:**
+
 - Read messages from SQS queue
 - Write results to DynamoDB table
 - Write logs to CloudWatch Logs
 
 **Reporter Lambda:**
+
 - Read aggregated data from DynamoDB table
 - Send emails via AWS SES
 - Write logs to CloudWatch Logs
@@ -882,15 +897,18 @@ wrangler secret put AWS_REGION
 ### Creating GitHub Secrets
 
 **Step 1: Navigate to repository settings**
+
 - Go to repository → Settings → Secrets and variables → Actions
 - Click "New repository secret"
 
 **Step 2: Add secret**
+
 - Name: `FIREBASE_TOKEN` (uppercase, underscores only)
 - Value: Paste token value (no quotes, no whitespace)
 - Click "Add secret"
 
 **Step 3: Verify secret is hidden**
+
 - Secret values are never displayed after creation
 - Workflows can access via `${{ secrets.FIREBASE_TOKEN }}`
 - Secret values don't appear in logs (GitHub automatically masks them)
@@ -938,6 +956,7 @@ jobs:
 **Common mistakes:**
 
 `.env` files committed to git:
+
 ```bash
 # WRONG: Committed to repository
 # .env
@@ -987,6 +1006,7 @@ service-account-*.json # Specific pattern
 ### Secret Rotation Procedures
 
 **Rotate secrets periodically** (every 90 days recommended) or immediately after:
+
 - Team member leaves
 - Secret possibly leaked
 - Security incident
@@ -1086,6 +1106,7 @@ service cloud.firestore {
 Dashboard clients should only read data, not write. Writes come from Cloud Functions (which use service accounts, bypassing security rules).
 
 **Prevents:**
+
 - Malicious users injecting fake analytics
 - Compromised frontend code modifying data
 - Accidental writes from buggy client code
@@ -1097,6 +1118,7 @@ DynamoDB doesn't have security rules like Firestore. Access control happens enti
 **CV Analytics DynamoDB access pattern:**
 
 **Aggregated table (stores processed analytics):**
+
 - Lambda writes: Processor Lambda writes aggregated data
 - Lambda reads: Reporter Lambda reads for weekly reports
 - No direct client access: Frontend doesn't query DynamoDB (reads from Firestore instead)
@@ -1150,11 +1172,13 @@ exports.handler = async (event) => {
 ### Encryption at Rest
 
 **GCP Firestore:**
+
 - Default encryption: AES-256 encryption enabled by default (no configuration needed)
 - Encryption key management: Google-managed keys (automatic rotation)
 - Customer-managed keys (CMEK): Optional, use Cloud KMS for custom keys
 
 **AWS DynamoDB:**
+
 - Default encryption: AES-256 encryption enabled by default
 - Encryption key management: AWS-managed keys (automatic rotation)
 - Customer-managed keys (CMK): Optional, use AWS KMS for custom keys
@@ -1163,6 +1187,7 @@ exports.handler = async (event) => {
 Use default encryption (Google-managed and AWS-managed keys). Customer-managed keys add complexity without security benefit for this use case.
 
 **When to use customer-managed keys:**
+
 - Regulatory requirements (e.g., HIPAA, PCI-DSS)
 - Need audit trail of key usage
 - Require ability to revoke access immediately
@@ -1171,21 +1196,25 @@ Use default encryption (Google-managed and AWS-managed keys). Customer-managed k
 ### Network Isolation
 
 **Firestore:**
+
 - Public endpoint with authentication
 - Security rules enforce access control
 - VPC Service Controls (optional): Restrict access to specific VPCs
 
 **DynamoDB:**
+
 - Public endpoint with IAM authentication
 - VPC Endpoints (optional): Access DynamoDB without internet gateway
 - Lambda in VPC: Add VPC configuration to Lambda function
 
 **CV Analytics network configuration:**
+
 - Public endpoints for both databases (simpler, lower cost)
 - Security through authentication (IAM, Firebase Auth) and authorization (IAM policies, Firestore rules)
 - No VPC required for serverless architecture
 
 **When to use VPC:**
+
 - Hybrid cloud with on-premises connectivity
 - Compliance requires private networking
 - Need static IP addresses (NAT gateway)
@@ -1218,15 +1247,18 @@ All network communication in CV Analytics uses TLS (Transport Layer Security) 1.
 - Cost: £0 (TLS included)
 
 **Dashboard → Firestore:**
+
 - Firebase SDK uses HTTPS for all API calls
 - WebSocket connections use WSS (WebSocket Secure)
 - Certificate: Managed by Google
 
 **Lambda → DynamoDB:**
+
 - AWS SDK uses HTTPS for all API calls
 - Certificate: Managed by AWS
 
 **Firebase Hosting:**
+
 - Dashboard served over HTTPS
 - Custom domain: `your-dashboard.com`
 - Certificate: Automatic Let's Encrypt (Firebase provisions and renews)
@@ -1268,12 +1300,14 @@ All data stored in Firestore and DynamoDB is encrypted at rest using AES-256 (Ad
 **GCP Firestore encryption:**
 
 **Default encryption:**
+
 - Enabled automatically (no configuration required)
 - Google-managed keys: Google generates, rotates, and manages keys
 - Key rotation: Automatic, transparent to applications
 - Encryption scope: Entire database encrypted
 
 **Customer-Managed Encryption Keys (CMEK):**
+
 - Use Cloud KMS to manage your own keys
 - Requires: Enable Cloud KMS API, create key ring and crypto key
 - Use case: Regulatory compliance, audit requirements
@@ -1309,11 +1343,13 @@ resource "google_kms_crypto_key_iam_binding" "firestore_key_binding" {
 **AWS DynamoDB encryption:**
 
 **Default encryption:**
+
 - Enabled automatically (AWS-managed keys)
 - Key rotation: Automatic every 3 years
 - Encryption scope: Entire table encrypted
 
 **Customer-Managed Keys (AWS KMS):**
+
 - Use AWS KMS to manage your own keys
 - Requires: Create KMS key, grant DynamoDB service access
 - Cost: KMS charges per API call
@@ -1349,22 +1385,26 @@ resource "aws_dynamodb_table" "analytics" {
 ### Certificate Management
 
 **Firebase Hosting:**
+
 - Automatic SSL certificates via Let's Encrypt
 - Renewal: Firebase handles automatically (60 days before expiry)
 - Custom domains: Add domain in Firebase Console, update DNS, certificate provisioned
 - Cost: Free
 
 **Cloud Functions:**
+
 - Automatic SSL certificates for `.cloudfunctions.net` domains
 - Custom domains: Use Cloud Load Balancer with Google-managed certificates
 - Cost: Load Balancer charges apply
 
 **API Gateway (AWS):**
+
 - Automatic certificates for API Gateway default domains
 - Custom domains: Use AWS Certificate Manager (ACM)
 - Cost: Free for ACM certificates
 
 **CV Analytics certificate strategy:**
+
 - Use automatic certificates (Firebase, Cloud Functions, API Gateway)
 - No manual certificate management required
 - Zero cost for certificates
@@ -1376,6 +1416,7 @@ resource "aws_dynamodb_table" "analytics" {
 ### Why Audit Logging Matters
 
 Security isn't complete without visibility. Audit logs answer critical questions:
+
 - Did HMAC validation fail? (Potential attack)
 - Which service accounts accessed which resources? (Audit trail)
 - Are there unusual access patterns? (Anomaly detection)
@@ -1388,6 +1429,7 @@ AWS Lambda automatically sends logs to CloudWatch Logs. Each Lambda function get
 **CV Analytics Lambda logging:**
 
 **Processor Lambda:**
+
 ```javascript
 console.log('Received SQS message', {
   messageId: record.messageId,
@@ -1406,6 +1448,7 @@ console.log('Wrote to DynamoDB', {
 ```
 
 **Reporter Lambda:**
+
 ```javascript
 console.log('Generating weekly report', {
   weekStart: startDate,
@@ -1422,6 +1465,7 @@ console.log('Sending email via SES', {
 Log objects (not strings) for easier querying in CloudWatch Insights.
 
 **CloudWatch Insights query (find failed DynamoDB writes):**
+
 ```
 fields @timestamp, @message
 | filter @message like /DynamoDB/
@@ -1485,6 +1529,7 @@ func toJSON(data interface{}) string {
 ```
 
 **Cloud Logging query (find failed HMAC validations):**
+
 ```
 resource.type="cloud_function"
 resource.labels.function_name="webhook-receiver"
@@ -1498,16 +1543,19 @@ Track authentication failures to detect brute-force attacks or misconfigured cli
 **Metrics to monitor:**
 
 **HMAC validation failures (Cloud Functions):**
+
 - Count: Number of failed validations per hour
 - Threshold: > 10 failures per hour = potential attack
 - Response: Alert security team, temporarily block IP (Cloud Armor)
 
 **IAM permission denied errors (Lambda):**
+
 - Count: Number of IAM AccessDenied errors
 - Threshold: > 0 (should never happen in production)
 - Response: Check IAM policies, verify Lambda execution role
 
 **Firebase Authentication failures (Dashboard):**
+
 - Count: Number of failed login attempts
 - Threshold: > 5 from same IP in 10 minutes
 - Response: Temporarily block IP, require CAPTCHA
@@ -1550,6 +1598,7 @@ resource "aws_sns_topic_subscription" "security_email" {
 ### Log Retention Policies
 
 **CloudWatch Logs:**
+
 - Default: Logs retained indefinitely (cost increases over time)
 - Recommended: 30 days for application logs, 90 days for security logs
 
@@ -1561,6 +1610,7 @@ resource "aws_cloudwatch_log_group" "processor_logs" {
 ```
 
 **Cloud Logging:**
+
 - Default: 30 days retention
 - Extended retention: Configure log sinks to Cloud Storage (long-term archival)
 
@@ -1595,15 +1645,18 @@ resource "google_storage_bucket" "logs_archive" {
 Implement automated anomaly detection for unusual patterns:
 
 **Volume anomalies:**
+
 - Sudden spike in webhook calls (> 10x normal rate) = potential DoS
 - Sudden drop in events (< 10% normal rate) = potential outage
 
 **Pattern anomalies:**
+
 - Webhook calls from unexpected IP addresses
 - Lambda invocations outside business hours (if unexpected)
 - Database queries for unusual data patterns
 
 **Implementation:**
+
 - Use CloudWatch Anomaly Detection (AWS) or Cloud Monitoring anomaly detection (GCP)
 - Define baseline metrics (normal behaviour)
 - Alert when current metrics deviate significantly from baseline
@@ -1672,16 +1725,19 @@ HMAC signatures without timestamps are vulnerable to replay attacks. Validate ti
 ### Security Metrics to Monitor
 
 **Daily metrics:**
+
 - HMAC validation failures per hour
 - IAM permission denied errors
 - Lambda/Cloud Function error rates
 
 **Weekly metrics:**
+
 - Total webhook volume (detect anomalies)
 - Authentication success rate
 - Log storage costs (optimize retention)
 
 **Monthly metrics:**
+
 - Secret rotation status (overdue rotations)
 - Security audit findings
 - Cost per security control
@@ -1689,21 +1745,25 @@ HMAC signatures without timestamps are vulnerable to replay attacks. Validate ti
 ### When to Use These Patterns
 
 **Use HMAC validation when:**
+
 - Receiving webhooks from external services (GitHub, Stripe, Twilio)
 - Need to verify sender authenticity
 - Webhook endpoint is publicly accessible
 
 **Use service accounts/IAM roles when:**
+
 - Services need programmatic access to cloud resources
 - Running in GCP (Cloud Functions, Cloud Run, GKE)
 - Running in AWS (Lambda, ECS, EC2)
 
 **Use GitHub Secrets when:**
+
 - CI/CD pipelines need credentials for deployment
 - Secrets must be shared across workflows
 - Team members shouldn't have direct access to production credentials
 
 **Use customer-managed encryption keys when:**
+
 - Regulatory compliance requires key control (HIPAA, PCI-DSS)
 - Need audit trail of encryption key usage
 - Multi-region data residency requirements
@@ -1712,6 +1772,7 @@ HMAC signatures without timestamps are vulnerable to replay attacks. Validate ti
 ### Cost Considerations
 
 **Free security controls:**
+
 - HMAC validation (no cost)
 - IAM policies (no cost)
 - GitHub Secrets (no cost)
@@ -1720,6 +1781,7 @@ HMAC signatures without timestamps are vulnerable to replay attacks. Validate ti
 - Cloud Logging (within free tier: 50GB/month)
 
 **Paid security controls:**
+
 - Customer-managed keys (KMS API calls: $0.03 per 10,000 requests)
 - VPC endpoints ($0.01 per hour + $0.01 per GB processed)
 - Cloud Armor (DDoS protection: $5 per policy + $1 per million requests)
@@ -1731,6 +1793,7 @@ HMAC signatures without timestamps are vulnerable to replay attacks. Validate ti
 ### Testing Your Security Implementation
 
 **HMAC validation test:**
+
 ```bash
 # Test with invalid signature (should return 401)
 curl -X POST https://your-cloud-function.net/webhook \
@@ -1747,6 +1810,7 @@ curl -X POST https://your-cloud-function.net/webhook \
 ```
 
 **IAM policy test:**
+
 ```bash
 # AWS: Test Lambda can write to DynamoDB
 aws lambda invoke \
@@ -1761,6 +1825,7 @@ aws logs filter-log-events \
 ```
 
 **Firestore security rules test:**
+
 ```bash
 # Install Firebase emulator
 npm install -g firebase-tools
@@ -1779,6 +1844,7 @@ firebase emulators:exec --only firestore "npm test"
 Security patterns established. Now: how to provision all this infrastructure consistently across GCP and AWS.
 
 Part 4 covers:
+
 - ✓ Multi-cloud Terraform patterns
 - ✓ Remote state management with Terraform Cloud
 - ✓ Secrets handling and environment variables

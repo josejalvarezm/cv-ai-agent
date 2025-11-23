@@ -1325,7 +1325,15 @@ Lambda pipelines complete. Next: secrets management across all workflows.
 
 ## Secrets Management
 
-CV Analytics uses 7 secrets across 4 repositories. GitHub Secrets provides encrypted storage. Secrets never appear in logs or workflow files.
+CV Analytics uses 12+ secrets across 6 repositories and 3 cloud providers. GitHub Secrets provides encrypted storage. Secrets never appear in logs or workflow files.
+
+**Multi-cloud secrets coordination:**
+- **Angular CV site** (Vercel): `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`
+- **Cloudflare Worker**: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AWS_ACCESS_KEY_ID` (for DynamoDB)
+- **React Dashboard** (Firebase): `FIREBASE_TOKEN`, `GCP_PROJECT_ID`
+- **GCP Webhook** (Cloud Functions): `GCP_SA_KEY`, `GCP_PROJECT_ID`, `WEBHOOK_SECRET_NAME`
+- **AWS Processor** (Lambda): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `GCP_WEBHOOK_URL`
+- **AWS Reporter** (Lambda): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 
 ### Secrets Flow Architecture
 
@@ -1662,7 +1670,9 @@ Secrets management complete. Next: understanding independent deployment triggers
 
 ## Independent Deployment Triggers
 
-CV Analytics runs 4 independent pipelines. Services deploy separately. No coordinated releases. Dashboard updates don't wait for webhook changes.
+CV Analytics runs 6 independent pipelines across 3 clouds. Services deploy separately. No coordinated releases. Angular site updates don't wait for Cloudflare Worker changes. React dashboard updates don't wait for GCP webhook changes.
+
+**Exception:** AWS Lambda Processor deployment requires GCP Cloud Function webhook URL (cross-cloud dependency). GitHub Actions handles this with artifact outputs.
 
 ### 4 Parallel Deployment Pipelines
 

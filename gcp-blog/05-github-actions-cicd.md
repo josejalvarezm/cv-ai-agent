@@ -1,39 +1,42 @@
 # Automated Deployments with GitHub Actions: Multi-Cloud CI/CD
 
-*Manual deployment took 76 minutes across four services. GitHub Actions: 4 minutes hands-off, zero human error.*
+*Manual deployment took 76 minutes across six services and three clouds. GitHub Actions: 4 minutes hands-off, zero human error.*
 
 ## Quick Summary
 
-- ✓ **4 independent CI/CD pipelines** for dashboard, webhook, processor, reporter
-- ✓ **GitHub Actions workflows** automate testing, building, deploying
-- ✓ **Multi-cloud deployments** to Firebase, Cloud Functions, Lambda
-- ✓ **Secrets management** with GitHub Secrets (7 configured across 4 repos)
-- ✓ **Zero-downtime deployments** with serverless platforms
+- ✓ **6 independent CI/CD pipelines** for dashboard, webhook, processor, reporter, Angular CV site, Cloudflare Worker
+- ✓ **GitHub Actions workflows** automate testing, building, deploying across 3 clouds
+- ✓ **Multi-cloud deployments** to Vercel (Angular), Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, AWS Lambda×2
+- ✓ **Secrets management** with GitHub Secrets (12+ secrets across 6 repos, 3 clouds)
+- ✓ **Zero-downtime deployments** with serverless platforms (Cloudflare, GCP, AWS)
 
 ---
 
 ## Introduction
 
-Manual deployments don't scale. In January 2024, I deployed CV Analytics updates 47 times across four services. Each manual deployment took 15 minutes (checkout code, build, test, deploy, verify). That's 11.75 hours of repetitive work, with human error on every deployment.
+Manual deployments don't scale. In January 2024, I deployed CV Analytics updates 47 times across six services and three clouds. Each manual deployment took 15 minutes (checkout code, build, test, deploy, verify). That's 11.75 hours of repetitive work, with human error on every deployment.
 
-After automating with GitHub Actions, every git push triggers tested deployments to Firebase, Cloud Functions, and Lambda. Zero manual intervention. Zero forgotten steps. Zero "works on my machine" deployments.
+After automating with GitHub Actions, every git push triggers tested deployments to Vercel (Angular), Cloudflare Workers, Firebase Hosting (React), GCP Cloud Functions (Go), and AWS Lambda×2 (Node.js). Zero manual intervention. Zero forgotten steps. Zero "works on my machine" deployments.
 
-This post explains how CV Analytics uses GitHub Actions for multi-cloud CI/CD:
+This post explains how CV Analytics uses GitHub Actions for multi-cloud CI/CD across three clouds:
 
 **You'll learn:**
 - ✓ GitHub Actions fundamentals (workflows, jobs, steps, triggers)
-- ✓ 4 independent pipelines for dashboard, webhook, processor, reporter
-- ✓ Multi-cloud deployments to Firebase Hosting, Cloud Functions, Lambda
-- ✓ Secrets management (7 secrets across 4 repositories)
-- ✓ Troubleshooting common deployment failures
+- ✓ 6 independent pipelines for Angular CV site, Cloudflare Worker, React dashboard, GCP webhook, AWS processor, AWS reporter
+- ✓ Multi-cloud deployments to Vercel, Cloudflare, Firebase Hosting, GCP Cloud Functions, AWS Lambda
+- ✓ Secrets management (12+ secrets across 6 repositories, 3 clouds)
+- ✓ Cross-cloud deployment coordination (Angular → Cloudflare → AWS → GCP)
+- ✓ Troubleshooting common deployment failures across multiple clouds
 
 **Why CI/CD matters for microservices:**
 
-Microservices architectures create deployment complexity. CV Analytics has 4 independent services across 2 cloud providers. Manual coordination fails:
-- Forgotten environment variables break production
+Microservices architectures create deployment complexity. CV Analytics has 6 independent services across 3 cloud providers (Cloudflare, AWS, GCP). Manual coordination fails:
+- Forgotten environment variables break production (3 clouds = 3 different secret managers)
 - Stale builds deploy outdated code
 - No consistent testing before deployment
-- Rollbacks require manual intervention
+- Rollbacks require manual intervention across clouds
+- Cross-cloud dependencies (AWS Lambda needs GCP webhook URL)
+- Service ordering (must deploy GCP webhook before AWS Lambda can call it)
 
 **The cost of manual deployments:**
 
@@ -59,13 +62,17 @@ GitHub Actions integrates directly with your repository. No external CI/CD platf
 
 **How independent pipelines enable velocity:**
 
-CV Analytics runs 4 separate workflows:
-1. **Dashboard pipeline**: React build → Firebase Hosting
-2. **Webhook pipeline**: Go build → Cloud Functions
-3. **Processor pipeline**: Node.js → Lambda
-4. **Reporter pipeline**: Node.js → Lambda
+CV Analytics runs 6 separate workflows across 3 clouds:
+1. **Angular CV site pipeline**: Angular build → Vercel
+2. **Cloudflare Worker pipeline**: TypeScript build → Cloudflare Workers
+3. **React Dashboard pipeline**: React build → Firebase Hosting
+4. **Webhook receiver pipeline**: Go build → GCP Cloud Functions
+5. **Processor pipeline**: Node.js → AWS Lambda
+6. **Reporter pipeline**: Node.js → AWS Lambda
 
-Services deploy independently. No coordinated releases. Dashboard updates don't wait for webhook changes. Each team (even solo) moves at their own pace.
+Services deploy independently. No coordinated releases. Angular site updates don't wait for Cloudflare Worker changes. React dashboard updates don't wait for GCP webhook changes. Each service (even within same cloud) moves at its own pace.
+
+**Cross-cloud dependency exception:** AWS Lambda Processor must deploy after GCP Cloud Function webhook (Lambda needs webhook URL). GitHub Actions handles this with output artifacts.
 
 Let's build these pipelines.
 

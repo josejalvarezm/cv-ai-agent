@@ -12,113 +12,1289 @@
 
 ## Introduction
 
-[Content to be written following guidelines: British English, ✓ symbols, no em dashes, professional tone]
+Clicking through cloud consoles works until it doesn't. You provision a Cloud Function in GCP, configure its service account, set up Firestore indexes, and everything works. Three months later, you need to replicate the environment for staging. Which IAM role did you assign? What were the environment variables? Which region? The console doesn't remember, and neither do you.
 
-**Topics to cover:**
-- Why infrastructure-as-code matters for microservices
-- The problem with clicking through cloud consoles
-- Terraform as multi-cloud provisioning tool
-- How IaC enables reproducible environments
+Infrastructure-as-code (IaC) solves this problem. Terraform describes infrastructure in declarative configuration files. You define what you want (Lambda function with specific memory, DynamoDB table with specific capacity), and Terraform figures out how to create it. Changes are versioned in git. Deployments are reproducible. Team members see exactly what's running in production.
+
+CV Analytics uses Terraform to provision 100% of its infrastructure across GCP and AWS. Six microservices, two databases, four message queues, multiple IAM roles, all defined in 800 lines of Terraform configuration. No manual clicking. No configuration drift. No "works on my machine" problems.
+
+This post explains how Terraform manages multi-cloud infrastructure: how providers abstract cloud-specific APIs, how remote state enables team collaboration, how modules reduce duplication, and how rollback strategies protect against failed deployments.
+
+**What you'll learn:**
+- ✓ How Terraform providers abstract GCP and AWS APIs
+- ✓ How to structure multi-cloud Terraform configurations
+- ✓ How remote state management enables team collaboration
+- ✓ How to handle secrets securely in Terraform
+- ✓ How rollback strategies protect against deployment failures
 
 ---
 
 ## Terraform Fundamentals
 
-[Content to be written]
+### Declarative Configuration
 
-**Topics:**
-- Providers (GCP, AWS)
-- Resources vs Data Sources
-- State management
-- Terraform workflow (init → plan → apply)
+Terraform uses HashiCorp Configuration Language (HCL) to describe infrastructure. You declare what you want, not how to create it.
+
+**Imperative (bash script):**
+```bash
+# Create Lambda function
+aws lambda create-function \
+  --function-name processor \
+  --runtime nodejs18.x \
+  --role arn:aws:iam::123:role/lambda-role \
+  --handler index.handler
+
+# If function exists, update instead
+if [ $? -eq 254 ]; then
+  aws lambda update-function-code \
+    --function-name processor \
+    --zip-file fileb://function.zip
+fi
+```
+
+**Declarative (Terraform):**
+```hcl
+resource "aws_lambda_function" "processor" {
+  function_name = "processor"
+  runtime       = "nodejs18.x"
+  role          = aws_iam_role.lambda_role.arn
+  handler       = "index.handler"
+}
+```
+
+Terraform handles create vs. update logic automatically. If the function doesn't exist, Terraform creates it. If it exists with different configuration, Terraform updates it. If it exists unchanged, Terraform does nothing.
+
+### Providers: Cloud API Abstraction
+
+Providers are Terraform plugins that interact with cloud APIs. Each provider translates HCL resources into API calls.
+
+**CV Analytics providers:**
+
+```hcl
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "google" {
+  project = var.gcp_project_id
+  region  = "europe-west2"
+}
+
+provider "aws" {
+  region = "eu-west-2"
+}
+```
+
+**Version constraints:**
+- `~> 5.0` means "5.0 or higher, but less than 6.0"
+- Prevents breaking changes from major version upgrades
+- Terraform locks exact versions in `.terraform.lock.hcl`
+
+### Resources vs. Data Sources
+
+**Resources:** Things Terraform creates and manages.
+
+```hcl
+# Terraform creates this Lambda function
+resource "aws_lambda_function" "processor" {
+  function_name = "cv-analytics-processor"
+  runtime       = "nodejs18.x"
+}
+```
+
+**Data sources:** Things that already exist (query only).
+
+```hcl
+# Terraform queries existing VPC (doesn't create)
+data "aws_vpc" "default" {
+  default = true
+}
+
+# Use VPC ID in security group
+resource "aws_security_group" "lambda_sg" {
+  vpc_id = data.aws_vpc.default.id
+}
+```
+
+**CV Analytics uses data sources for:**
+- Existing GCP project metadata
+- AWS account ID
+- Default VPCs (if needed)
+- Service account email addresses
+
+### State Management
+
+Terraform stores infrastructure state in `terraform.tfstate` file. State maps configuration to real resources.
+
+**State contains:**
+- Resource IDs (Lambda ARN, Cloud Function URL)
+- Resource attributes (memory size, runtime version)
+- Dependencies between resources
+- Provider metadata
+
+**State enables:**
+- **Change detection:** Terraform compares desired state (HCL) with current state (tfstate) to determine what changed
+- **Resource tracking:** Terraform knows which resources it created (safe to destroy)
+- **Dependency ordering:** Terraform creates resources in correct order (IAM role before Lambda)
+
+**Local state problem:**
+```bash
+# Developer A provisions infrastructure
+terraform apply  # Creates terraform.tfstate locally
+
+# Developer B tries to update same infrastructure
+terraform apply  # Uses their own terraform.tfstate (out of date)
+# Result: Conflicting changes, duplicate resources, chaos
+```
+
+**Solution:** Remote state (covered later).
+
+### Terraform Workflow
+
+```mermaid
+graph TB
+    INIT[terraform init<br/>Download providers] --> PLAN[terraform plan<br/>Preview changes]
+    PLAN --> REVIEW{Review changes<br/>Safe to apply?}
+    REVIEW -->|Yes| APPLY[terraform apply<br/>Execute changes]
+    REVIEW -->|No| EDIT[Edit configuration]
+    EDIT --> PLAN
+    APPLY --> VERIFY[Verify resources<br/>in cloud console]
+    VERIFY --> SUCCESS{Working<br/>correctly?}
+    SUCCESS -->|Yes| DONE[Deployment complete]
+    SUCCESS -->|No| ROLLBACK[terraform destroy<br/>or restore state]
+    
+    style INIT fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style PLAN fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style APPLY fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style ROLLBACK fill:#ffccbc,stroke:#d32f2f,stroke-width:2px
+```
+
+**terraform init:**
+- Downloads provider plugins
+- Initialises backend (remote state)
+- Creates `.terraform/` directory
+- Generates `.terraform.lock.hcl` (provider version lock file)
+
+**terraform plan:**
+- Reads configuration files (*.tf)
+- Queries current state (terraform.tfstate)
+- Queries cloud APIs (actual resources)
+- Calculates differences
+- Shows preview of changes
+
+**Example plan output:**
+```
+Terraform will perform the following actions:
+
+  # aws_lambda_function.processor will be updated in-place
+  ~ resource "aws_lambda_function" "processor" {
+        function_name = "cv-analytics-processor"
+      ~ memory_size   = 128 -> 256
+      ~ timeout       = 30 -> 60
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+```
+
+**terraform apply:**
+- Executes plan (creates/updates/deletes resources)
+- Updates state file
+- Shows progress and results
+- Fails fast (stops on first error)
+
+**terraform destroy:**
+- Deletes all resources managed by Terraform
+- Use for: tearing down staging environments, cleanup after testing
+- Dangerous: no undo, confirmation required
 
 ---
 
 ## GCP Infrastructure
 
-[Content to be written]
+### Resource Dependencies
 
-**Topics:**
-- Cloud Functions configuration
-- Firestore database setup
-- Firebase Hosting
-- Service account IAM
-- VPC and networking (if applicable)
+GCP resources have dependency chains. Service accounts must exist before Cloud Functions. Firestore must be enabled before creating indexes. Terraform resolves dependencies automatically.
 
-**Mermaid diagram:** GCP resource dependencies
+```mermaid
+graph TD
+    PROJECT[GCP Project<br/>cv-analytics] --> SA[Service Account<br/>webhook-receiver]
+    PROJECT --> FS[Firestore Database<br/>Native mode]
+    PROJECT --> FB[Firebase Project<br/>Hosting enabled]
+    
+    SA --> SAIA[IAM Role Binding<br/>datastore.user]
+    SAIA --> CF[Cloud Function<br/>webhook-receiver]
+    
+    FS --> FSIDX[Firestore Indexes<br/>composite queries]
+    FS --> FSRULES[Firestore Rules<br/>security policies]
+    
+    FB --> FBHOST[Firebase Hosting<br/>dashboard site]
+    
+    CF --> CFURL[Cloud Function URL<br/>webhook endpoint]
+    
+    style PROJECT fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style SA fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style FS fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CF fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style FBHOST fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+```
+
+### Service Account Configuration
+
+```hcl
+# Create service account for Cloud Function
+resource "google_service_account" "webhook_receiver" {
+  account_id   = "webhook-receiver"
+  display_name = "Webhook Receiver Cloud Function"
+  description  = "Service account for GitHub webhook receiver"
+  project      = var.gcp_project_id
+}
+
+# Grant Firestore read/write permissions
+resource "google_project_iam_member" "webhook_firestore_user" {
+  project = var.gcp_project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.webhook_receiver.email}"
+}
+
+# Grant Cloud Logging permissions
+resource "google_project_iam_member" "webhook_log_writer" {
+  project = var.gcp_project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.webhook_receiver.email}"
+}
+```
+
+**Key patterns:**
+
+**Implicit dependencies:** `${google_service_account.webhook_receiver.email}` creates dependency. Terraform provisions service account before IAM binding.
+
+**Least privilege:** Grant specific roles (`datastore.user`, `logging.logWriter`), not broad roles (`editor`, `owner`).
+
+**Explicit naming:** `account_id` determines email (`webhook-receiver@project-id.iam.gserviceaccount.com`).
+
+### Cloud Function Configuration
+
+```hcl
+# Upload Cloud Function source code
+resource "google_storage_bucket" "function_source" {
+  name     = "${var.gcp_project_id}-function-source"
+  location = "EU"
+  project  = var.gcp_project_id
+}
+
+resource "google_storage_bucket_object" "webhook_source" {
+  name   = "webhook-receiver-${var.version}.zip"
+  bucket = google_storage_bucket.function_source.name
+  source = "${path.module}/dist/webhook-receiver.zip"
+}
+
+# Deploy Cloud Function
+resource "google_cloudfunctions_function" "webhook_receiver" {
+  name        = "webhook-receiver"
+  description = "Receives GitHub webhooks and writes to Firestore"
+  runtime     = "go121"
+  project     = var.gcp_project_id
+  region      = "europe-west2"
+  
+  available_memory_mb   = 256
+  timeout               = 60
+  entry_point           = "WebhookHandler"
+  service_account_email = google_service_account.webhook_receiver.email
+  
+  source_archive_bucket = google_storage_bucket.function_source.name
+  source_archive_object = google_storage_bucket_object.webhook_source.name
+  
+  trigger_http = true
+  
+  environment_variables = {
+    WEBHOOK_SECRET = var.github_webhook_secret
+    GCP_PROJECT_ID = var.gcp_project_id
+  }
+}
+
+# Make Cloud Function publicly accessible
+resource "google_cloudfunctions_function_iam_member" "webhook_invoker" {
+  project        = google_cloudfunctions_function.webhook_receiver.project
+  region         = google_cloudfunctions_function.webhook_receiver.region
+  cloud_function = google_cloudfunctions_function.webhook_receiver.name
+  role           = "roles/cloudfunctions.invoker"
+  member         = "allUsers"
+}
+
+# Output Cloud Function URL
+output "webhook_url" {
+  value       = google_cloudfunctions_function.webhook_receiver.https_trigger_url
+  description = "Webhook endpoint URL for GitHub webhook configuration"
+}
+```
+
+**Configuration details:**
+
+**Source code upload:** Terraform uploads function code to Cloud Storage first, then deploys function from storage. This pattern enables versioning.
+
+**Version tracking:** `webhook-receiver-${var.version}.zip` includes version in filename. Changing version triggers redeployment.
+
+**Environment variables:** Never commit `var.github_webhook_secret` to git. Pass via Terraform Cloud or command line.
+
+**Public access:** `allUsers` allows GitHub to call function without authentication. HMAC signature provides security.
+
+**Dependency chain:**
+1. Storage bucket created
+2. Source code uploaded to bucket
+3. Service account created
+4. IAM roles granted to service account
+5. Cloud Function created with source code and service account
+6. Public invoker permission granted
+
+### Firestore Configuration
+
+```hcl
+# Enable Firestore in Native mode
+resource "google_firestore_database" "analytics" {
+  project     = var.gcp_project_id
+  name        = "(default)"
+  location_id = "europe-west2"
+  type        = "FIRESTORE_NATIVE"
+}
+
+# Create composite index for queries
+resource "google_firestore_index" "analytics_by_date" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.analytics.name
+  collection = "analytics"
+  
+  fields {
+    field_path = "timestamp"
+    order      = "DESCENDING"
+  }
+  
+  fields {
+    field_path = "eventType"
+    order      = "ASCENDING"
+  }
+}
+```
+
+**Firestore modes:**
+
+**Native mode:** Real-time updates, mobile SDKs, security rules. Used by CV Analytics.
+
+**Datastore mode:** Server-side only, no real-time, SQL-like queries.
+
+**Choice:** Native mode enables real-time dashboard updates.
+
+**Composite indexes:** Required for queries with multiple filters or sorts. Terraform creates indexes automatically (no manual console clicking).
+
+### Firebase Hosting Configuration
+
+Firebase Hosting isn't fully supported by Terraform (Firebase uses its own CLI). Hybrid approach:
+
+**Terraform provisions Firebase project:**
+```hcl
+resource "google_firebase_project" "dashboard" {
+  provider = google-beta
+  project  = var.gcp_project_id
+}
+
+resource "google_firebase_web_app" "dashboard" {
+  provider     = google-beta
+  project      = var.gcp_project_id
+  display_name = "CV Analytics Dashboard"
+  depends_on   = [google_firebase_project.dashboard]
+}
+```
+
+**GitHub Actions deploys site:**
+```yaml
+# .github/workflows/deploy-dashboard.yml
+- name: Deploy to Firebase Hosting
+  run: firebase deploy --only hosting
+  env:
+    FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+```
+
+**Why split?**
+- Terraform: Infrastructure that rarely changes (project setup, web app registration)
+- GitHub Actions: Application code that changes frequently (React build, hosting deployment)
+
+### Variables and Outputs
+
+**variables.tf:**
+```hcl
+variable "gcp_project_id" {
+  description = "GCP project ID"
+  type        = string
+}
+
+variable "github_webhook_secret" {
+  description = "GitHub webhook secret for HMAC validation"
+  type        = string
+  sensitive   = true
+}
+
+variable "version" {
+  description = "Application version (semantic version)"
+  type        = string
+  default     = "1.0.0"
+}
+```
+
+**outputs.tf:**
+```hcl
+output "webhook_url" {
+  value       = google_cloudfunctions_function.webhook_receiver.https_trigger_url
+  description = "Webhook endpoint URL"
+}
+
+output "service_account_email" {
+  value       = google_service_account.webhook_receiver.email
+  description = "Service account email for webhook receiver"
+}
+```
+
+**Usage:**
+```bash
+# Pass variables
+terraform apply \
+  -var="gcp_project_id=cv-analytics-prod" \
+  -var="github_webhook_secret=$WEBHOOK_SECRET"
+
+# Access outputs
+terraform output webhook_url
+# Output: https://europe-west2-cv-analytics-prod.cloudfunctions.net/webhook-receiver
+```
 
 ---
 
 ## AWS Infrastructure
 
-[Content to be written]
+### Resource Dependencies
 
-**Topics:**
-- Lambda functions (Processor, Reporter)
-- DynamoDB tables
-- DynamoDB Streams
-- SQS queues
-- EventBridge rules
-- IAM roles and policies
-- CloudWatch logging
+AWS resources form complex dependency graphs. IAM roles must exist before Lambda functions. DynamoDB tables must exist before Streams. EventBridge rules depend on SQS queues.
 
-**Mermaid diagram:** AWS resource dependencies
+```mermaid
+graph TD
+    DDB[DynamoDB Table<br/>cv-analytics-aggregated] --> STREAMS[DynamoDB Streams<br/>Change capture]
+    STREAMS --> EB[EventBridge Rule<br/>Stream processor]
+    
+    SQS_PROC[SQS Queue<br/>processor-queue] --> SQS_POL[SQS Policy<br/>EventBridge access]
+    SQS_POL --> EB
+    
+    EB --> TARG[EventBridge Target<br/>Send to SQS]
+    
+    IAM_PROC[IAM Role<br/>processor-lambda-role] --> PROC_POL[IAM Policy<br/>SQS + DynamoDB]
+    PROC_POL --> LAMBDA_PROC[Lambda Function<br/>Processor]
+    
+    TARG --> LAMBDA_PROC
+    SQS_PROC --> LAMBDA_PROC
+    LAMBDA_PROC --> DDB
+    
+    IAM_REP[IAM Role<br/>reporter-lambda-role] --> REP_POL[IAM Policy<br/>DynamoDB + SES]
+    REP_POL --> LAMBDA_REP[Lambda Function<br/>Reporter]
+    
+    LAMBDA_REP --> DDB
+    LAMBDA_REP --> SES[AWS SES<br/>Email delivery]
+    
+    CW_PROC[CloudWatch Rule<br/>Weekly schedule] --> LAMBDA_REP
+    
+    style DDB fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style LAMBDA_PROC fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style LAMBDA_REP fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style IAM_PROC fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style IAM_REP fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+```
+
+### DynamoDB Table Configuration
+
+```hcl
+# Create DynamoDB table for aggregated analytics
+resource "aws_dynamodb_table" "analytics_aggregated" {
+  name           = "cv-analytics-aggregated"
+  billing_mode   = "PAY_PER_REQUEST"  # On-demand pricing
+  hash_key       = "id"
+  stream_enabled = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+  
+  attribute {
+    name = "id"
+    type = "S"  # String
+  }
+  
+  attribute {
+    name = "timestamp"
+    type = "N"  # Number
+  }
+  
+  attribute {
+    name = "eventType"
+    type = "S"
+  }
+  
+  # Global secondary index for querying by timestamp
+  global_secondary_index {
+    name            = "timestamp-index"
+    hash_key        = "eventType"
+    range_key       = "timestamp"
+    projection_type = "ALL"
+  }
+  
+  tags = {
+    Environment = "production"
+    Service     = "cv-analytics"
+  }
+}
+```
+
+**Configuration decisions:**
+
+**Billing mode:** `PAY_PER_REQUEST` (on-demand) vs. `PROVISIONED` (reserved capacity). On-demand costs more per request but eliminates capacity planning. CV Analytics uses on-demand (unpredictable traffic).
+
+**Streams:** `stream_enabled = true` enables DynamoDB Streams (change data capture). Every write triggers stream event.
+
+**Stream view type:** `NEW_AND_OLD_IMAGES` includes before and after values. Enables detecting what changed.
+
+**Global secondary index:** Enables queries by `eventType` and `timestamp`. Without GSI, can only query by `id` (primary key).
+
+### SQS Queue Configuration
+
+```hcl
+# Create SQS queue for processing
+resource "aws_sqs_queue" "processor_queue" {
+  name                       = "cv-analytics-processor"
+  visibility_timeout_seconds = 300  # 5 minutes (Lambda timeout * 5)
+  message_retention_seconds  = 1209600  # 14 days
+  receive_wait_time_seconds  = 20  # Long polling
+  
+  # Dead letter queue for failed messages
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.processor_dlq.arn
+    maxReceiveCount     = 3
+  })
+  
+  tags = {
+    Environment = "production"
+  }
+}
+
+# Dead letter queue
+resource "aws_sqs_queue" "processor_dlq" {
+  name                      = "cv-analytics-processor-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+# Allow EventBridge to send messages to queue
+resource "aws_sqs_queue_policy" "processor_queue_policy" {
+  queue_url = aws_sqs_queue.processor_queue.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action   = "sqs:SendMessage"
+        Resource = aws_sqs_queue.processor_queue.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.dynamodb_streams.arn
+          }
+        }
+      }
+    ]
+  })
+}
+```
+
+**SQS configuration details:**
+
+**Visibility timeout:** After Lambda receives message, message is hidden for 300 seconds. If Lambda doesn't delete message within timeout, message becomes visible again (reprocessing).
+
+**Long polling:** `receive_wait_time_seconds = 20` makes ReceiveMessage wait up to 20 seconds for messages. Reduces empty responses (cost optimization).
+
+**Dead letter queue:** After 3 failed processing attempts (`maxReceiveCount = 3`), message moves to DLQ. Prevents infinite reprocessing loops.
+
+**Queue policy:** Condition limits access to specific EventBridge rule. Prevents other rules from sending to queue.
+
+### EventBridge Configuration
+
+```hcl
+# EventBridge rule to capture DynamoDB Stream events
+resource "aws_cloudwatch_event_rule" "dynamodb_streams" {
+  name        = "cv-analytics-dynamodb-streams"
+  description = "Capture DynamoDB Stream events and send to SQS"
+  
+  event_pattern = jsonencode({
+    source      = ["aws.dynamodb"]
+    detail-type = ["DynamoDB Stream Record"]
+    resources   = [aws_dynamodb_table.analytics_aggregated.stream_arn]
+  })
+}
+
+# EventBridge target: send to SQS queue
+resource "aws_cloudwatch_event_target" "sqs_target" {
+  rule      = aws_cloudwatch_event_rule.dynamodb_streams.name
+  target_id = "SendToSQS"
+  arn       = aws_sqs_queue.processor_queue.arn
+}
+```
+
+**Why EventBridge between DynamoDB Streams and SQS?**
+
+DynamoDB Streams can't write directly to SQS. EventBridge bridges them:
+1. DynamoDB table updated
+2. Stream event generated
+3. EventBridge captures stream event
+4. EventBridge sends to SQS queue
+5. Lambda processes from SQS
+
+**Alternative:** Lambda trigger directly on DynamoDB Streams (no SQS). CV Analytics uses SQS for batching (cost optimization).
+
+### Lambda IAM Roles
+
+```hcl
+# IAM role for Processor Lambda
+resource "aws_iam_role" "processor_lambda_role" {
+  name = "cv-analytics-processor-lambda-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# Policy: Read from SQS
+resource "aws_iam_role_policy" "processor_sqs_policy" {
+  name = "sqs-access"
+  role = aws_iam_role.processor_lambda_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = aws_sqs_queue.processor_queue.arn
+      }
+    ]
+  })
+}
+
+# Policy: Write to DynamoDB
+resource "aws_iam_role_policy" "processor_dynamodb_policy" {
+  name = "dynamodb-access"
+  role = aws_iam_role.processor_lambda_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem"
+        ]
+        Resource = aws_dynamodb_table.analytics_aggregated.arn
+      }
+    ]
+  })
+}
+
+# Attach AWS managed policy for CloudWatch Logs
+resource "aws_iam_role_policy_attachment" "processor_logs" {
+  role       = aws_iam_role.processor_lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+```
+
+**IAM role structure:**
+
+**Trust policy:** `assume_role_policy` defines who can assume role (Lambda service).
+
+**Permission policies:** Attached policies define what role can do (SQS, DynamoDB).
+
+**Managed policies:** AWS-provided policies (`AWSLambdaBasicExecutionRole` grants CloudWatch Logs access).
+
+**Principle:** Separate policy per concern. Easier to audit and modify.
+
+### Lambda Function Configuration
+
+```hcl
+# Package Lambda function code
+data "archive_file" "processor_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/processor"
+  output_path = "${path.module}/dist/processor.zip"
+}
+
+# Deploy Processor Lambda
+resource "aws_lambda_function" "processor" {
+  filename         = data.archive_file.processor_lambda.output_path
+  function_name    = "cv-analytics-processor"
+  role             = aws_iam_role.processor_lambda_role.arn
+  handler          = "index.handler"
+  source_code_hash = data.archive_file.processor_lambda.output_base64sha256
+  runtime          = "nodejs18.x"
+  timeout          = 60
+  memory_size      = 256
+  
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.analytics_aggregated.name
+      AWS_REGION     = var.aws_region
+    }
+  }
+  
+  tags = {
+    Environment = "production"
+  }
+}
+
+# SQS trigger for Lambda
+resource "aws_lambda_event_source_mapping" "processor_sqs_trigger" {
+  event_source_arn = aws_sqs_queue.processor_queue.arn
+  function_name    = aws_lambda_function.processor.arn
+  batch_size       = 10  # Process up to 10 messages per invocation
+  
+  scaling_config {
+    maximum_concurrency = 5  # Max 5 concurrent Lambda executions
+  }
+}
+```
+
+**Lambda configuration details:**
+
+**source_code_hash:** Terraform redeployes Lambda when code changes. Hash detects changes.
+
+**Batch size:** Lambda receives up to 10 SQS messages per invocation. Cost optimization (fewer invocations).
+
+**Maximum concurrency:** Limits concurrent executions to 5. Prevents overwhelming downstream services.
+
+**Memory size:** 256 MB balances cost and performance. Higher memory also increases CPU allocation.
+
+### CloudWatch Scheduled Rule
+
+```hcl
+# Schedule Reporter Lambda weekly
+resource "aws_cloudwatch_event_rule" "weekly_report" {
+  name                = "cv-analytics-weekly-report"
+  description         = "Trigger weekly analytics report"
+  schedule_expression = "cron(0 9 ? * MON *)"  # Every Monday at 9 AM UTC
+}
+
+resource "aws_cloudwatch_event_target" "reporter_target" {
+  rule      = aws_cloudwatch_event_rule.weekly_report.name
+  target_id = "ReporterLambda"
+  arn       = aws_lambda_function.reporter.arn
+}
+
+# Grant CloudWatch Events permission to invoke Lambda
+resource "aws_lambda_permission" "allow_cloudwatch" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.reporter.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.weekly_report.arn
+}
+```
+
+**Cron expression:** `cron(0 9 ? * MON *)` breaks down as:
+- `0` = minute (0)
+- `9` = hour (9 AM)
+- `?` = day of month (not specified)
+- `*` = month (every month)
+- `MON` = day of week (Monday)
+- `*` = year (every year)
 
 ---
 
 ## Remote State Management
 
-[Content to be written]
+### The Local State Problem
 
-**Topics:**
-- Why remote state matters
-- Terraform Cloud setup
-- State locking
-- Team collaboration
-- Security considerations
+Terraform stores infrastructure state in `terraform.tfstate` file. By default, this file lives locally on your machine.
 
-**Mermaid diagram:** State management workflow
+**Problems with local state:**
+
+**No collaboration:** Team members can't share state. Each person has their own view of infrastructure.
+
+**No locking:** Two people running `terraform apply` simultaneously corrupt state file.
+
+**No backup:** Losing `terraform.tfstate` means losing track of all infrastructure. Terraform can't manage resources without state.
+
+**No versioning:** Can't roll back to previous state version after bad deployment.
+
+**Security risk:** State contains sensitive data (database passwords, API keys). Local files are insecure.
+
+### Remote State with Terraform Cloud
+
+Terraform Cloud (free tier) provides remote state storage with locking, versioning, and encryption.
+
+```mermaid
+sequenceDiagram
+    participant DEV1 as Developer 1
+    participant DEV2 as Developer 2
+    participant TFC as Terraform Cloud<br/>Remote State
+    participant AWS as AWS Resources
+    participant GCP as GCP Resources
+    
+    DEV1->>TFC: terraform plan<br/>(request state lock)
+    TFC->>TFC: Acquire lock<br/>(prevent conflicts)
+    TFC->>DEV1: Return current state
+    DEV1->>DEV1: Calculate changes
+    
+    DEV2->>TFC: terraform plan<br/>(request state lock)
+    TFC->>DEV2: Lock held by DEV1<br/>(wait or fail)
+    
+    DEV1->>TFC: terraform apply<br/>(execute changes)
+    TFC->>AWS: Create/update resources
+    TFC->>GCP: Create/update resources
+    AWS->>TFC: Resource ARNs
+    GCP->>TFC: Resource IDs
+    TFC->>TFC: Update state<br/>(new version)
+    TFC->>TFC: Release lock
+    TFC->>DEV1: Apply complete
+    
+    DEV2->>TFC: terraform plan<br/>(retry)
+    TFC->>TFC: Acquire lock<br/>(now available)
+    TFC->>DEV2: Return updated state
+    
+    style TFC fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style AWS fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style GCP fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+```
+
+### Terraform Cloud Configuration
+
+**backend.tf:**
+```hcl
+terraform {
+  cloud {
+    organization = "cv-analytics"
+    
+    workspaces {
+      name = "cv-analytics-production"
+    }
+  }
+  
+  required_version = ">= 1.6.0"
+}
+```
+
+**First-time setup:**
+```bash
+# Login to Terraform Cloud
+terraform login
+# Opens browser, authenticates, stores token
+
+# Initialize with remote backend
+terraform init
+# Migrates local state to Terraform Cloud
+
+# Verify remote state
+terraform state list
+```
+
+**Terraform Cloud workspace settings:**
+
+**Execution mode:** Remote (Terraform runs in Terraform Cloud, not locally)
+
+**Terraform version:** Lock to specific version (e.g., 1.6.5) for consistency
+
+**Variables:** Set `gcp_project_id`, `github_webhook_secret` in workspace (encrypted storage)
+
+**VCS integration:** Optional, connect to GitHub for automatic `terraform plan` on pull requests
+
+### State Locking
+
+Terraform Cloud automatically locks state during operations.
+
+**Lock behaviour:**
+```bash
+# Developer 1
+terraform apply
+# State locked
+
+# Developer 2 (simultaneously)
+terraform apply
+# Error: state locked by user@example.com
+# Lock ID: abc-123-def-456
+# Created: 2024-01-15 10:30:00 UTC
+```
+
+**Force unlock (emergency only):**
+```bash
+# If apply crashes and lock isn't released
+terraform force-unlock abc-123-def-456
+# Warning: only use if you're certain no one else is running apply
+```
+
+**Best practice:** Never force-unlock unless you're certain the lock is stale.
+
+### State Versioning
+
+Terraform Cloud keeps history of all state versions.
+
+**Rollback to previous version:**
+1. Go to Terraform Cloud workspace
+2. Navigate to States tab
+3. Find previous version (before bad deployment)
+4. Click "Restore" → Confirm
+5. Run `terraform plan` to see differences
+6. Run `terraform apply` to revert infrastructure
+
+**When to rollback:**
+- Deployment created incorrect resources
+- Need to undo recent changes
+- State corrupted by failed apply
+
+**When NOT to rollback:**
+- Resources manually deleted in cloud console (state out of sync)
+- Resources modified outside Terraform (drift)
+- Solution: Fix configuration and apply again
+
+### Security Considerations
+
+**State contains sensitive data:**
+- Database connection strings
+- API keys in environment variables
+- Private IP addresses
+- Resource IDs (potential information disclosure)
+
+**Terraform Cloud security:**
+- State encrypted at-rest (AES-256)
+- State encrypted in-transit (TLS 1.2+)
+- Access control via teams and permissions
+- Audit logs (who accessed state, when)
+
+**Access control configuration:**
+```hcl
+# Terraform Cloud Teams (configured in UI)
+# - Admins: Full access (apply, destroy, state)
+# - Developers: Read state, plan (no apply)
+# - CI/CD: Apply only (automated deployments)
+```
+
+**Never commit backend configuration with credentials:**
+```hcl
+# WRONG: Hardcoded token
+terraform {
+  cloud {
+    organization = "cv-analytics"
+    token = "abc123..."  # Never commit this
+  }
+}
+
+# RIGHT: Use terraform login
+terraform {
+  cloud {
+    organization = "cv-analytics"
+    # Token stored in ~/.terraform.d/credentials.tfrc.json
+  }
+}
+```
 
 ---
 
 ## Secrets Handling
 
-[Content to be written]
+### The Secrets Problem
 
-**Topics:**
-- Environment variables pattern
-- GitHub Secrets integration
-- Git ignore patterns
-- Never commit credentials
-- Service account key management
+Terraform needs secrets to provision infrastructure:
+- GitHub webhook secrets (for Cloud Function environment variables)
+- Database passwords (for connection strings)
+- API keys (for third-party services)
+- Service account keys (for authentication)
+
+These secrets must never be committed to git. They must be injected at deployment time.
+
+### Environment Variables Pattern
+
+**Define variables in Terraform:**
+```hcl
+# variables.tf
+variable "github_webhook_secret" {
+  description = "GitHub webhook secret for HMAC validation"
+  type        = string
+  sensitive   = true  # Terraform masks value in logs
+}
+
+variable "database_password" {
+  description = "Database admin password"
+  type        = string
+  sensitive   = true
+}
+```
+
+**Pass secrets via environment variables:**
+```bash
+# Set environment variables
+export TF_VAR_github_webhook_secret="$GITHUB_WEBHOOK_SECRET"
+export TF_VAR_database_password="$DATABASE_PASSWORD"
+
+# Terraform reads TF_VAR_* automatically
+terraform apply
+```
+
+**Use in resources:**
+```hcl
+resource "google_cloudfunctions_function" "webhook_receiver" {
+  name = "webhook-receiver"
+  
+  environment_variables = {
+    WEBHOOK_SECRET = var.github_webhook_secret  # From environment variable
+  }
+}
+```
+
+**Key principle:** Secrets flow from secure storage (GitHub Secrets, Terraform Cloud) → environment variables → Terraform → cloud resources. Never hardcoded in configuration files.
+
+### Terraform Cloud Variables
+
+Terraform Cloud provides encrypted variable storage.
+
+**Configure in Terraform Cloud UI:**
+1. Navigate to workspace → Variables
+2. Add variable:
+   - Key: `github_webhook_secret`
+   - Value: (paste secret)
+   - Category: Terraform variable
+   - Sensitive: ✓ (checked)
+3. Save
+
+**Benefits:**
+- Encrypted at-rest and in-transit
+- Not visible in Terraform Cloud UI after saving
+- Automatically injected into Terraform runs
+- Access controlled by workspace permissions
+
+**Variable categories:**
+
+**Terraform variables:** Used in configuration (`var.github_webhook_secret`)
+
+**Environment variables:** Set in shell environment (`TF_VAR_*`, `AWS_ACCESS_KEY_ID`)
+
+### GitHub Secrets Integration
+
+GitHub Actions can provision infrastructure using Terraform.
+
+**Workflow configuration:**
+```yaml
+name: Deploy Infrastructure
+on:
+  push:
+    branches: [main]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+      
+      - name: Terraform Init
+        run: terraform init
+      
+      - name: Terraform Plan
+        env:
+          TF_VAR_github_webhook_secret: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        run: terraform plan
+      
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        env:
+          TF_VAR_github_webhook_secret: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        run: terraform apply -auto-approve
+```
+
+**GitHub Secrets required:**
+- `TF_API_TOKEN`: Terraform Cloud API token (for authentication)
+- `GITHUB_WEBHOOK_SECRET`: Webhook HMAC secret
+- `GCP_PROJECT_ID`: GCP project identifier
+
+**Security features:**
+- GitHub automatically masks secret values in logs
+- Secrets scoped to repository (not accessible by forks)
+- Secrets only exposed to workflow steps that explicitly reference them
+
+### Git Ignore Patterns
+
+**.gitignore:**
+```bash
+# Terraform state files
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# Terraform variable files with secrets
+*.tfvars
+*.auto.tfvars
+secrets.tfvars
+
+# Terraform plan output
+*.tfplan
+
+# Terraform directory
+.terraform/
+.terraform.lock.hcl  # Optional: some teams commit this
+
+# Environment files
+.env
+.env.local
+
+# Service account keys
+*.json  # If contains GCP service account keys
+service-account-*.json
+
+# AWS credentials
+.aws/
+
+# Crash logs
+crash.log
+```
+
+**Why ignore these files:**
+
+**terraform.tfstate:** Contains sensitive resource IDs, connection strings, secrets.
+
+**\*.tfvars:** Often contains secrets passed as variables.
+
+**.terraform/:** Contains provider plugins (large binary files).
+
+**Service account keys:** Committing these grants permanent access to cloud resources.
+
+### Service Account Key Management
+
+**Problem:** Terraform needs GCP credentials to provision resources.
+
+**Bad approach (service account key file):**
+```bash
+# WRONG: Download service account key
+gcloud iam service-accounts keys create key.json \
+  --iam-account=terraform@project.iam.gserviceaccount.com
+
+# WRONG: Set environment variable
+export GOOGLE_APPLICATION_CREDENTIALS=key.json
+
+# Risk: key.json committed to git, stolen, permanent access
+```
+
+**Good approach (Workload Identity Federation):**
+```yaml
+# GitHub Actions with Workload Identity (no keys)
+steps:
+  - uses: google-github-actions/auth@v1
+    with:
+      workload_identity_provider: 'projects/123/locations/global/workloadIdentityPools/github/providers/github-oidc'
+      service_account: 'terraform@project.iam.gserviceaccount.com'
+  
+  # Terraform automatically uses federated credentials
+  - run: terraform apply
+```
+
+**Benefits:**
+- No service account keys (nothing to leak)
+- Temporary credentials (expire after job completes)
+- Scoped to specific GitHub repository
+- Auditable in GCP logs
+
+**Terraform Cloud approach:**
+- Store `GOOGLE_CREDENTIALS` (service account key JSON) in Terraform Cloud variables
+- Encrypted storage, not visible after saving
+- Only accessible during Terraform runs
+- Rotate periodically (90 days)
 
 ---
 
 ## Deployment Workflow
 
-[Content to be written]
+### Manual Process
 
-**Topics:**
-- `terraform init` - Initialize providers
-- `terraform plan` - Review changes
-- `terraform apply` - Provision resources
-- `terraform destroy` - Clean up
-- Verification steps
+```bash
+# Initialize and preview
+terraform init
+terraform plan -out=tfplan
 
-**Mermaid diagram:** Deployment pipeline
+# Apply changes
+terraform apply tfplan
+
+# Verify deployment
+curl https://webhook-endpoint.net
+```
+
+### CI/CD Pipeline
+
+```mermaid
+graph TB
+    PR[Pull Request] --> PLAN[terraform plan]
+    PLAN --> REVIEW{Review}
+    REVIEW -->|Approved| MERGE[Merge]
+    MERGE --> APPLY[terraform apply]
+    APPLY --> VERIFY{Success?}
+    VERIFY -->|Yes| DONE[Complete]
+    VERIFY -->|No| ROLLBACK[Rollback]
+    
+    style PLAN fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style APPLY fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style ROLLBACK fill:#ffccbc,stroke:#d32f2f,stroke-width:2px
+```
 
 ---
 
 ## Rollback Strategies
 
-[Content to be written]
+### State Rollback
 
-**Topics:**
-- Version control for infrastructure
-- `terraform plan` before apply
-- Manual state rollback
-- Disaster recovery procedures
-- Backup strategies
+Restore previous state from Terraform Cloud:
+1. Workspace → States → Previous version
+2. Click "Restore"
+3. Run `terraform apply` to revert
+
+### Git Revert
+
+```bash
+git revert abc123
+git push origin main
+# CI/CD deploys previous config
+```
+
+### Targeted Operations
+
+```bash
+# Destroy and recreate specific resource
+terraform destroy -target=aws_lambda_function.processor
+terraform apply -target=aws_lambda_function.processor
+```
 
 ---
 

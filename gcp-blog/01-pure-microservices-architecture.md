@@ -20,6 +20,7 @@ The difference isn't semantic. It's measurable. Pure microservices have specific
 This post explains the CV Analytics architecture: 6 services spanning Cloudflare, AWS, and GCP, communicating through events, deployed independently. First, we'll cover WHY microservices were chosen (not just for resume padding). Then we'll measure architectural purity: the 87.5% score comes from objective evaluation against 8 independence criteria. The missing 12.5% reflects a deliberate choice about infrastructure management.
 
 **What you'll learn:**
+
 - ✓ Why microservices were chosen for CV Analytics
 - ✓ The 8 criteria that define microservices independence
 - ✓ How to score your own architecture objectively
@@ -37,6 +38,7 @@ This post explains the CV Analytics architecture: 6 services spanning Cloudflare
 ### 1. Independent Technology Choices
 
 Each service uses the best tool for its job:
+
 - **Cloudflare Worker:** TypeScript on edge (12ms latency requirement)
 - **AWS Lambda Processor:** Node.js (native DynamoDB SDK, JSON processing)
 - **GCP Cloud Function:** Go (native Firestore SDK, HMAC validation performance)
@@ -48,6 +50,7 @@ Each service uses the best tool for its job:
 ### 2. Independent Deployment Velocity
 
 Different services have different change frequencies:
+
 - **Angular CV Site:** Daily updates (content changes, new projects)
 - **React Dashboard:** Weekly UI improvements
 - **Cloudflare Worker:** Stable (12ms optimization done, minimal changes)
@@ -60,6 +63,7 @@ Different services have different change frequencies:
 ### 3. Multi-Cloud Provider Strategy
 
 Services span 3 cloud providers with different strengths:
+
 - **Cloudflare:** Edge compute (12ms global latency, DDoS protection)
 - **AWS:** Event streams (DynamoDB Streams, SQS FIFO, mature Lambda ecosystem)
 - **GCP:** Real-time database (Firestore WebSocket, Firebase Hosting integration)
@@ -69,6 +73,7 @@ Services span 3 cloud providers with different strengths:
 ### 4. Independent Scaling Requirements
 
 Each service has unique scaling patterns:
+
 - **Cloudflare Worker:** 3,000 requests/month (chatbot queries)
 - **AWS Lambda Processor:** 300 invocations/month (10:1 batching)
 - **GCP Cloud Function:** 300 invocations/month (AWS webhook receiver)
@@ -80,6 +85,7 @@ Each service has unique scaling patterns:
 ### 5. Portfolio Demonstration Goals
 
 **What this architecture proves:**
+
 - ✓ Multi-cloud orchestration (3 providers in one system)
 - ✓ Event-driven patterns (DynamoDB Streams, SQS, Firestore WebSocket)
 - ✓ Cross-cloud security (HMAC webhooks, IAM credentials, SigV4)
@@ -87,6 +93,7 @@ Each service has unique scaling patterns:
 - ✓ Independent CI/CD (7 repositories, separate pipelines)
 
 **What a monolith would hide:**
+
 - Cross-cloud communication patterns
 - Service independence trade-offs
 - Multi-provider IAM complexity
@@ -97,6 +104,7 @@ Each service has unique scaling patterns:
 **When NOT to use microservices:**
 
 This architecture makes sense for CV Analytics. It wouldn't make sense for:
+
 - **CRUD apps** with simple database operations (monolith easier)
 - **Single-team startups** with <5 engineers (coordination overhead too high)
 - **Tight-coupling domains** where services share complex business logic
@@ -164,8 +172,8 @@ graph TB
     WORKER -->|Fire-and-Forget Write| DDB_QUERY
     
     DDB_QUERY -->|Stream Changes| STREAM
-    STREAM -->|Batch Messages| SQS
-    SQS -->|Poll (up to 10)| PROC
+    STREAM -->|Batch up to 10| SQS
+    SQS -->|Poll Messages| PROC
     PROC -->|Aggregate & Write| DDB_ANALYTICS
     PROC -->|HMAC Webhook| CF
     
@@ -189,6 +197,7 @@ graph TB
 **6 independent services across 3 clouds:**
 
 **Cloudflare:**
+
 1. **CV Chatbot Worker** (TypeScript, edge compute, 12ms response, v2.1.3)
 
 **AWS (us-east-1):**
@@ -215,6 +224,7 @@ Each service: separate repository, independent version, isolated CI/CD, service-
 **Score: 1/1**
 
 Each service deploys without coordination across 3 clouds:
+
 - **Angular CV Site:** Cloudflare Pages (`wrangler pages deploy`)
 - **Cloudflare Worker:** Wrangler CLI (`wrangler deploy`)
 - **AWS Lambda Processor:** GitHub Actions → AWS (`aws lambda update-function-code`)
@@ -229,6 +239,7 @@ Deploy Cloudflare Worker at 3am? No impact on AWS Lambda or GCP. Roll back GCP C
 **Score: 1/1**
 
 Each service maintains semantic versioning across 3 clouds:
+
 - **Angular CV Site:** v1.2.0 (portfolio interface updates)
 - **Cloudflare Worker:** v2.1.3 (12ms optimization, MAJOR rewrite)
 - **AWS Processor Lambda:** v3.1.0 (GCP webhook integration, 2 MAJOR bumps)
@@ -245,20 +256,25 @@ Git tags track releases per repository. Breaking changes in AWS Lambda don't for
 7 GitHub repositories across 3 clouds:
 
 **Cloudflare:**
+
 - `cv-chatbot-worker-private` (TypeScript Worker, edge compute)
 - `cv-site-angular-private` (Angular, Cloudflare Pages)
 
 **AWS:**
+
 - `cv-analytics-processor-private` (Node.js Lambda, SQS batching)
 - `cv-analytics-reporter-private` (Node.js Lambda, weekly reports)
 
 **GCP:**
+
 - `cv-analytics-webhook-receiver-private` (Go Cloud Function, HMAC)
 
 **Frontend (Firebase):**
+
 - `cv-analytics-dashboard-private` (React, Firebase Hosting)
 
 **Infrastructure:**
+
 - `cv-analytics-infrastructure-private` (Terraform multi-cloud)
 
 No monorepo. Each service team (even if it's the same person) owns their codebase. Cross-cloud independence proven by separate repositories per provider.
@@ -268,6 +284,7 @@ No monorepo. Each service team (even if it's the same person) owns their codebas
 **Score: 1/1**
 
 Services scale based on their own load across 3 clouds:
+
 - **Cloudflare Worker:** Auto-scales globally (250+ edge locations, unlimited instances)
 - **Cloudflare Pages (Angular):** CDN caching (global edge network)
 - **AWS Lambda Processor:** Concurrency limits per function (default 1000)
@@ -282,6 +299,7 @@ Spike in CV chatbot queries? Only Cloudflare Worker scales at the edge. AWS Lamb
 **Score: 1/1**
 
 Each repository has independent CI/CD pipeline:
+
 - **Angular Site:** Build Angular → Deploy Cloudflare Pages
 - **Cloudflare Worker:** Build TypeScript → Deploy Wrangler
 - **AWS Processor:** Build Node.js → Deploy Lambda (AWS credentials)
@@ -296,6 +314,7 @@ Push to Cloudflare Worker repo? Only Worker builds and deploys to edge. AWS and 
 **Score: 1/1**
 
 Separate codebases, dependencies, configurations across 3 clouds:
+
 - **Angular Site:** `package.json` (Angular, TypeScript, RxJS)
 - **Cloudflare Worker:** `package.json` (TypeScript, AWS SDK for DynamoDB, Wrangler)
 - **AWS Processor:** `package.json` (Node.js 20.x, AWS SDK v3, HMAC crypto)
@@ -310,6 +329,7 @@ No shared code imports across clouds. No dependency coupling. Change AWS Lambda 
 **Score: 1/1**
 
 No direct HTTP calls between services (except cross-cloud webhooks with HMAC auth):
+
 - **User → Angular → Cloudflare Worker:** User-facing HTTP (not inter-service)
 - **Cloudflare → AWS DynamoDB:** Fire-and-forget writes (async, no response needed)
 - **DynamoDB Streams → SQS → AWS Lambda:** Event-driven, queue-based
@@ -327,6 +347,7 @@ Services don't know each other's internal URLs. AWS Lambda only knows GCP webhoo
 **This is where we lose 12.5%.**
 
 All services share one infrastructure repository:
+
 - `cv-analytics-infrastructure-private` provisions GCP and AWS resources
 - Terraform modules for all services in one codebase
 - Shared remote state (Terraform Cloud)
@@ -341,11 +362,13 @@ All services share one infrastructure repository:
 **Could we have separate infrastructure repos?**
 
 Yes. Each service could have its own Terraform code:
+
 - `dashboard-infra/` repository
 - `webhook-infra/` repository
 - etc.
 
 That would score 100%. But it would also mean:
+
 - 5 Terraform state files to manage
 - 5 separate `terraform plan` reviews
 - 5 different secrets configurations
@@ -399,6 +422,7 @@ graph LR
 ```
 
 **What this score means:**
+
 - **87.5% is excellent** for a portfolio project
 - **7/8 independence** in operational dimensions
 - **Pragmatic infrastructure** choice explained and measured
@@ -411,17 +435,20 @@ graph LR
 ### High Purity Required
 
 **Multi-team organisations:**
+
 - 50+ engineers across service teams
 - Independent release schedules critical
 - Team autonomy prioritised
 - Conway's Law in effect
 
 **Polyglot architectures:**
+
 - Different languages per service (Go, Node.js, Python, Java)
 - Language-specific tooling and dependencies
 - Teams specialised in different tech stacks
 
 **Regulatory compliance:**
+
 - Service isolation for audit trails
 - Separate security boundaries
 - Independent certification per service
@@ -429,16 +456,19 @@ graph LR
 ### Pragmatism Acceptable
 
 **Single-team projects:**
+
 - 1-5 engineers owning everything
 - Coordination overhead minimal
 - Shared infrastructure reduces complexity
 
 **Portfolio demonstrations:**
+
 - Proving architectural understanding
 - Showing deployment automation
 - Time-to-market more important than perfect isolation
 
 **Startup MVPs:**
+
 - Speed over purity
 - Infrastructure as shared platform
 - Microservices patterns without full independence
@@ -454,46 +484,55 @@ graph LR
 Ask these questions for each service:
 
 **1. Deployment Independence**
+
 - [ ] Can I deploy this service without deploying anything else?
 - [ ] Can I roll back this service independently?
 - [ ] Do I need to coordinate deployment timing with other teams?
 
 **2. Version Independence**
+
 - [ ] Does this service have its own version number?
 - [ ] Can I make breaking changes without impacting other services?
 - [ ] Are releases tracked per service?
 
 **3. Repository Independence**
+
 - [ ] Does this service have its own repository?
 - [ ] Is source code isolated from other services?
 - [ ] Can teams work in parallel without merge conflicts?
 
 **4. Scaling Independence**
+
 - [ ] Does this service scale based on its own load?
 - [ ] Can I configure auto-scaling per service?
 - [ ] Does scaling one service affect others?
 
 **5. CI/CD Independence**
+
 - [ ] Does this service have its own build pipeline?
 - [ ] Do builds trigger only for service-specific changes?
 - [ ] Can I change deployment process without affecting other services?
 
 **6. Management Independence**
+
 - [ ] Does this service have its own dependencies?
 - [ ] Can I upgrade libraries without touching other services?
 - [ ] Is configuration isolated per service?
 
 **7. Communication Independence**
+
 - [ ] Do services communicate asynchronously?
 - [ ] Are there direct HTTP calls between services?
 - [ ] Do services know each other's endpoints?
 
 **8. Infrastructure Independence**
+
 - [ ] Does this service provision its own cloud resources?
 - [ ] Is infrastructure code isolated per service?
 - [ ] Can I change cloud providers for one service?
 
 **Scoring:**
+
 - Count "yes" answers
 - Score = (yes_count / 8) × 100%
 - 100% = Pure microservices
@@ -530,6 +569,7 @@ Ask these questions for each service:
 ### Implementation Guidance
 
 **Start with these patterns:**
+
 - ✓ Separate repository per service
 - ✓ Independent CI/CD pipelines
 - ✓ Semantic versioning per service
@@ -537,11 +577,13 @@ Ask these questions for each service:
 - ✓ Service-specific cloud resources
 
 **Compromise pragmatically on:**
+
 - ✓ Shared infrastructure repository (if team is small)
 - ✓ Shared monitoring/logging (operational efficiency)
 - ✓ Centralised secrets management (security consistency)
 
 **Never compromise on:**
+
 - ✗ Direct HTTP calls between services (coupling)
 - ✗ Shared databases (data coupling)
 - ✗ Coordinated deployments (operational coupling)
@@ -555,6 +597,7 @@ Ask these questions for each service:
 Now that we've established what makes microservices "pure", the next question is: how do they communicate without coupling?
 
 Part 2 covers:
+
 - ✓ Async communication via SQS and DynamoDB Streams
 - ✓ Event correlation across distributed services
 - ✓ Real-time updates with Firestore listeners
@@ -562,6 +605,7 @@ Part 2 covers:
 - ✓ When NOT to use event-driven patterns
 
 **Preview:**
+
 ```javascript
 // Cross-cloud event-driven flow
 User → Cloudflare Worker (12ms) → AWS DynamoDB (fire-and-forget)
@@ -576,15 +620,18 @@ User → Cloudflare Worker (12ms) → AWS DynamoDB (fire-and-forget)
 ## Further Reading
 
 **From this series:**
+
 - [00-series-overview.md](./00-series-overview.md) - Series introduction and architecture metrics
 - Part 2: Infrastructure as Code (coming next)
 
 **External resources:**
+
 - [Martin Fowler: Microservices](https://martinfowler.com/articles/microservices.html)
 - [Sam Newman: Building Microservices](https://samnewman.io/books/building_microservices_2nd_edition/)
 - [Semantic Versioning 2.0.0](https://semver.org/)
 
 **CV Analytics documentation:**
+
 - [PURE-MICROSERVICES-ARCHITECTURE.md](https://github.com/josejalvarezm/cv-analytics-dashboard-private/blob/main/PURE-MICROSERVICES-ARCHITECTURE.md)
 - [ARCHITECTURE-COMPLETE.md](https://github.com/josejalvarezm/cv-analytics-dashboard-private/blob/main/ARCHITECTURE-COMPLETE.md)
 

@@ -72,7 +72,7 @@ graph TB
         DASH["Analytics Dashboard<br/>(React + TypeScript)<br/>v2.3.0"]
     end
     
-    subgraph Frontend["Frontend (Vercel)"]
+    subgraph Frontend["Frontend (Cloudflare Pages)"]
         ANGULAR["Angular CV Site<br/>v1.2.0<br/>Portfolio Interface"]
     end
     
@@ -117,7 +117,7 @@ graph TB
 4. **Cloud Function Webhook** (Go, HMAC validation from AWS Lambda, v1.5.0)
 
 **Frontend:**
-5. **Angular CV Site** (Vercel, portfolio interface, v1.2.0)
+5. **Angular CV Site** (Cloudflare Pages, portfolio interface, v1.2.0)
 6. **React Analytics Dashboard** (Firebase Hosting, real-time WebSocket, v2.3.0)
 
 **Infrastructure:** Terraform (multi-cloud: AWS + GCP providers in one config)
@@ -133,7 +133,7 @@ Each service: separate repository, independent version, isolated CI/CD, service-
 **Score: 1/1**
 
 Each service deploys without coordination across 3 clouds:
-- **Angular CV Site:** Vercel CLI (`vercel deploy`)
+- **Angular CV Site:** Cloudflare Pages (`wrangler pages deploy`)
 - **Cloudflare Worker:** Wrangler CLI (`wrangler deploy`)
 - **AWS Lambda Processor:** GitHub Actions → AWS (`aws lambda update-function-code`)
 - **AWS Lambda Reporter:** GitHub Actions → AWS (independent pipeline)
@@ -163,7 +163,8 @@ Git tags track releases per repository. Breaking changes in AWS Lambda don't for
 7 GitHub repositories across 3 clouds:
 
 **Cloudflare:**
-- `cv-chatbot-worker-private` (TypeScript, edge compute)
+- `cv-chatbot-worker-private` (TypeScript Worker, edge compute)
+- `cv-site-angular-private` (Angular, Cloudflare Pages)
 
 **AWS:**
 - `cv-analytics-processor-private` (Node.js Lambda, SQS batching)
@@ -172,9 +173,8 @@ Git tags track releases per repository. Breaking changes in AWS Lambda don't for
 **GCP:**
 - `cv-analytics-webhook-receiver-private` (Go Cloud Function, HMAC)
 
-**Frontend:**
-- `cv-site-angular-private` (Angular, Vercel)
-- `cv-analytics-dashboard-private` (React, Firebase)
+**Frontend (Firebase):**
+- `cv-analytics-dashboard-private` (React, Firebase Hosting)
 
 **Infrastructure:**
 - `cv-analytics-infrastructure-private` (Terraform multi-cloud)
@@ -187,10 +187,10 @@ No monorepo. Each service team (even if it's the same person) owns their codebas
 
 Services scale based on their own load across 3 clouds:
 - **Cloudflare Worker:** Auto-scales globally (250+ edge locations, unlimited instances)
+- **Cloudflare Pages (Angular):** CDN caching (global edge network)
 - **AWS Lambda Processor:** Concurrency limits per function (default 1000)
 - **AWS Lambda Reporter:** Scheduled invocation (weekly, not load-based)
 - **GCP Cloud Function:** Auto-scales (0-1000 instances based on webhook volume)
-- **Angular Site:** Vercel CDN caching (global edge network)
 - **React Dashboard:** Firebase Hosting CDN (automatic global distribution)
 
 Spike in CV chatbot queries? Only Cloudflare Worker scales at the edge. AWS Lambda and GCP Cloud Function scale independently based on their own processing load. Frontend CDNs handle static assets separately.
@@ -200,7 +200,7 @@ Spike in CV chatbot queries? Only Cloudflare Worker scales at the edge. AWS Lamb
 **Score: 1/1**
 
 Each repository has independent CI/CD pipeline:
-- **Angular Site:** Build Angular → Deploy Vercel
+- **Angular Site:** Build Angular → Deploy Cloudflare Pages
 - **Cloudflare Worker:** Build TypeScript → Deploy Wrangler
 - **AWS Processor:** Build Node.js → Deploy Lambda (AWS credentials)
 - **AWS Reporter:** Build Node.js → Deploy Lambda (separate pipeline)

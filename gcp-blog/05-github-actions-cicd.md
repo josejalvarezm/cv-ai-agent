@@ -2,6 +2,19 @@
 
 *Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2—with automated testing, secrets management, and zero-downtime deployments across three clouds.*
 
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [GitHub Actions Fundamentals](#github-actions-fundamentals)
+- [Dashboard Pipeline: React → Firebase](#dashboard-pipeline-react--firebase)
+- [Webhook Pipeline: Go → Cloud Functions](#webhook-pipeline-go--cloud-functions)
+- [Processor \& Reporter Pipelines: Node.js → Lambda](#processor--reporter-pipelines-nodejs--lambda)
+- [Secrets Management](#secrets-management)
+- [Independent Deployment Triggers](#independent-deployment-triggers)
+- [Troubleshooting Common Failures](#troubleshooting-common-failures)
+- [Practical Takeaways](#practical-takeaways)
+- [What's Next](#whats-next)
+- [Further Reading](#further-reading)
+
 ## Quick Summary
 
 - ✓ **6 independent CI/CD pipelines** for dashboard, webhook, processor, reporter, Angular CV site, Cloudflare Worker

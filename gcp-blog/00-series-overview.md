@@ -2,6 +2,15 @@
 
 *Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics—all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
 
+- [The Dilemma](#the-dilemma)
+- [What This Series Covers](#what-this-series-covers)
+- [Series Prerequisites](#series-prerequisites)
+- [Repository Structure](#repository-structure)
+- [How to Use This Series](#how-to-use-this-series)
+- [What Makes This Series Different](#what-makes-this-series-different)
+- [Target Outcome](#target-outcome)
+- [Call to Action](#call-to-action)
+
 ## The Dilemma
 
 My CV chatbot responds in 12ms. Users ask about my TypeScript experience, AWS expertise, or specific projects. The system performs semantic search, retrieves context, and generates responses using an LLM. Fast, functional, and deployed.

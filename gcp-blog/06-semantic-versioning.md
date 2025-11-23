@@ -2,6 +2,23 @@
 
 *Tracking six services with independent version numbers using SemVer 2.0.0 (MAJOR.MINOR.PATCH), git tags, and automated CI/CD—enabling Angular v1.2.0, Cloudflare Worker v2.1.3, AWS Lambda v3.1.0, and GCP Cloud Function v1.5.0 to evolve without coordination.*
 
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [Semantic Versioning Basics](#semantic-versioning-basics)
+- [Git Tagging Workflow](#git-tagging-workflow)
+- [Per-Service Versioning in CV Analytics](#per-service-versioning-in-cv-analytics)
+- [Handling Breaking Changes](#handling-breaking-changes)
+- [Step-by-Step Migration](#step-by-step-migration)
+- [Compatibility](#compatibility)
+- [Deprecation Policies](#deprecation-policies)
+- [Backwards Compatibility](#backwards-compatibility)
+- [Timeline](#timeline)
+- [CI/CD Integration: Automated Versioning](#cicd-integration-automated-versioning)
+- [Version Compatibility Matrix](#version-compatibility-matrix)
+- [Practical Takeaways](#practical-takeaways)
+- [What's Next](#whats-next)
+- [Further Reading](#further-reading)
+
 ## Quick Summary
 
 - ✓ **SemVer 2.0.0** (MAJOR.MINOR.PATCH) enables independent service evolution
@@ -23,6 +40,7 @@ After implementing semantic versioning, every service tracks its version. Breaki
 This post explains how CV Analytics uses SemVer 2.0.0 for independent service evolution:
 
 **You'll learn:**
+
 - ✓ SemVer 2.0.0 basics (MAJOR.MINOR.PATCH)
 - ✓ Git tagging workflow for deployments
 - ✓ Per-service independent versioning
@@ -33,6 +51,7 @@ This post explains how CV Analytics uses SemVer 2.0.0 for independent service ev
 **Why versioning matters for microservices:**
 
 Microservices communicate via APIs (HTTP, message queues, gRPC). API changes break consumers:
+
 - Field renames break JSON parsing
 - New required fields break validation
 - Removed endpoints break client code
@@ -44,6 +63,7 @@ Microservices communicate via APIs (HTTP, message queues, gRPC). API changes bre
 **The cost of unversioned APIs:**
 
 Every change is a potential breaking change:
+
 1. **Fear of change**: Developers avoid refactoring (might break something)
 2. **Coordination overhead**: Must notify all consumers before deploying
 3. **Slow evolution**: Changes require coordinated releases
@@ -55,11 +75,13 @@ CV Analytics experienced all of these before implementing SemVer.
 **SemVer as communication protocol:**
 
 Semantic Versioning (SemVer) provides a shared language:
+
 - **MAJOR**: Breaking changes (API incompatible with previous version)
 - **MINOR**: New features (backwards-compatible additions)
 - **PATCH**: Bug fixes (backwards-compatible fixes)
 
 Version number communicates impact:
+
 - `v1.0.0` → `v1.0.1`: Safe to upgrade (bug fix)
 - `v1.0.0` → `v1.1.0`: Safe to upgrade (new feature, old code still works)
 - `v1.0.0` → `v2.0.0`: **Breaking change** (requires code changes)
@@ -67,6 +89,7 @@ Version number communicates impact:
 **How independent versioning enables autonomy:**
 
 CV Analytics has 6 services across 3 clouds with independent versions:
+
 - **Angular CV Site**: v1.2.0 (portfolio interface, infrequent updates)
 - **Cloudflare Worker**: v2.1.3 (CV chatbot, stable 12ms performance)
 - **AWS Lambda Processor**: v3.0.0 (evolved rapidly, 2 breaking changes)
@@ -129,11 +152,13 @@ graph LR
 ### Creating Annotated Tags
 
 **Annotated tags** (recommended):
+
 ```bash
 git tag -a v1.0.0 -m "Release v1.0.0: Initial stable release"
 ```
 
 Annotated tags include:
+
 - Tag name: `v1.0.0`
 - Message: `"Release v1.0.0: Initial stable release"`
 - Tagger name and email
@@ -141,6 +166,7 @@ Annotated tags include:
 - GPG signature (optional)
 
 **Lightweight tags** (not recommended):
+
 ```bash
 git tag v1.0.0  # No -a flag
 ```
@@ -148,11 +174,13 @@ git tag v1.0.0  # No -a flag
 Lightweight tags are just pointers to commits (no metadata). CV Analytics uses annotated tags exclusively.
 
 **View tag details:**
+
 ```bash
 git show v1.0.0
 ```
 
 Output:
+
 ```
 tag v1.0.0
 Tagger: Developer <dev@example.com>
@@ -170,16 +198,19 @@ Date:   Sat Nov 23 09:55:00 2024 +0000
 ### Pushing Tags to Remote
 
 **Push single tag:**
+
 ```bash
 git push origin v1.0.0
 ```
 
 **Push all tags:**
+
 ```bash
 git push origin --tags
 ```
 
 **CV Analytics workflow:**
+
 ```bash
 # After merging PR, create tag
 git tag -a v1.5.0 -m "Release v1.5.0: Add repository visibility field"
@@ -191,6 +222,7 @@ git push origin v1.5.0
 ```
 
 **Tags trigger deployments:**
+
 ```yaml
 # .github/workflows/deploy.yml
 on:
@@ -215,6 +247,7 @@ New tag `v1.5.0` pushed → Workflow triggered → Deployment to production.
 **Format:** `v{MAJOR}.{MINOR}.{PATCH}[-{PRERELEASE}][+{BUILD}]`
 
 **Production releases:**
+
 ```
 v1.0.0
 v1.1.0
@@ -223,6 +256,7 @@ v2.0.0
 ```
 
 **Pre-release versions:**
+
 ```
 v2.0.0-alpha.1
 v2.0.0-alpha.2
@@ -233,6 +267,7 @@ v2.0.0-rc.1
 **Per-service prefixes** (for monorepos):
 
 If multiple services in one repository:
+
 ```
 dashboard-v1.0.0
 webhook-v1.0.0
@@ -245,6 +280,7 @@ CV Analytics uses separate repositories (no prefix needed).
 **Tag messages:**
 
 Consistent format:
+
 ```bash
 git tag -a v1.5.0 -m "Release v1.5.0: Brief description
 
@@ -259,11 +295,13 @@ Breaking changes: None"
 ### Listing and Checking Out Tags
 
 **List all tags:**
+
 ```bash
 git tag -l
 ```
 
 Output:
+
 ```
 v1.0.0
 v1.1.0
@@ -273,11 +311,13 @@ v2.0.0
 ```
 
 **List tags matching pattern:**
+
 ```bash
 git tag -l "v1.*"
 ```
 
 Output:
+
 ```
 v1.0.0
 v1.1.0
@@ -286,11 +326,13 @@ v1.2.0
 ```
 
 **Sort tags by version:**
+
 ```bash
 git tag -l --sort=-version:refname
 ```
 
 Output (descending order):
+
 ```
 v2.0.0
 v1.2.0
@@ -300,16 +342,19 @@ v1.0.0
 ```
 
 **Checkout specific version:**
+
 ```bash
 git checkout v1.0.0
 ```
 
 Puts repository in "detached HEAD" state (viewing old code). Useful for:
+
 - Debugging production issues ("what code is running?")
 - Reproducing bugs in specific version
 - Reviewing historical changes
 
 **Checkout and create branch:**
+
 ```bash
 git checkout -b hotfix-1.0.1 v1.0.0
 ```
@@ -317,6 +362,7 @@ git checkout -b hotfix-1.0.1 v1.0.0
 Creates new branch from `v1.0.0` tag. Useful for backporting fixes.
 
 **Delete tag (if created by mistake):**
+
 ```bash
 # Delete local tag
 git tag -d v1.0.0
@@ -332,6 +378,7 @@ git push origin --delete v1.0.0
 **Workflow triggered by tag push:**
 
 **Full example:**
+
 ```yaml
 name: Deploy Tagged Release
 
@@ -392,10 +439,12 @@ jobs:
 
 1. Developer merges PR to main
 2. Developer creates tag:
+
    ```bash
    git tag -a v1.5.0 -m "Release v1.5.0"
    git push origin v1.5.0
    ```
+
 3. GitHub Actions detects tag push
 4. Workflow checks out tag
 5. Workflow builds code from tag
@@ -404,12 +453,14 @@ jobs:
 8. Workflow notifies team
 
 **Benefits of tag-based deployments:**
+
 - ✓ Exact code deployed is tagged (reproducible)
 - ✓ Can redeploy old version (checkout tag, trigger workflow)
 - ✓ Clear deployment history (list tags)
 - ✓ Rollback is simple (deploy previous tag)
 
 **Manual tag-based deployment:**
+
 ```bash
 # Deploy specific version
 git checkout v1.4.0
@@ -484,6 +535,7 @@ gantt
 ### Version Evolution by Service
 
 **Angular CV Site (v1.2.0):** Stable interface
+
 - 3 releases in 22 months
 - 0 MAJOR bumps (backwards-compatible UI)
 - 2 MINOR bumps (chatbot UI, mobile responsive)
@@ -492,6 +544,7 @@ gantt
 - Cloud: Vercel (zero-downtime deploys)
 
 **Cloudflare Worker (v2.1.3):** Performance-critical, stable API
+
 - 5 releases in 22 months
 - 1 MAJOR bump (12ms optimization required architecture change)
 - 2 MINOR bumps (AWS integration, IAM auth)
@@ -501,6 +554,7 @@ gantt
 - Cloud: Cloudflare (250+ edge locations)
 
 **AWS Lambda Processor (v3.1.0):** Rapid evolution, cross-cloud integration
+
 - 6 releases in 22 months
 - 2 MAJOR bumps (DynamoDB schema change, GCP webhook integration)
 - 3 MINOR bumps (parallel processing, DLQ, HMAC signing)
@@ -510,6 +564,7 @@ gantt
 - Cloud: AWS us-east-1
 
 **AWS Lambda Reporter (v1.0.3):** Minimal changes, only bug fixes
+
 - 4 releases in 22 months
 - 0 MAJOR bumps
 - 0 MINOR bumps
@@ -519,6 +574,7 @@ gantt
 - Cloud: AWS us-east-1
 
 **GCP Cloud Function (v1.5.0):** Stable webhook receiver
+
 - 6 releases in 22 months
 - 0 MAJOR bumps (HMAC validation API stable)
 - 5 MINOR bumps (Firestore writes, timestamp validation, AWS Lambda auth)
@@ -528,6 +584,7 @@ gantt
 - Cloud: GCP us-central1 (Go runtime)
 
 **React Dashboard (v2.3.0):** Most frequent updates
+
 - 7 releases in 22 months
 - 1 MAJOR bump (TypeScript rewrite)
 - 6 MINOR bumps (stats, dark mode, real-time WebSocket, CSV export, multi-cloud metrics)
@@ -542,20 +599,25 @@ No correlation between service versions. Each cloud provider hosts services at d
 **November 2025 versions:**
 
 **Cloudflare:**
+
 - Worker (Edge): v2.1.3
 
 **AWS (us-east-1):**
+
 - Lambda Processor: v3.1.0
 - Lambda Reporter: v1.0.3
 
 **GCP (us-central1):**
+
 - Cloud Function: v1.5.0
 
 **Frontend (Vercel + Firebase):**
+
 - Angular CV Site: v1.2.0
 - React Dashboard: v2.3.0
 
 Each number tells a story:
+
 - Angular v1.x: Original interface still works
 - Cloudflare Worker v2.x: Had 1 major performance rewrite (12ms optimization)
 - AWS Processor v3.x: Evolved through 2 breaking changes (schema + GCP integration)
@@ -568,6 +630,7 @@ Each number tells a story:
 ### No Coordinated Releases (Cross-Cloud Independence)
 
 **Traditional approach (monolith):**
+
 ```
 Release v2.0.0:
 - Update Angular CV site
@@ -583,6 +646,7 @@ Release v2.0.0:
 Slow. Risky. Coordination overhead across multiple cloud providers.
 
 **CV Analytics approach (multi-cloud microservices):**
+
 ```
 Angular CV Site v1.2.0:        Deploy to Vercel independently
 Cloudflare Worker v2.1.3:      Deploy to Cloudflare Edge independently (different week)
@@ -597,6 +661,7 @@ Fast. Safe. No coordination needed. Each cloud provider deployment is independen
 **Example: React Dashboard v2.3.0 deployment (November 2025)**
 
 Dashboard adds multi-cloud metrics visualization. Only frontend changes. Backend services across 3 clouds unchanged:
+
 - Angular CV Site: Still v1.2.0 (no update needed)
 - Cloudflare Worker: Still v2.1.3 (no update needed)
 - AWS Lambda Processor: Still v3.1.0 (no update needed)
@@ -608,6 +673,7 @@ Dashboard deploys alone to Firebase Hosting. Other services across Cloudflare, A
 **Exception: Cross-cloud dependency (AWS → GCP)**
 
 AWS Lambda Processor v3.0.0 introduced GCP Cloud Function webhook integration. This was a coordinated deployment:
+
 1. Deploy GCP Cloud Function v1.5.0 first (establish webhook URL)
 2. Update Terraform with webhook URL
 3. Deploy AWS Lambda Processor v3.0.0 (configured with GCP URL)
@@ -617,6 +683,7 @@ Breaking change required coordination, but services remain independently version
 **Contracts, not coordination:**
 
 Services maintain API contracts:
+
 - Webhook provides events in stable format
 - Processor consumes events (expects contract)
 - Dashboard reads Firestore (stable schema)
@@ -637,6 +704,7 @@ Breaking changes are inevitable. APIs evolve. Data models change. The goal: mini
 **Breaking changes** make existing client code fail:
 
 **API changes:**
+
 - ✗ Remove endpoint: `DELETE /api/users` removed
 - ✗ Rename field: `userId` → `user_id`
 - ✗ Change field type: `age: string` → `age: number`
@@ -647,6 +715,7 @@ Breaking changes are inevitable. APIs evolve. Data models change. The goal: mini
 - ✗ Stricter validation: `name` now requires 3+ characters
 
 **Non-breaking changes:**
+
 - ✓ Add optional field: New optional `phoneNumber`
 - ✓ Add new endpoint: New `GET /api/stats`
 - ✓ Relax validation: `name` now accepts 1+ characters
@@ -697,6 +766,7 @@ Consumers expecting `type` field get `undefined`. Code breaks.
 **When breaking change needed:**
 
 **Step 1: Document breaking change**
+
 ```markdown
 # CHANGELOG.md
 
@@ -723,6 +793,7 @@ Update consumer code:
 
 - `type` is too generic (conflicts with TypeScript `type` keyword)
 - `repo` is abbreviation (clarity over brevity)
+
 ```
 
 **Step 2: Bump MAJOR version**
@@ -735,6 +806,7 @@ git push origin v3.0.0
 ```
 
 **Step 3: Notify consumers**
+
 - Email to stakeholders
 - Slack announcement
 - GitHub Release with migration guide
@@ -765,6 +837,7 @@ const type = event.type;
 ```
 
 **After (v3.0.0):**
+
 ```javascript
 const type = event.eventType;
 ```
@@ -772,11 +845,13 @@ const type = event.eventType;
 ### 2. Field Rename: `repo` → `repositoryName`
 
 **Before (v2.x):**
+
 ```javascript
 const repo = event.repo;
 ```
 
 **After (v3.0.0):**
+
 ```javascript
 const repo = event.repositoryName;
 ```
@@ -784,6 +859,7 @@ const repo = event.repositoryName;
 ## Step-by-Step Migration
 
 1. **Update TypeScript interfaces:**
+
    ```typescript
    interface CVEvent {
      eventType: string;      // Changed
@@ -794,6 +870,7 @@ const repo = event.repositoryName;
    ```
 
 2. **Find and replace in codebase:**
+
    ```bash
    grep -r "event.type" src/
    # Replace all with event.eventType
@@ -803,6 +880,7 @@ const repo = event.repositoryName;
    ```
 
 3. **Update tests:**
+
    ```javascript
    // Old test
    expect(event.type).toBe('push');
@@ -822,11 +900,6 @@ const repo = event.repositoryName;
 - v3.0.0 is **NOT compatible** with v2.x consumers
 - All consumers must update before upgrading
 - Support period: v2.2.0 supported until 2025-02-28 (6 months)
-
-## Need Help?
-
-Contact: support@cv-analytics.com
-```
 
 ### Dual-Version Support
 
@@ -857,6 +930,7 @@ app.post('/v2/events', (req, res) => {
 ```
 
 Consumers migrate at their own pace:
+
 - Old consumers: Call `/v1/events`
 - New consumers: Call `/v2/events`
 
@@ -901,6 +975,7 @@ aws lambda update-alias \
 ```
 
 Consumers invoke by alias:
+
 - `arn:aws:lambda:region:account:function:cv-processor:v1` (old)
 - `arn:aws:lambda:region:account:function:cv-processor:v2` (new)
 
@@ -932,16 +1007,19 @@ Day 180: Remove v2.x support
 ```
 
 **CV Analytics sunset policy:**
+
 - MAJOR version support: 6 months after next MAJOR release
 - MINOR version support: Until next MAJOR release
 - PATCH version support: Until next MINOR or MAJOR release
 
 **Example:**
+
 - v2.2.0 released: 2024-07-29
 - v3.0.0 released: 2024-08-28
 - v2.x sunset: 2025-02-28 (6 months after v3.0.0)
 
 After sunset, v2.x endpoints return:
+
 ```json
 {
   "error": "API version deprecated",
@@ -963,6 +1041,7 @@ Deprecation is not removal. It's a transition period where old functionality sti
 **Deprecation announcement channels:**
 
 **1. CHANGELOG.md:**
+
 ```markdown
 ## v1.5.0 (2024-11-23)
 
@@ -976,6 +1055,7 @@ Deprecation is not removal. It's a transition period where old functionality sti
 ```
 
 **2. API documentation:**
+
 ```markdown
 ## CVEvent Interface
 
@@ -988,6 +1068,7 @@ Deprecation is not removal. It's a transition period where old functionality sti
 ```
 
 **3. Code comments:**
+
 ```typescript
 interface CVEvent {
   eventType: string;
@@ -1007,6 +1088,7 @@ interface CVEvent {
 ```
 
 **4. Runtime warnings:**
+
 ```javascript
 const processEvent = (event) => {
   if (event.type !== undefined) {
@@ -1023,6 +1105,7 @@ const processEvent = (event) => {
 ```
 
 **5. HTTP headers:**
+
 ```http
 HTTP/1.1 200 OK
 Deprecation: true
@@ -1035,20 +1118,24 @@ Link: <https://docs.cv-analytics.com/migration-v2>; rel="deprecation"
 **CV Analytics support periods:**
 
 **MAJOR version deprecation:** 6 months
+
 - v1.x deprecated when v2.0.0 released
 - v1.x supported for 6 months after v2.0.0
 - v1.x removed after 6 months
 
 **MINOR version deprecation:** Until next MAJOR
+
 - v1.4.x deprecated when v1.5.0 released
 - v1.4.x supported until v2.0.0 released
 - No explicit removal (superseded by v2.0.0)
 
 **Feature deprecation within same MAJOR:** 12 months
+
 - Feature deprecated in v1.5.0
 - Feature removed in v2.0.0 (at least 12 months later)
 
 **Critical security issues:** Immediate removal
+
 - If feature has security vulnerability
 - Immediate deprecation + removal
 - Hotfix released (PATCH bump)
@@ -1111,6 +1198,7 @@ grep -r "event\['type'\]" src/
 ## Backwards Compatibility
 
 **v1.5.x (current):** Both fields supported
+
 ```javascript
 {
   "eventType": "push",  // New field
@@ -1119,6 +1207,7 @@ grep -r "event\['type'\]" src/
 ```
 
 **v2.0.0 (future):** Only new field
+
 ```javascript
 {
   "eventType": "push"   // Only this field exists
@@ -1132,7 +1221,8 @@ grep -r "event\['type'\]" src/
 
 ## Need Help?
 
-Contact: support@cv-analytics.com
+Contact: <support@cv-analytics.com>
+
 ```
 
 ### Monitoring Deprecated Endpoint Usage
@@ -1236,6 +1326,7 @@ Action required: ${metrics['event.type'] > 0 ? 'YES' : 'NO'}
 **Sunset day workflow:**
 
 **T-30 days: Final warning**
+
 ```javascript
 const processEvent = (event) => {
   if (event.type !== undefined) {
@@ -1249,6 +1340,7 @@ const processEvent = (event) => {
 ```
 
 **T-7 days: Block new consumers**
+
 ```javascript
 if (isNewConsumer() && event.type !== undefined) {
   throw new Error(
@@ -1259,6 +1351,7 @@ if (isNewConsumer() && event.type !== undefined) {
 ```
 
 **T-0 days (sunset): Remove support**
+
 ```javascript
 // v2.0.0 - Removed deprecated fields
 const processEvent = (event) => {
@@ -1321,18 +1414,21 @@ Zero manual intervention.
 **Types that affect versioning:**
 
 **feat:** New feature (MINOR bump)
+
 ```bash
 git commit -m "feat: add dark mode to dashboard"
 # v1.0.0 → v1.1.0
 ```
 
 **fix:** Bug fix (PATCH bump)
+
 ```bash
 git commit -m "fix: correct timezone calculation in reporter"
 # v1.0.0 → v1.0.1
 ```
 
 **BREAKING CHANGE:** Breaking change (MAJOR bump)
+
 ```bash
 git commit -m "feat: rename event.type to event.eventType
 
@@ -1341,6 +1437,7 @@ BREAKING CHANGE: event.type field removed, use event.eventType instead"
 ```
 
 **Alternative BREAKING CHANGE syntax:**
+
 ```bash
 git commit -m "feat!: rename event fields"
 # Exclamation mark indicates breaking change
@@ -1348,6 +1445,7 @@ git commit -m "feat!: rename event fields"
 ```
 
 **Other types (no version bump):**
+
 - `docs:` Documentation changes
 - `style:` Code style (formatting, whitespace)
 - `refactor:` Code refactoring (no functional change)
@@ -1379,6 +1477,7 @@ git commit -m "feat(webhook): add optional visibility field to events"
 ```
 
 **Scope** (optional but recommended):
+
 - `dashboard`, `webhook`, `processor`, `reporter`
 - Helps identify which service changed
 
@@ -1530,6 +1629,7 @@ Initial release
 ```
 
 **Changelog benefits:**
+
 - Automatic generation (no manual writing)
 - Links to commits
 - Links to compare view
@@ -1543,6 +1643,7 @@ Initial release
 **Title:** v1.1.0
 
 **Body:**
+
 ```markdown
 # What's Changed
 
@@ -1557,11 +1658,13 @@ Initial release
 ```
 
 **Release assets:**
+
 - Source code (zip)
 - Source code (tar.gz)
 - Custom assets (optional: binaries, packages)
 
 **Notification:**
+
 - GitHub sends notifications to watchers
 - RSS feed updated
 - Webhooks triggered
@@ -1600,12 +1703,14 @@ module.exports = {
 **CV Analytics automated versioning results:**
 
 **Before (manual):**
+
 - Forgot to bump version: 3 times
 - Bumped wrong component: 5 times  
 - Inconsistent CHANGELOG: Always
 - Time per release: 15 minutes
 
 **After (automated):**
+
 - Forgot to bump: 0 times (impossible)
 - Wrong bump: 0 times (calculated from commits)
 - Consistent CHANGELOG: Always
@@ -1679,10 +1784,12 @@ graph TD
 Webhook writes CVEvent format. Processor reads CVEvent format.
 
 **Compatible versions:**
+
 - Webhook v1.0.0 - v1.5.0 → Processor v1.0.0 - v2.2.0 ✓
 - Webhook v1.5.0 → Processor v3.0.0 - v3.1.0 ✓ (processor handles new fields)
 
 **Incompatible versions:**
+
 - Webhook v2.0.0 (hypothetical, breaking schema) → Processor v3.1.0 ✗
 
 **Rule 2: Processor → DynamoDB → Reporter**
@@ -1690,6 +1797,7 @@ Webhook writes CVEvent format. Processor reads CVEvent format.
 Processor writes metrics format. Reporter reads metrics format.
 
 **Compatible versions:**
+
 - Processor v3.0.0 - v3.1.0 → Reporter v1.0.0 - v1.0.3 ✓
 
 **Rule 3: Firestore → Dashboard**
@@ -1697,6 +1805,7 @@ Processor writes metrics format. Reporter reads metrics format.
 Dashboard reads CVEvent format directly from Firestore.
 
 **Compatible versions:**
+
 - Dashboard v1.x → CVEvent v1.0.0 - v1.5.0 ✓
 - Dashboard v2.x → CVEvent v1.0.0 - v1.5.0 ✓ (TypeScript rewrite, same data)
 
@@ -1823,11 +1932,13 @@ Cons: Potential unexpected changes.
 **CV Analytics approach:**
 
 Internal services (same team): Use ranges `^1.5.0`
+
 - Trust SemVer guarantees
 - Get bug fixes automatically
 - Get new features automatically
 
 External services (different teams): Pin exact versions `1.5.0`
+
 - Explicit upgrade decision
 - Test before upgrading
 - Controlled rollout
@@ -1847,6 +1958,7 @@ External services (different teams): Pin exact versions `1.5.0`
 **CV Analytics SemVer guarantees:**
 
 **Within same MAJOR version:**
+
 - ✓ No breaking changes
 - ✓ New features backwards-compatible
 - ✓ Bug fixes don't change API
@@ -1871,11 +1983,13 @@ const processEvent = (event) => {
 ```
 
 **Processor doesn't break because:**
+
 - Field is optional (default value used)
 - Existing fields unchanged
 - No required fields added
 
 **Across MAJOR versions:**
+
 - ✗ Breaking changes expected
 - ✗ Migration required
 - ✗ v1.x code may not work with v2.x data
@@ -1909,36 +2023,44 @@ Implementing semantic versioning in 3 weeks:
 ### Week 1: Foundation
 
 **Day 1-2: Adopt SemVer 2.0.0**
+
 - ✓ Choose initial version: v1.0.0 (if stable) or v0.1.0 (if pre-release)
 - ✓ Document version format in README
 - ✓ Add version to package.json / build config
 
 **Day 3-4: Setup git tagging**
+
 - ✓ Create first annotated tag: `git tag -a v1.0.0 -m "Initial release"`
 - ✓ Push tag: `git push origin v1.0.0`
 - ✓ Document tagging process in CONTRIBUTING.md
 
 **Day 5-7: Conventional Commits**
+
 - ✓ Adopt Conventional Commits specification
 - ✓ Configure commitlint:
+
   ```bash
   npm install --save-dev @commitlint/cli @commitlint/config-conventional
   ```
+
 - ✓ Add pre-commit hook to enforce format
 
 ### Week 2: Automation
 
 **Day 8-10: Setup semantic-release**
+
 - ✓ Install semantic-release and plugins
 - ✓ Configure `.releaserc.json`
 - ✓ Test locally: `npx semantic-release --dry-run`
 
 **Day 11-12: GitHub Actions workflow**
+
 - ✓ Create release workflow (triggered on push to main)
 - ✓ Test on feature branch
 - ✓ Merge and verify automatic release
 
 **Day 13-14: Changelog automation**
+
 - ✓ Enable @semantic-release/changelog plugin
 - ✓ Generate initial CHANGELOG.md
 - ✓ Verify updates on next release
@@ -1946,16 +2068,19 @@ Implementing semantic versioning in 3 weeks:
 ### Week 3: Policies
 
 **Day 15-17: Breaking change policy**
+
 - ✓ Document what qualifies as breaking
 - ✓ Establish migration guide template
 - ✓ Define support periods (e.g., 6 months)
 
 **Day 18-19: Deprecation workflow**
+
 - ✓ Add deprecation warning system
 - ✓ Create deprecation notice template
 - ✓ Setup monitoring for deprecated feature usage
 
 **Day 20-21: Compatibility testing**
+
 - ✓ Write integration tests for version compatibility
 - ✓ Create compatibility matrix document
 - ✓ Add contract tests (optional but recommended)
@@ -1965,6 +2090,7 @@ Implementing semantic versioning in 3 weeks:
 **1. Use SemVer 2.0.0 consistently**
 
 Every service follows same rules:
+
 - MAJOR: Breaking changes
 - MINOR: New features (backwards-compatible)
 - PATCH: Bug fixes
@@ -1972,6 +2098,7 @@ Every service follows same rules:
 **2. Git tag every release**
 
 No release without tag:
+
 ```bash
 git tag -a v1.5.0 -m "Release v1.5.0"
 git push origin v1.5.0
@@ -1986,6 +2113,7 @@ Change response structure? MAJOR bump.
 **4. Deprecate before removing**
 
 Minimum 6-month notice:
+
 1. Mark as deprecated (keep working)
 2. Add warnings
 3. Provide migration guide
@@ -1994,6 +2122,7 @@ Minimum 6-month notice:
 **5. Automate version bumps in CI/CD**
 
 Manual versioning fails. Use semantic-release:
+
 - Analyses commits
 - Determines version bump
 - Creates tag
@@ -2003,18 +2132,22 @@ Manual versioning fails. Use semantic-release:
 ### Success Metrics
 
 **Version clarity:**
+
 - Before: Version in package.json, git tag, GitHub Release all different
 - After: Single source of truth (git tag)
 
 **Release efficiency:**
+
 - Before: 15 minutes per release (manual steps)
 - After: 0 minutes (fully automated)
 
 **Breaking change communication:**
+
 - Before: 3 incidents where consumers unaware of breaking changes
 - After: 0 incidents (MAJOR version signals breaking change)
 
 **Changelog consistency:**
+
 - Before: Manually written, often forgotten
 - After: Always generated, always accurate
 
@@ -2029,6 +2162,7 @@ CV Analytics achieved these improvements after 3 weeks of SemVer implementation.
 Services versioned independently. Now: building the frontend that visualizes everything.
 
 Part 7 covers:
+
 - ✓ React + TypeScript + Vite setup
 - ✓ Firestore real-time listeners (GCP WebSocket)
 - ✓ Cross-cloud data flow (AWS Lambda → GCP → Dashboard)

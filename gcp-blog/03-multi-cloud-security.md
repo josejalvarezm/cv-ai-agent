@@ -2,6 +2,20 @@
 
 *Securing cross-cloud webhooks with HMAC-SHA256, enforcing least-privilege IAM policies across AWS and GCP, managing secrets in GitHub Actions, and protecting databases with Firestore security rules—all validated under real attack attempts.*
 
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [Cross-Cloud Webhook Authentication: HMAC Signatures](#cross-cloud-webhook-authentication-hmac-signatures)
+- [Cloudflare Worker Authentication to AWS](#cloudflare-worker-authentication-to-aws)
+- [GCP IAM: Service Accounts and Roles](#gcp-iam-service-accounts-and-roles)
+- [AWS IAM: Roles and Policies](#aws-iam-roles-and-policies)
+- [Secrets Management: Multi-Cloud Strategy](#secrets-management-multi-cloud-strategy)
+- [Database Security](#database-security)
+- [Encryption](#encryption)
+- [Audit Logging and Monitoring](#audit-logging-and-monitoring)
+- [Practical Takeaways](#practical-takeaways)
+- [What's Next](#whats-next)
+- [Further Reading](#further-reading)
+
 ## Quick Summary
 
 - ✓ **HMAC-SHA256** validates webhook authenticity (no replay attacks)

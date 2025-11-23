@@ -2,6 +2,19 @@
 
 *Six services across three clouds scored against 8 independence criteria: deployment, versioning, storage, scaling, CI/CD, management, communication, and infrastructure—achieving 87.5% purity with measured trade-offs.*
 
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [Why Microservices?](#why-microservices)
+- [Defining Pure Microservices](#defining-pure-microservices)
+- [CV Analytics Architecture Overview](#cv-analytics-architecture-overview)
+- [Scoring the Architecture: 87.5% Breakdown](#scoring-the-architecture-875-breakdown)
+- [Architecture Purity Scorecard](#architecture-purity-scorecard)
+- [When Purity Matters (And When It Doesn't)](#when-purity-matters-and-when-it-doesnt)
+- [Measuring Your Own Architecture](#measuring-your-own-architecture)
+- [Practical Takeaways](#practical-takeaways)
+- [What's Next](#whats-next)
+- [Further Reading](#further-reading)
+
 ## Quick Summary
 
 - ✓ **Why microservices?** Independent tech choices, deployment velocity, multi-cloud strategy, scaling requirements

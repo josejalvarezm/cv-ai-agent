@@ -2,6 +2,19 @@
 
 *Breaking synchronous coupling through DynamoDB Streams, SQS FIFO queues, Firestore WebSocket listeners, and event correlation—enabling independent service operation across Cloudflare, AWS, and GCP.*
 
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [Synchronous vs Asynchronous: The Coupling Problem](#synchronous-vs-asynchronous-the-coupling-problem)
+- [Async Patterns: Queues and Streams](#async-patterns-queues-and-streams)
+- [GCP Pipeline: Webhook → Firestore → Dashboard](#gcp-pipeline-webhook--firestore--dashboard)
+- [AWS Pipeline: DynamoDB Streams → SQS → Lambda](#aws-pipeline-dynamodb-streams--sqs--lambda)
+- [Event Correlation: Matching Queries and Responses](#event-correlation-matching-queries-and-responses)
+- [Error Handling and Retries](#error-handling-and-retries)
+- [Trade-offs: Complexity vs Resilience](#trade-offs-complexity-vs-resilience)
+- [Practical Takeaways](#practical-takeaways)
+- [What's Next](#whats-next)
+- [Further Reading](#further-reading)
+
 ## Quick Summary
 
 - ✓ **Event-driven communication** eliminates direct HTTP coupling between services

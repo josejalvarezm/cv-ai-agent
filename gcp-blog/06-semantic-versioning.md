@@ -80,17 +80,13 @@ Let's implement SemVer.
 
 ## Semantic Versioning Basics
 
-[Content to be written]
+Semantic Versioning (SemVer) uses three-part version numbers: MAJOR.MINOR.PATCH. Each component signals different types of changes.
 
-**Topics:**
-- MAJOR.MINOR.PATCH explained
-- When to bump each component
-- Pre-release versions (alpha, beta, rc)
-- Metadata and build numbers
-- SemVer 2.0.0 specification
+### MAJOR.MINOR.PATCH Explained
 
 **Format:**
-```
+
+```text
 v1.2.3-alpha.1+build.20251123
 │ │ │  │       │
 │ │ │  │       └─ Build metadata

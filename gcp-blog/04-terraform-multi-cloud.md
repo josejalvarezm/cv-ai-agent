@@ -1300,14 +1300,36 @@ terraform apply -target=aws_lambda_function.processor
 
 ## Practical Takeaways
 
-[Content to be written]
+Infrastructure as code transforms cloud management from manual clicking to automated provisioning.
 
-**Key points:**
-- ✓ Never click through consoles
-- ✓ Version control all infrastructure
-- ✓ Review plans before applying
-- ✓ Use remote state for teams
-- ✓ Document rollback procedures
+### Key Principles
+
+- ✓ **Never click through consoles** (use Terraform for all infrastructure)
+- ✓ **Version control all infrastructure** (Git tracks every change)
+- ✓ **Review plans before applying** (`terraform plan` catches errors)
+- ✓ **Use remote state for teams** (S3 + DynamoDB locking prevents conflicts)
+- ✓ **Document rollback procedures** (destroy targeted resources safely)
+
+### Implementation Roadmap
+
+**Week 1:** Setup Terraform project structure, configure providers (AWS + GCP), create state backend (S3 + DynamoDB).
+
+**Week 2:** Write Lambda/Cloud Functions modules, test locally with `terraform plan`, apply to development environment.
+
+**Week 3:** Create DynamoDB/Firestore modules, implement cross-cloud IAM policies, document all resources.
+
+**Week 4:** Integrate with CI/CD (GitHub Actions), automate `terraform plan` on PRs, require manual approval for `terraform apply`.
+
+### Success Metrics
+
+CV Analytics infrastructure fully automated:
+
+- 0 manual console clicks (100% Terraform-managed)
+- <5 minute infrastructure provisioning (from scratch)
+- Complete state tracking (every resource in terraform.tfstate)
+- Reproducible environments (dev/staging/prod identical configuration)
+
+**Cost:** £0.00/month (infrastructure automation included in free tier).
 
 ---
 

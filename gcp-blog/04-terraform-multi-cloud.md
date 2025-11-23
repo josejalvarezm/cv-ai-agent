@@ -2,6 +2,19 @@
 
 *Managing six microservices across Cloudflare, AWS, and GCP with 1,200 lines of Terraform configuration—eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
 
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [Terraform Fundamentals](#terraform-fundamentals)
+- [GCP Infrastructure](#gcp-infrastructure)
+- [AWS Infrastructure](#aws-infrastructure)
+- [Remote State Management](#remote-state-management)
+- [Secrets Handling](#secrets-handling)
+- [Deployment Workflow](#deployment-workflow)
+- [Rollback Strategies](#rollback-strategies)
+- [Practical Takeaways](#practical-takeaways)
+- [What's Next](#whats-next)
+- [Further Reading](#further-reading)
+
 ## Quick Summary
 
 - ✓ **100% infrastructure-as-code** eliminates manual configuration drift

@@ -8,17 +8,25 @@
 - ✓ **AWS Lambda** free tier: 1M requests/month (never exceeded)
 - ✓ **DynamoDB** always-free tier: 25 GB storage + 25 RCU/WCU
 - ✓ **GCP Cloud Functions** free tier: 2M invocations/month
-- ✓ **Batching strategy** reduces Lambda invocations by 90%
+- ✓ **With batching (SQS FIFO trigger - actual CV Analytics):**
 
 ---
 
 ## Introduction
 
-Serverless promises cost efficiency: pay only for what you use. No idle servers. No wasted capacity. CV Analytics runs production workload at £0/month by exploiting free tiers.
+Serverless promises cost efficiency: pay only for what you use. No idle servers. No wasted capacity. CV Analytics runs production workload at £0/month across **3 cloud providers** by exploiting free tiers.
 
-This sounds too good to be true. It isn't. AWS Lambda provides 1 million free requests per month. DynamoDB always-free tier includes 25 GB storage plus 25 RCU/WCU. GCP Cloud Functions offers 2 million invocations monthly. Firestore includes 50,000 reads per day.
+This sounds too good to be true. It isn't. Cloudflare Workers free tier: 100K requests/day. AWS Lambda provides 1 million free requests per month. DynamoDB always-free tier includes 25 GB storage plus 25 RCU/WCU. GCP Cloud Functions offers 2 million invocations monthly. Firestore includes 50,000 reads per day. Vercel free tier: 100 GB bandwidth. Firebase Hosting free tier: 10 GB bandwidth.
 
-CV Analytics processes ~500 GitHub webhooks monthly. Stores ~1 GB data. Generates weekly reports. Real-time dashboard serves 10 users. Total usage: 5% of free tier limits.
+CV Analytics processes ~3,000 CV chatbot queries monthly across 6 services:
+- **Cloudflare Worker**: Answers queries in 12ms (edge compute)
+- **AWS DynamoDB**: Stores query events (TTL 24h) + analytics
+- **AWS Lambda**: Processes batches (Processor + Reporter)
+- **GCP Cloud Function**: Receives cross-cloud webhooks from AWS
+- **Firestore**: Stores aggregated analytics for dashboard
+- **React Dashboard**: Real-time visualization via WebSocket
+
+Total usage: **3% of combined free tier limits** across 3 clouds. Cost: **£0.00/month** for 6 months verified.
 
 **Key insight:** Most portfolio projects never exceed free tiers. Optimize architecture to stay within limits. Scale up only when revenue justifies costs.
 
@@ -87,16 +95,63 @@ Total: £0.00
 - Read ≤4 KB = 1 RRU
 - Larger items consume multiple units
 
-**CV Analytics usage:**
+**CV Analytics usage (2 DynamoDB tables):**
 
+**Query Events table** (TTL 24 hours):
 ```text
-Storage: 0.8 GB / 25 GB free = 3% used
-Writes: ~100/month (1 per GitHub webhook)
-Reads: ~500/month (reporter queries weekly aggregates)
+Storage: 0.2 GB / 25 GB free = 0.8% used
+Writes: ~3,000/month (1 per Cloudflare Worker query)
+Reads: ~3,000/month (DynamoDB Streams to SQS)
 Cost: £0.00 (within always-free limits)
 ```
 
+**Analytics table** (permanent storage):
+```text
+Storage: 0.6 GB / 25 GB free = 2.4% used
+Writes: ~300/month (AWS Lambda Processor aggregations)
+Reads: ~50/month (AWS Lambda Reporter queries + manual queries)
+Cost: £0.00 (within always-free limits)
+```
+
+**Combined DynamoDB usage:**
+```text
+Total storage: 0.8 GB / 25 GB = 3.2%
+Total writes: ~3,300/month
+Total reads: ~3,050/month
+Cost: £0.00 (well within always-free tier)
+```
+
 **Always-free never expires.** Provisioned capacity has 12-month free tier only.
+
+### Cloudflare Workers Pricing
+
+**Free tier:**
+
+- 100,000 requests per day (~3 million per month)
+- 10ms CPU time per request (enforced limit)
+- Unlimited bandwidth (no egress charges)
+- 128 MB memory per Worker
+
+**Paid tier (not needed for CV Analytics):**
+
+- $5/month for 10 million requests
+- 50ms CPU time per request
+- After 10M: $0.50 per million requests
+
+**CV Analytics Cloudflare Worker (CV chatbot):**
+
+```text
+Monthly requests: ~3,000 (CV chatbot queries)
+Avg CPU time: 8ms (semantic search + LLM + DynamoDB write)
+CPU limit: 10ms (free tier enforced)
+Bandwidth: ~15 MB/month (5 KB per response × 3K requests)
+
+Usage: 0.1% of 100K daily limit (3,000 / 3M monthly)
+CPU: Within 10ms limit (optimized with streaming)
+Cost: £0.00
+```
+
+**Why 10ms CPU limit works:** Fire-and-forget DynamoDB writes. Worker doesn't wait for AWS response. Returns CV answer to user in 8ms, writes analytics async.
 
 ### GCP Cloud Functions Pricing
 
@@ -115,15 +170,21 @@ Cost: £0.00 (within always-free limits)
 - First 1 GB per month: Free
 - After that: £0.12 per GB (North America and Europe)
 
-**CV Analytics webhook receiver:**
+**CV Analytics Cloud Function (webhook receiver from AWS Lambda):**
 
 ```text
-Invocations: ~100/month (GitHub webhooks)
+Monthly invocations: ~300 (AWS Lambda cross-cloud webhooks)
 Memory: 256 MB (0.25 GB)
-Duration: 50ms average (0.05s)
-Compute: 100 × (0.25 GB × 0.05s) = 1.25 GB-seconds
-Cost: £0.00 (within free tier)
+Avg duration: 80ms (0.08s) - HMAC validation + Firestore write
+Compute: 300 × (0.25 GB × 0.08s) = 6 GB-seconds
+
+Usage: 0.015% of 2M invocation limit
+Compute: 0.0015% of 400K GB-second limit
+Cost: £0.00 (well within free tier)
 ```
+
+**Why 300 invocations vs 3,000 queries?**
+AWS Lambda Processor batches events (up to 10 per SQS batch). 3,000 Cloudflare queries → 300 Lambda invocations → 300 GCP webhooks. **10:1 batching reduces cross-cloud calls by 90%.**
 
 ### Firestore Pricing
 
@@ -150,10 +211,10 @@ Cost: £0.00 (within free tier)
 **CV Analytics usage:**
 
 ```text
-Storage: 0.5 GB (analytics events)
-Writes: ~100/month (webhook → Firestore)
-Reads: ~500/month (dashboard real-time listeners)
-Daily average: 3 writes, 16 reads
+Storage: 0.5 GB (analytics events from GCP Cloud Function)
+Writes: ~300/month (AWS Lambda → GCP Cloud Function → Firestore)
+Reads: ~500/month (React Dashboard real-time WebSocket listeners)
+Daily average: 10 writes, 16 reads
 Cost: £0.00 (well within daily limits)
 ```
 
@@ -194,7 +255,7 @@ graph TB
         H["Firebase Hosting<br/>10 GB storage<br/>360 MB/day bandwidth"]
     end
     
-    LOAD["CV Analytics Load<br/>500 Lambda invocations<br/>100 Function invocations<br/>100 writes/month<br/>500 reads/month"]
+    LOAD["CV Analytics Load<br/>3,000 Cloudflare requests<br/>300 AWS Lambda Processor invocations<br/>50 AWS Lambda Reporter invocations<br/>300 GCP Function invocations<br/>3,300 DynamoDB writes<br/>3,050 DynamoDB reads<br/>300 Firestore writes<br/>500 Firestore reads"]
     
     LOAD -.->|5% usage| L
     LOAD -.->|3% usage| D
@@ -397,18 +458,21 @@ GCP provides 2 million Cloud Functions invocations monthly. Firestore offers 50,
 - 200,000 GHz-seconds CPU time
 - 5 GB network egress per month
 
-**CV Analytics webhook receiver:**
+**CV Analytics Cloud Function (webhook receiver from AWS Lambda):**
 
 ```text
-Monthly invocations: ~100 (GitHub webhooks)
+Monthly invocations: ~300 (AWS Lambda cross-cloud webhooks)
 Memory: 256 MB (0.25 GB)
-Avg duration: 50ms (0.05s)
-Compute: 100 × (0.25 GB × 0.05s) = 1.25 GB-seconds
+Avg duration: 80ms (0.08s) - HMAC validation + Firestore write
+Compute: 300 × (0.25 GB × 0.08s) = 6 GB-seconds
 
-Usage: 0.005% of 2M invocation limit
-Compute: 0.0003% of 400K GB-second limit
-Cost: £0.00
+Usage: 0.015% of 2M invocation limit
+Compute: 0.0015% of 400K GB-second limit
+Cost: £0.00 (well within free tier)
 ```
+
+**Why 300 invocations vs 3,000 queries?**
+AWS Lambda Processor batches events (up to 10 per SQS batch). 3,000 Cloudflare queries → 300 Lambda invocations → 300 GCP webhooks. **10:1 batching reduces cross-cloud calls by 90%.**
 
 **Scaling potential:** Could handle 20,000× current load before exceeding free tier.
 
@@ -424,8 +488,8 @@ Cost: £0.00
 **CV Analytics usage:**
 
 ```text
-Daily writes: ~3 (GitHub webhooks → Firestore)
-Daily reads: ~16 (dashboard real-time listeners × 10 users)
+Daily writes: ~10 (AWS Lambda → GCP Cloud Function → Firestore analytics)
+Daily reads: ~16 (React Dashboard real-time listeners × 10 users)
 
 Monthly totals:
 - Writes: ~100/month (0.16% of daily limit)
@@ -545,7 +609,9 @@ graph TB
 
 ## Batching Strategy: Reducing Invocations by 90%
 
-Batching transforms cost model. Instead of invoking Lambda per message, batch 10 messages together. Single invocation processes multiple items.
+Batching transforms cost model across clouds. CV Analytics uses **SQS FIFO batching** between DynamoDB Streams and AWS Lambda Processor. Instead of invoking Lambda per Cloudflare query event, batch up to 10 messages together. Single Lambda invocation processes multiple items, then sends one webhook to GCP.
+
+**Cross-cloud impact:** Batching reduces not only AWS Lambda invocations but also GCP Cloud Function invocations (10:1 ratio). Fewer cross-cloud webhooks = lower network egress + lower GCP invocation cost.
 
 ### SQS Batch Processing
 

@@ -14,11 +14,22 @@
 
 ## Introduction
 
-In March 2024, the CV Analytics dashboard refreshed every 30 seconds. Polling Firebase every 30 seconds. 120 requests per hour. Most requests returned "no changes". Wasteful. Expensive. Slow.
+In March 2024, the CV Analytics dashboard refreshed every 30 seconds. Polling Firestore every 30 seconds. 120 requests per hour. Most requests returned "no changes". Wasteful. Expensive. Slow.
 
-After switching to Firestore real-time listeners, updates appear instantly. WebSocket connection stays open. Server pushes changes to browser. Zero polling. Zero wasted requests.
+After switching to Firestore real-time listeners, updates appear instantly. WebSocket connection stays open. GCP pushes changes to browser. Zero polling. Zero wasted requests.
 
-New CV query submitted → Webhook writes to Firestore → Dashboard updates in 200ms. Real-time.
+**Complete cross-cloud real-time flow:**
+
+1. User submits CV query → **Angular app** (Vercel)
+2. Angular calls **Cloudflare Worker** (edge, 12ms response)
+3. Worker returns answer, writes event → **AWS DynamoDB** (Query Events, TTL 24h)
+4. DynamoDB Streams → **SQS** → **AWS Lambda Processor**
+5. Lambda processes batch, writes **AWS DynamoDB** (Analytics table)
+6. Lambda sends HMAC-signed webhook → **GCP Cloud Function**
+7. Cloud Function validates HMAC, writes → **Firestore** (analytics collection)
+8. Firestore triggers **WebSocket** event → **React Dashboard** updates instantly
+
+**End-to-end latency:** 2-5 seconds (AWS Lambda batch processing + cross-cloud webhook). Acceptable for analytics (not user-facing). Dashboard sees update instantly via WebSocket (no 30-second polling delay).
 
 This post explains how CV Analytics built a production-grade real-time dashboard:
 
@@ -38,7 +49,9 @@ Analytics dashboards lose value with stale data:
 - **User experience**: Manual refresh feels broken
 - **Business decisions**: Real-time data enables faster decisions
 
-CV Analytics tracks developer productivity. Developers refresh frequently ("did my CV get submitted?"). Real-time updates eliminate refresh button.
+CV Analytics tracks CV chatbot queries across 3 clouds. After AWS Lambda processes events and posts to GCP, Firestore WebSocket updates the React Dashboard instantly. Developers see aggregated analytics appear 2-5 seconds after query submission (AWS processing time). No manual refresh needed.
+
+**Cross-cloud real-time tradeoff:** User sees CV answer in 12ms (Cloudflare Worker, no waiting). Analytics processing happens async in AWS (2-5 seconds batching + correlation). Dashboard WebSocket shows results instantly after GCP receives data. This architecture separates user-facing speed (12ms) from analytics latency (2-5s acceptable).
 
 **The inefficiency of polling:**
 

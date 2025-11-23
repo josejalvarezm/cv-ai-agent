@@ -66,13 +66,15 @@ Version number communicates impact:
 
 **How independent versioning enables autonomy:**
 
-CV Analytics has 4 services with independent versions:
-- **Dashboard**: v2.3.1 (mature, frequent UI updates)
-- **Webhook**: v1.5.0 (stable, infrequent changes)
-- **Processor**: v3.0.0 (evolved rapidly, 2 breaking changes)
-- **Reporter**: v1.0.2 (stable, only bug fixes)
+CV Analytics has 6 services across 3 clouds with independent versions:
+- **Angular CV Site**: v1.2.0 (portfolio interface, infrequent updates)
+- **Cloudflare Worker**: v2.1.3 (CV chatbot, stable 12ms performance)
+- **AWS Lambda Processor**: v3.0.0 (evolved rapidly, 2 breaking changes)
+- **AWS Lambda Reporter**: v1.0.2 (stable, only bug fixes)
+- **GCP Cloud Function**: v1.5.0 (webhook receiver, stable HMAC validation)
+- **React Dashboard**: v2.3.1 (mature, frequent UI updates)
 
-Services evolve at different velocities. Dashboard UI changes don't affect webhook. Processor breaking changes don't require dashboard updates (if webhook maintains compatibility).
+Services evolve at different velocities across three clouds. Dashboard UI changes don't affect AWS Lambda. Processor breaking changes don't require Cloud Function updates (if webhook API maintains compatibility). Cloudflare Worker performance optimizations don't affect GCP.
 
 Independent versioning = independent deployment = faster iteration.
 
@@ -425,128 +427,192 @@ CV Analytics uses automated tag-based deployments (never manual).
 
 ## Per-Service Versioning in CV Analytics
 
-CV Analytics runs 4 services with independent versions. Each service evolves at its own pace. No coordinated releases.
+CV Analytics runs 6 services across 3 clouds (Cloudflare, AWS, GCP) with independent versions. Each service evolves at its own pace. No coordinated releases. Cross-cloud versioning adds complexity: AWS Lambda Processor depends on GCP Cloud Function webhook URL (infrastructure dependency), but services remain independently versionable.
 
 ### Service Version Timeline (Jan 2024 - Nov 2025)
 
 ```mermaid
 gantt
-    title CV Analytics Independent Service Versions
+    title CV Analytics Independent Service Versions (3 Clouds)
     dateFormat YYYY-MM-DD
     axisFormat %b %Y
     
-    section Dashboard
-    v1.0.0 (Initial Release)          :done, dash1, 2024-01-15, 30d
-    v1.1.0 (Stats page)               :done, dash2, 2024-02-14, 45d
-    v1.2.0 (Dark mode)                :done, dash3, 2024-03-30, 60d
-    v2.0.0 (TypeScript rewrite)       :done, dash4, 2024-05-29, 90d
-    v2.1.0 (Real-time updates)        :done, dash5, 2024-08-27, 60d
-    v2.2.0 (Export CSV)               :done, dash6, 2024-10-26, 28d
-    v2.3.0 (Multi-repo support)       :active, dash7, 2024-11-23, 30d
+    section Angular CV Site (Vercel)
+    v1.0.0 (Initial Launch)           :done, ang1, 2024-01-15, 180d
+    v1.1.0 (Chatbot UI)               :done, ang2, 2024-07-13, 90d
+    v1.2.0 (Mobile responsive)        :active, ang3, 2024-10-11, 43d
     
-    section Webhook
-    v1.0.0 (Initial Release)          :done, hook1, 2024-01-15, 90d
-    v1.1.0 (Retry logic)              :done, hook2, 2024-04-14, 60d
-    v1.2.0 (Rate limiting)            :done, hook3, 2024-06-13, 75d
-    v1.3.0 (Signature validation)     :done, hook4, 2024-08-27, 45d
-    v1.4.0 (Batch processing)         :done, hook5, 2024-10-11, 43d
-    v1.5.0 (Visibility field)         :active, hook6, 2024-11-23, 30d
+    section Cloudflare Worker (Edge)
+    v1.0.0 (Initial Release)          :done, cf1, 2024-01-15, 60d
+    v1.1.0 (AWS DynamoDB writes)      :done, cf2, 2024-03-15, 45d
+    v2.0.0 (12ms optimization)        :done, cf3, 2024-04-29, 90d
+    v2.1.0 (IAM auth)                 :done, cf4, 2024-07-28, 87d
+    v2.1.3 (Error handling)           :active, cf5, 2024-10-23, 31d
     
-    section Processor
+    section AWS Lambda Processor
     v1.0.0 (Initial Release)          :done, proc1, 2024-01-15, 45d
     v2.0.0 (Schema change)            :done, proc2, 2024-03-01, 60d
     v2.1.0 (Parallel processing)      :done, proc3, 2024-04-30, 90d
     v2.2.0 (DLQ handling)             :done, proc4, 2024-07-29, 30d
-    v3.0.0 (Event type refactor)      :done, proc5, 2024-08-28, 87d
-    v3.1.0 (Metrics tracking)         :active, proc6, 2024-11-23, 30d
+    v3.0.0 (GCP webhook integration)  :done, proc5, 2024-08-28, 87d
+    v3.1.0 (HMAC signing)             :active, proc6, 2024-11-23, 30d
     
-    section Reporter
+    section AWS Lambda Reporter
     v1.0.0 (Initial Release)          :done, rep1, 2024-01-15, 120d
     v1.0.1 (Fix empty events bug)     :done, rep2, 2024-05-14, 90d
     v1.0.2 (Fix date formatting)      :done, rep3, 2024-08-12, 103d
     v1.0.3 (Fix timezone issue)       :active, rep4, 2024-11-23, 30d
+    
+    section GCP Cloud Function (Go)
+    v1.0.0 (Initial Release)          :done, gcp1, 2024-01-15, 90d
+    v1.1.0 (HMAC validation)          :done, gcp2, 2024-04-14, 60d
+    v1.2.0 (Firestore writes)         :done, gcp3, 2024-06-13, 75d
+    v1.3.0 (Timestamp validation)     :done, gcp4, 2024-08-27, 45d
+    v1.4.0 (Error logging)            :done, gcp5, 2024-10-11, 43d
+    v1.5.0 (AWS Lambda auth)          :active, gcp6, 2024-11-23, 30d
+    
+    section React Dashboard (Firebase)
+    v1.0.0 (Initial Release)          :done, dash1, 2024-01-15, 30d
+    v1.1.0 (Stats page)               :done, dash2, 2024-02-14, 45d
+    v1.2.0 (Dark mode)                :done, dash3, 2024-03-30, 60d
+    v2.0.0 (TypeScript rewrite)       :done, dash4, 2024-05-29, 90d
+    v2.1.0 (Real-time WebSocket)      :done, dash5, 2024-08-27, 60d
+    v2.2.0 (Export CSV)               :done, dash6, 2024-10-26, 28d
+    v2.3.0 (Multi-cloud metrics)      :active, dash7, 2024-11-23, 30d
 ```
 
 ### Version Evolution by Service
 
-**Dashboard (v2.3.0):** Most frequent updates
-- 7 releases in 22 months
-- 1 MAJOR bump (TypeScript rewrite)
-- 6 MINOR bumps (new features)
-- UI changes don't affect backend
-- Deploy frequency: 2-3x per month
+**Angular CV Site (v1.2.0):** Stable interface
+- 3 releases in 22 months
+- 0 MAJOR bumps (backwards-compatible UI)
+- 2 MINOR bumps (chatbot UI, mobile responsive)
+- Frontend changes don't affect backend
+- Deploy frequency: 1x per quarter
+- Cloud: Vercel (zero-downtime deploys)
 
-**Webhook (v1.5.0):** Stable API, infrequent changes
-- 6 releases in 22 months
-- 0 MAJOR bumps (no breaking changes)
-- 5 MINOR bumps (backwards-compatible additions)
-- API stability prioritised (external consumers)
+**Cloudflare Worker (v2.1.3):** Performance-critical, stable API
+- 5 releases in 22 months
+- 1 MAJOR bump (12ms optimization required architecture change)
+- 2 MINOR bumps (AWS integration, IAM auth)
+- 3 PATCH bumps (error handling, edge cases)
+- 50ms CPU limit drives optimization focus
 - Deploy frequency: 1x per month
+- Cloud: Cloudflare (250+ edge locations)
 
-**Processor (v3.1.0):** Rapid evolution, 2 breaking changes
+**AWS Lambda Processor (v3.1.0):** Rapid evolution, cross-cloud integration
 - 6 releases in 22 months
-- 2 MAJOR bumps (schema changes, refactoring)
-- 3 MINOR bumps (new processing features)
+- 2 MAJOR bumps (DynamoDB schema change, GCP webhook integration)
+- 3 MINOR bumps (parallel processing, DLQ, HMAC signing)
 - Internal service (can tolerate breaking changes)
+- Cross-cloud dependency: Needs GCP webhook URL
 - Deploy frequency: 1-2x per month
+- Cloud: AWS us-east-1
 
-**Reporter (v1.0.3):** Minimal changes, only bug fixes
+**AWS Lambda Reporter (v1.0.3):** Minimal changes, only bug fixes
 - 4 releases in 22 months
 - 0 MAJOR bumps
 - 0 MINOR bumps
 - 3 PATCH bumps (bug fixes only)
-- Stable functionality (scheduled reports)
+- Stable functionality (scheduled weekly reports)
 - Deploy frequency: 1x per quarter
+- Cloud: AWS us-east-1
 
-### Independent Version Numbers
+**GCP Cloud Function (v1.5.0):** Stable webhook receiver
+- 6 releases in 22 months
+- 0 MAJOR bumps (HMAC validation API stable)
+- 5 MINOR bumps (Firestore writes, timestamp validation, AWS Lambda auth)
+- Public endpoint requires security stability
+- Cross-cloud consumer: AWS Lambda sends webhooks
+- Deploy frequency: 1x per month
+- Cloud: GCP us-central1 (Go runtime)
 
-No correlation between service versions:
+**React Dashboard (v2.3.0):** Most frequent updates
+- 7 releases in 22 months
+- 1 MAJOR bump (TypeScript rewrite)
+- 6 MINOR bumps (stats, dark mode, real-time WebSocket, CSV export, multi-cloud metrics)
+- UI changes don't affect backend services
+- Deploy frequency: 2-3x per month
+- Cloud: Firebase Hosting (global CDN)
+
+### Independent Version Numbers Across 3 Clouds
+
+No correlation between service versions. Each cloud provider hosts services at different version numbers:
 
 **November 2025 versions:**
-- Dashboard: v2.3.0
-- Webhook: v1.5.0
-- Processor: v3.1.0
-- Reporter: v1.0.3
+
+**Cloudflare:**
+- Worker (Edge): v2.1.3
+
+**AWS (us-east-1):**
+- Lambda Processor: v3.1.0
+- Lambda Reporter: v1.0.3
+
+**GCP (us-central1):**
+- Cloud Function: v1.5.0
+
+**Frontend (Vercel + Firebase):**
+- Angular CV Site: v1.2.0
+- React Dashboard: v2.3.0
 
 Each number tells a story:
-- Dashboard v2.x: Had 1 major rewrite
-- Webhook v1.x: Original API still compatible
-- Processor v3.x: Evolved through 2 breaking changes
-- Reporter v1.0.x: Unchanged since launch (only fixes)
+- Angular v1.x: Original interface still works
+- Cloudflare Worker v2.x: Had 1 major performance rewrite (12ms optimization)
+- AWS Processor v3.x: Evolved through 2 breaking changes (schema + GCP integration)
+- AWS Reporter v1.0.x: Unchanged since launch (only fixes)
+- GCP Cloud Function v1.x: Original HMAC API still compatible
+- React Dashboard v2.x: Had 1 major rewrite (TypeScript)
 
-### No Coordinated Releases
+**Cross-cloud version independence:** AWS Lambda Processor at v3.1.0 works with GCP Cloud Function at v1.5.0. No requirement for version number synchronization across clouds.
+
+### No Coordinated Releases (Cross-Cloud Independence)
 
 **Traditional approach (monolith):**
 ```
 Release v2.0.0:
-- Update dashboard
-- Update webhook
-- Update processor
-- Update reporter
-- Deploy all together
+- Update Angular CV site
+- Update Cloudflare Worker
+- Update AWS Lambda Processor
+- Update AWS Lambda Reporter
+- Update GCP Cloud Function
+- Update React Dashboard
+- Deploy all together across 3 clouds
 - Hope nothing breaks
 ```
 
-Slow. Risky. Coordination overhead.
+Slow. Risky. Coordination overhead across multiple cloud providers.
 
-**CV Analytics approach (microservices):**
+**CV Analytics approach (multi-cloud microservices):**
 ```
-Dashboard v2.3.0: Deploy independently
-Webhook v1.5.0:   Deploy independently (different week)
-Processor v3.1.0: Deploy independently (different day)
-Reporter v1.0.3:  Deploy independently (different month)
+Angular CV Site v1.2.0:        Deploy to Vercel independently
+Cloudflare Worker v2.1.3:      Deploy to Cloudflare Edge independently (different week)
+AWS Lambda Processor v3.1.0:   Deploy to AWS independently (different day)
+AWS Lambda Reporter v1.0.3:    Deploy to AWS independently (different month)
+GCP Cloud Function v1.5.0:     Deploy to GCP independently (different week)
+React Dashboard v2.3.0:        Deploy to Firebase independently (different day)
 ```
 
-Fast. Safe. No coordination needed.
+Fast. Safe. No coordination needed. Each cloud provider deployment is independent.
 
-**Example: Dashboard v2.3.0 deployment (November 2025)**
+**Example: React Dashboard v2.3.0 deployment (November 2025)**
 
-Dashboard adds multi-repository support. No API changes. Other services unchanged:
-- Webhook: Still v1.5.0 (no update needed)
-- Processor: Still v3.1.0 (no update needed)
-- Reporter: Still v1.0.3 (no update needed)
+Dashboard adds multi-cloud metrics visualization. Only frontend changes. Backend services across 3 clouds unchanged:
+- Angular CV Site: Still v1.2.0 (no update needed)
+- Cloudflare Worker: Still v2.1.3 (no update needed)
+- AWS Lambda Processor: Still v3.1.0 (no update needed)
+- AWS Lambda Reporter: Still v1.0.3 (no update needed)
+- GCP Cloud Function: Still v1.5.0 (no update needed)
 
-Dashboard deploys alone. Other services keep running.
+Dashboard deploys alone to Firebase Hosting. Other services across Cloudflare, AWS, and GCP keep running.
+
+**Exception: Cross-cloud dependency (AWS → GCP)**
+
+AWS Lambda Processor v3.0.0 introduced GCP Cloud Function webhook integration. This was a coordinated deployment:
+1. Deploy GCP Cloud Function v1.5.0 first (establish webhook URL)
+2. Update Terraform with webhook URL
+3. Deploy AWS Lambda Processor v3.0.0 (configured with GCP URL)
+
+Breaking change required coordination, but services remain independently versionable. Future updates to either service don't require coordination unless API contract changes.
 
 **Contracts, not coordination:**
 

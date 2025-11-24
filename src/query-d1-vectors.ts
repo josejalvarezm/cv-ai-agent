@@ -332,7 +332,11 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
     }
 
     // Fetch full technology details from D1 for matched items
-    const matchedIds = vectorizeResults.matches.map(m => m.id);
+    // Extract numeric IDs from Vectorize IDs (format: "technology-62")
+    const matchedIds = vectorizeResults.matches.map(m => {
+      const parts = m.id.split('-');
+      return parseInt(parts[1], 10);
+    });
     const placeholders = matchedIds.map(() => '?').join(',');
     
     let sqlQuery = `

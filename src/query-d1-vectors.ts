@@ -1,6 +1,6 @@
 /**
- * Query D1 vectors directly using cosine similarity
- * This bypasses Vectorize and uses the embeddings stored in your vectors table
+ * Query using Cloudflare Vectorize for semantic search
+ * Uses Vectorize's optimized HNSW index for vector similarity search
  */
 
 import { canUseAI, incrementQuota, NEURON_COSTS } from './ai-quota';
@@ -11,13 +11,14 @@ import {
   getCircuitBreakerMessage,
 } from './input-validation';
 import { AI_CONFIG, SEARCH_CONFIG, AI_STOP_SEQUENCES } from './config';
-import { generateEmbedding, cosineSimilarity } from './services/embeddingService';
+import { generateEmbedding } from './services/embeddingService';
 import { sqsLogger } from './aws/sqs-logger';
 
 interface Env {
   DB: D1Database;
   AI: Ai;
   KV: KVNamespace;  // Added for quota tracking
+  VECTORIZE: Vectorize;  // Vectorize index for semantic search
   AI_REPLY_ENABLED?: string;
 }
 
@@ -310,31 +311,16 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
 
     // Generate query embedding using the cleaned search query
     const queryEmbedding = await generateEmbedding(searchQuery, env.AI);
-    const queryVector = new Float32Array(queryEmbedding);
 
-    // Fetch vectors from D1 - optionally filter by project if detected
-    let sqlQuery = `SELECT v.id, v.item_id, v.embedding, v.metadata, t.name, t.experience, t.experience_years,
-              t.proficiency_percent, t.level, t.summary, t.category, t.recency,
-              t.action, t.effect, t.outcome, t.related_project, t.employer
-       FROM vectors v
-       JOIN technology t ON v.item_id = t.id
-       WHERE v.item_type = 'technology'`;
-    
-    // If project-specific, filter to only skills used in that project
-    // Check both employer and related_project columns
-    const params: any[] = [];
-    if (projectDetection.isProjectSpecific) {
-      sqlQuery += ` AND (t.employer LIKE ? OR t.related_project LIKE ?)`;
-      params.push(`%${projectDetection.projectName}%`);
-      params.push(`%${projectDetection.projectName}%`);
-    }
-    
-    const { results: vectors } = params.length > 0 
-      ? await env.DB.prepare(sqlQuery).bind(...params).all()
-      : await env.DB.prepare(sqlQuery).all();
+    // Query Vectorize index for semantic matches
+    const vectorizeResults = await env.VECTORIZE.query(queryEmbedding, {
+      topK: SEARCH_CONFIG.TOP_K_EXTENDED,
+      returnMetadata: true,
+      returnValues: false, // Don't need the vectors back
+    });
 
-    if (!vectors || vectors.length === 0) {
-      // User-friendly error message instead of technical database error
+    if (!vectorizeResults.matches || vectorizeResults.matches.length === 0) {
+      // User-friendly error message
       const friendlyMessage = projectDetection.isProjectSpecific
         ? `I don't have any recorded experience with ${projectDetection.projectName} in my database. Could you ask about my general skills or a different project?`
         : "I couldn't find any relevant skills for that query. Could you try rephrasing your question?";
@@ -342,102 +328,99 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
       return Response.json({ 
         query,
         assistantReply: friendlyMessage 
-      }, { status: 200 }); // Return 200 (not 404) with friendly message
+      }, { status: 200 });
     }
 
-    // Calculate similarities
+    // Fetch full technology details from D1 for matched items
+    const matchedIds = vectorizeResults.matches.map(m => m.id);
+    const placeholders = matchedIds.map(() => '?').join(',');
+    
+    let sqlQuery = `
+      SELECT id, name, experience, experience_years, proficiency_percent, level, 
+             summary, category, recency, action, effect, outcome, related_project, employer
+      FROM technology
+      WHERE id IN (${placeholders})
+    `;
+    
+    // Apply project filter if needed
+    const params: any[] = [...matchedIds];
+    if (projectDetection.isProjectSpecific) {
+      sqlQuery += ` AND (employer LIKE ? OR related_project LIKE ?)`;
+      params.push(`%${projectDetection.projectName}%`);
+      params.push(`%${projectDetection.projectName}%`);
+    }
+    
+    const { results: technologies } = await env.DB.prepare(sqlQuery).bind(...params).all();
+
+    if (!technologies || technologies.length === 0) {
+      const friendlyMessage = projectDetection.isProjectSpecific
+        ? `I don't have any recorded experience with ${projectDetection.projectName} in my database. Could you ask about my general skills or a different project?`
+        : "I couldn't find any relevant skills for that query. Could you try rephrasing your question?";
+      
+      return Response.json({ 
+        query,
+        assistantReply: friendlyMessage 
+      }, { status: 200 });
+    }
+
+    // Map Vectorize results to technology records with similarity scores
+    const techMap = new Map(technologies.map(t => [(t.id as number).toString(), t]));
     const similarities: Array<{
-      id: number;
+      id: string;
       item_id: number;
       similarity: number;
       technology: any;
       metadata: any;
     }> = [];
 
-    for (const vector of vectors) {
-      // D1 returns BLOB as ArrayBuffer in Workers runtime
-      let embedding: Float32Array;
+    for (const match of vectorizeResults.matches) {
+      const tech = techMap.get(match.id);
+      if (!tech) continue; // Skip if filtered out by project
 
-      try {
-        const embeddingData = vector.embedding as any;
+      let similarity = match.score;
 
-        // D1 returns BLOBs as Arrays of bytes (Uint8Array-like)
-        if (Array.isArray(embeddingData)) {
-          // Convert byte array to Float32Array
-          const uint8 = new Uint8Array(embeddingData);
-          embedding = new Float32Array(uint8.buffer);
-        } else if (embeddingData instanceof ArrayBuffer) {
-          embedding = new Float32Array(embeddingData);
-        } else if (ArrayBuffer.isView(embeddingData)) {
-          embedding = new Float32Array(embeddingData.buffer, embeddingData.byteOffset, embeddingData.byteLength / 4);
-        } else {
-          console.error(`Vector ${vector.id}: Unexpected type -`, embeddingData?.constructor?.name || typeof embeddingData);
-          continue;
-        }
+      // Apply experience-based boost for generic queries
+      const years = tech.experience_years as number || 0;
+      const level = tech.level as string || '';
 
-        if (embedding.length !== queryVector.length) {
-          console.error(`Vector ${vector.id}: Dimension mismatch - embedding=${embedding.length}, query=${queryVector.length}`);
-          continue;
-        }
-
-        let similarity = cosineSimilarity(queryVector, embedding);
-
-        if (isNaN(similarity)) {
-          console.error(`Vector ${vector.id}: Similarity is NaN`);
-          continue;
-        }
-
-        // Apply experience-based boost for generic queries
-        // This ensures senior skills rank higher when queries are vague
-        const years = vector.experience_years as number || 0;
-        const level = vector.level as string || '';
-
-        // Boost factor based on seniority (up to +15% for 20+ years Expert)
-        let boostFactor = 1.0;
-        if (years >= 15 && level === 'Expert') {
-          boostFactor = 1.15; // +15% for senior/principal level
-        } else if (years >= 10 && level === 'Expert') {
-          boostFactor = 1.10; // +10% for expert level
-        } else if (years >= 8 && level === 'Advanced') {
-          boostFactor = 1.05; // +5% for advanced with significant experience
-        }
-
-        // Apply boost
-        similarity = Math.min(1.0, similarity * boostFactor);
-
-        const metadata = typeof vector.metadata === 'string'
-          ? JSON.parse(vector.metadata)
-          : vector.metadata;
-
-        similarities.push({
-          id: vector.id as number,
-          item_id: vector.item_id as number,
-          similarity,
-          technology: {
-            id: vector.item_id,
-            name: vector.name,
-            experience: vector.experience,
-            years: vector.experience_years,
-            proficiency: vector.proficiency_percent,
-            level: vector.level,
-            summary: vector.summary,
-            category: vector.category,
-            recency: vector.recency,
-            action: vector.action,
-            effect: vector.effect,
-            outcome: vector.outcome,
-            related_project: vector.related_project,
-            employer: vector.employer,
-          },
-          metadata,
-        });
-      } catch (error: any) {
-        console.error(`Error processing vector ${vector.id}:`, error.message);
-        continue;
+      // Boost factor based on seniority (up to +15% for 20+ years Expert)
+      let boostFactor = 1.0;
+      if (years >= 15 && level === 'Expert') {
+        boostFactor = 1.15;
+      } else if (years >= 10 && level === 'Expert') {
+        boostFactor = 1.10;
+      } else if (years >= 8 && level === 'Advanced') {
+        boostFactor = 1.05;
       }
+
+      // Apply boost
+      similarity = Math.min(1.0, similarity * boostFactor);
+
+      similarities.push({
+        id: match.id,
+        item_id: parseInt(match.id),
+        similarity,
+        technology: {
+          id: tech.id,
+          name: tech.name,
+          experience: tech.experience,
+          years: tech.experience_years,
+          proficiency: tech.proficiency_percent,
+          level: tech.level,
+          summary: tech.summary,
+          category: tech.category,
+          recency: tech.recency,
+          action: tech.action,
+          effect: tech.effect,
+          outcome: tech.outcome,
+          related_project: tech.related_project,
+          employer: tech.employer,
+        },
+        metadata: match.metadata || {},
+      });
     }
 
-    // Sort by similarity (highest first) and take top 5
+    // Sort by boosted similarity (highest first)
     similarities.sort((a, b) => b.similarity - a.similarity);
     const topResults = similarities.slice(0, SEARCH_CONFIG.TOP_K_EXTENDED);
 
@@ -464,12 +447,12 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
         employer: r.technology.employer,
         similarity: r.similarity,
         provenance: {
-          source: 'd1-vectors',
+          source: 'vectorize',
           vector_id: r.id,
         },
       })),
-      source: 'd1-vectors',
-      total_compared: vectors.length,
+      source: 'vectorize',
+      total_compared: vectorizeResults.matches.length,
       timestamp: new Date().toISOString(),
     } : {
       // MINIMAL MODE: Only essential data for production

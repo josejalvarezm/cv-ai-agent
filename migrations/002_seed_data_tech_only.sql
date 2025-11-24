@@ -96,7 +96,7 @@ INSERT INTO technology (id, stable_id, name, experience, experience_years, profi
 INSERT INTO technology (id, stable_id, name, experience, experience_years, proficiency_percent, level, summary, category, recency, category_id, action, effect, outcome, related_project, employer) VALUES (64, 'aspnet-mvc-webforms-1', 'ASP.NET MVC/WebForms', '8+ years', 8, 85, 'Advanced', 'Developed and maintained ASP.NET MVC and WebForms applications for 8+ years, supporting enterprise web solutions.', 'Legacy Development', NULL, 9, 'Built MVC and WebForms applications with server-side and client-side validation', 'Enabled server-centric web development for enterprise workflows', 'Supported 10,000+ daily active users across multiple applications', 'Animal Health Inspection (Government of Aragon: March 2011 ÔÇô December 2011), Einfosagex (Government of Extremadura: June 2008 ÔÇô January 2013)', 'CCHQ national campaign platform, Wairbut');
 
 -- Note: Vector embeddings will be generated separately via Worker
-(node:19916) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Code/MyAIAgent/scripts/generate-seed-sql.js is not specified and it doesn't parse as CommonJS.
+(node:32640) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Code/GCPDashboard/MyAIAgentPrivate/scripts/generate-seed-sql.js is not specified and it doesn't parse as CommonJS.
 Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-To eliminate this warning, add "type": "module" to D:\Code\MyAIAgent\package.json.
+To eliminate this warning, add "type": "module" to D:\Code\GCPDashboard\MyAIAgentPrivate\package.json.
 (Use `node --trace-warnings ...` to show where the warning was created)

@@ -335,8 +335,22 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
     // Extract numeric IDs from Vectorize IDs (format: "technology-62")
     const matchedIds = vectorizeResults.matches.map(m => {
       const parts = m.id.split('-');
-      return parseInt(parts[1], 10);
-    });
+      const id = parseInt(parts[1], 10);
+      if (isNaN(id)) {
+        console.error(`Invalid Vectorize ID format: ${m.id}`);
+        return null;
+      }
+      return id;
+    }).filter(id => id !== null) as number[];
+    
+    if (matchedIds.length === 0) {
+      console.error('No valid IDs extracted from Vectorize matches');
+      return Response.json({ 
+        query,
+        assistantReply: "I couldn't find any relevant skills for that query. Could you try rephrasing your question?" 
+      }, { status: 200 });
+    }
+    
     const placeholders = matchedIds.map(() => '?').join(',');
     
     let sqlQuery = `
@@ -368,7 +382,8 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
     }
 
     // Map Vectorize results to technology records with similarity scores
-    const techMap = new Map(technologies.map(t => [(t.id as number).toString(), t]));
+    // Tech map uses same ID format as Vectorize ("technology-{id}") for direct matching
+    const techMap = new Map(technologies.map(t => [`technology-${t.id}`, t]));
     const similarities: Array<{
       id: string;
       item_id: number;
@@ -379,7 +394,9 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
 
     for (const match of vectorizeResults.matches) {
       const tech = techMap.get(match.id);
-      if (!tech) continue; // Skip if filtered out by project
+      if (!tech) {
+        continue; // Skip if filtered out by project
+      }
 
       let similarity = match.score;
 
@@ -477,8 +494,10 @@ export async function handleD1VectorQuery(request: Request, env: Env, ctx: Execu
           responseData.quotaStatus = status;
         } else {
           // Quota available - proceed with AI inference
+          console.log('[AI] Quota check passed, generating reply...');
           const top5 = topResults.slice(0, SEARCH_CONFIG.TOP_K_SYNTHESIS); // Increased from 5 to 10 for better multi-skill synthesis
         const topScore = top5[0]?.similarity ?? 0;
+          console.log(`[AI] Top ${top5.length} results, topScore: ${topScore}`);
 
         // Confidence interpretation: scores above 0.65 are strong matches for broad queries
         const confidence = topScore >= SEARCH_CONFIG.HIGH_CONFIDENCE ? 'very high' :
@@ -904,13 +923,15 @@ Output answer (LACONIC - max 3 sentences):
             }
           }
           
+          console.log(`[AI] Final aiReply: "${aiReply.substring(0, 150)}..."`);
           responseData.assistantReply = aiReply;
           
           // Increment quota counter after successful inference
           await incrementQuota(env.KV, NEURON_COSTS['llama-3.1-70b-instruct']);
         }
       } catch (aiError: any) {
-        console.error('AI reply generation failed:', aiError);
+        console.error('[AI ERROR] AI reply generation failed:', aiError);
+        console.error('[AI ERROR] Stack:', aiError.stack);
         responseData.assistantReply = '';
         responseData.aiError = aiError.message;
       }

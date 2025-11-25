@@ -20,7 +20,7 @@ After switching to Firestore real-time listeners, updates appear instantly. WebS
 
 **Complete cross-cloud real-time flow:**
 
-1. User submits CV query → **Angular app** (Vercel)
+1. User submits CV query → **Angular app** (Cloudflare Pages)
 2. Angular calls **Cloudflare Worker** (edge, 12ms response)
 3. Worker returns answer, writes event → **AWS DynamoDB** (Query Events, TTL 24h)
 4. DynamoDB Streams → **SQS** → **AWS Lambda Processor**

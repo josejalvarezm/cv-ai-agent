@@ -19,7 +19,7 @@
 
 - ✓ **6 independent CI/CD pipelines** for dashboard, webhook, processor, reporter, Angular CV site, Cloudflare Worker
 - ✓ **GitHub Actions workflows** automate testing, building, deploying across 3 clouds
-- ✓ **Multi-cloud deployments** to Vercel (Angular), Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, AWS Lambda×2
+- ✓ **Multi-cloud deployments** to Cloudflare Pages (Angular), Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, AWS Lambda×2
 - ✓ **Secrets management** with GitHub Secrets (12+ secrets across 6 repos, 3 clouds)
 - ✓ **Zero-downtime deployments** with serverless platforms (Cloudflare, GCP, AWS)
 
@@ -29,14 +29,14 @@
 
 Manual deployments don't scale. In January 2024, I deployed CV Analytics updates 47 times across six services and three clouds. Each manual deployment took 15 minutes (checkout code, build, test, deploy, verify). That's 11.75 hours of repetitive work, with human error on every deployment.
 
-After automating with GitHub Actions, every git push triggers tested deployments to Vercel (Angular), Cloudflare Workers, Firebase Hosting (React), GCP Cloud Functions (Go), and AWS Lambda×2 (Node.js). Zero manual intervention. Zero forgotten steps. Zero "works on my machine" deployments.
+After automating with GitHub Actions, every git push triggers tested deployments to Cloudflare Pages (Angular), Cloudflare Workers, Firebase Hosting (React), GCP Cloud Functions (Go), and AWS Lambda×2 (Node.js). Zero manual intervention. Zero forgotten steps. Zero "works on my machine" deployments.
 
 This post explains how CV Analytics uses GitHub Actions for multi-cloud CI/CD across three clouds:
 
 **You'll learn:**
 - ✓ GitHub Actions fundamentals (workflows, jobs, steps, triggers)
 - ✓ 6 independent pipelines for Angular CV site, Cloudflare Worker, React dashboard, GCP webhook, AWS processor, AWS reporter
-- ✓ Multi-cloud deployments to Vercel, Cloudflare, Firebase Hosting, GCP Cloud Functions, AWS Lambda
+- ✓ Multi-cloud deployments to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, AWS Lambda
 - ✓ Secrets management (12+ secrets across 6 repositories, 3 clouds)
 - ✓ Cross-cloud deployment coordination (Angular → Cloudflare → AWS → GCP)
 - ✓ Troubleshooting common deployment failures across multiple clouds
@@ -76,7 +76,7 @@ GitHub Actions integrates directly with your repository. No external CI/CD platf
 **How independent pipelines enable velocity:**
 
 CV Analytics runs 6 separate workflows across 3 clouds:
-1. **Angular CV site pipeline**: Angular build → Vercel
+1. **Angular CV site pipeline**: Angular build → Cloudflare Pages
 2. **Cloudflare Worker pipeline**: TypeScript build → Cloudflare Workers
 3. **React Dashboard pipeline**: React build → Firebase Hosting
 4. **Webhook receiver pipeline**: Go build → GCP Cloud Functions

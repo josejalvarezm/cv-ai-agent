@@ -54,7 +54,7 @@ This post explains the CV Analytics architecture: 6 services spanning Cloudflare
 
 Each service uses the best tool for its job:
 
-- **Cloudflare Worker:** TypeScript on edge (12ms latency requirement)
+- **Cloudflare Worker:** TypeScript on edge (1.87s P95 end-to-end, 12ms analytics write)
 - **AWS Lambda Processor:** Node.js (native DynamoDB SDK, JSON processing)
 - **GCP Cloud Function:** Go (native Firestore SDK, HMAC validation performance)
 - **React Dashboard:** TypeScript (real-time UI with Firestore WebSocket)

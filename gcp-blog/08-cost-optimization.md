@@ -16,10 +16,10 @@
 
 Serverless promises cost efficiency: pay only for what you use. No idle servers. No wasted capacity. CV Analytics runs production workload at £0/month across **3 cloud providers** by exploiting free tiers.
 
-This sounds too good to be true. It isn't. Cloudflare Workers free tier: 100K requests/day. AWS Lambda provides 1 million free requests per month. DynamoDB always-free tier includes 25 GB storage plus 25 RCU/WCU. GCP Cloud Functions offers 2 million invocations monthly. Firestore includes 50,000 reads per day. Vercel free tier: 100 GB bandwidth. Firebase Hosting free tier: 10 GB bandwidth.
+This sounds too good to be true. It isn't. Cloudflare Workers free tier: 100K requests/day. Cloudflare Pages: unlimited bandwidth. AWS Lambda provides 1 million free requests per month. DynamoDB always-free tier includes 25 GB storage plus 25 RCU/WCU. GCP Cloud Functions offers 2 million invocations monthly. Firestore includes 50,000 reads per day. Firebase Hosting free tier: 10 GB bandwidth.
 
 CV Analytics processes ~3,000 CV chatbot queries monthly across 6 services:
-- **Cloudflare Worker**: Answers queries in 12ms (edge compute)
+- **Cloudflare Worker**: Answers queries in 1.87s P95 (edge compute, LLM processing)
 - **AWS DynamoDB**: Stores query events (TTL 24h) + analytics
 - **AWS Lambda**: Processes batches (Processor + Reporter)
 - **GCP Cloud Function**: Receives cross-cloud webhooks from AWS
@@ -1174,9 +1174,9 @@ GCP Services:
    ├─ Bandwidth: 7.5 MB/day / 360 MB/day free tier = 2%
    └─ Cost: £0.00
 
-Vercel (Angular CV Site):
+Cloudflare Pages (Angular CV Site):
 └─ Hosting
-   ├─ Bandwidth: ~10 MB/month / 100 GB free tier = 0.01%
+   ├─ Bandwidth: ~10 MB/month (unlimited free tier)
    └─ Cost: £0.00
 
 Total Monthly Cost Across 3 Clouds: £0.00
@@ -1214,7 +1214,7 @@ graph TB
     end
     
     subgraph Frontend["Frontend Hosting"]
-        V1["Vercel<br/>Angular CV Site<br/>£0.00"]
+        V1["Cloudflare Pages<br/>Angular CV Site<br/>£0.00"]
     end
     
     TOTAL["Total Cost<br/>£0.00/month<br/>3 Clouds + 6 Services<br/>6 months running<br/>100% uptime"]
@@ -1569,7 +1569,7 @@ graph TD
 **All repositories (6 services across 3 clouds):**
 
 **Cloudflare:**
-- [CV Chatbot Worker](https://github.com/josejalvarezm/cv-chatbot-worker-private) (TypeScript, 12ms edge compute)
+- [CV Chatbot Worker](https://github.com/josejalvarezm/cv-chatbot-worker-private) (TypeScript, 1.87s P95 edge compute)
 
 **AWS:**
 - [Lambda Processor](https://github.com/josejalvarezm/cv-analytics-processor-private) (Node.js, SQS batching)
@@ -1579,7 +1579,7 @@ graph TD
 - [Cloud Function Webhook](https://github.com/josejalvarezm/cv-analytics-webhook-receiver-private) (Go, HMAC validation)
 
 **Frontend:**
-- [Angular CV Site](https://github.com/josejalvarezm/cv-site-angular-private) (Vercel hosting)
+- [Angular CV Site](https://github.com/josejalvarezm/cv-site-angular-private) (Cloudflare Pages)
 - [React Dashboard](https://github.com/josejalvarezm/cv-analytics-dashboard-private) (Firebase Hosting, WebSocket)
 
 **Infrastructure:**

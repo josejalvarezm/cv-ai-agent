@@ -488,7 +488,7 @@ gantt
     dateFormat YYYY-MM-DD
     axisFormat %b %Y
     
-    section Angular CV Site (Vercel)
+    section Angular CV Site (Cloudflare Pages)
     v1.0.0 (Initial Launch)           :done, ang1, 2024-01-15, 180d
     v1.1.0 (Chatbot UI)               :done, ang2, 2024-07-13, 90d
     v1.2.0 (Mobile responsive)        :active, ang3, 2024-10-11, 43d
@@ -541,7 +541,7 @@ gantt
 - 2 MINOR bumps (chatbot UI, mobile responsive)
 - Frontend changes don't affect backend
 - Deploy frequency: 1x per quarter
-- Cloud: Vercel (zero-downtime deploys)
+- Cloud: Cloudflare Pages (zero-downtime deploys)
 
 **Cloudflare Worker (v2.1.3):** Performance-critical, stable API
 
@@ -611,7 +611,7 @@ No correlation between service versions. Each cloud provider hosts services at d
 
 - Cloud Function: v1.5.0
 
-**Frontend (Vercel + Firebase):**
+**Frontend (Cloudflare Pages + Firebase):**
 
 - Angular CV Site: v1.2.0
 - React Dashboard: v2.3.0
@@ -648,7 +648,7 @@ Slow. Risky. Coordination overhead across multiple cloud providers.
 **CV Analytics approach (multi-cloud microservices):**
 
 ```
-Angular CV Site v1.2.0:        Deploy to Vercel independently
+Angular CV Site v1.2.0:        Deploy to Cloudflare Pages independently
 Cloudflare Worker v2.1.3:      Deploy to Cloudflare Edge independently (different week)
 AWS Lambda Processor v3.1.0:   Deploy to AWS independently (different day)
 AWS Lambda Reporter v1.0.3:    Deploy to AWS independently (different month)

@@ -13,7 +13,7 @@
 
 ## The Dilemma
 
-My CV chatbot responds in 12ms. Users ask about my TypeScript experience, AWS expertise, or specific projects. The system performs semantic search, retrieves context, and generates responses using an LLM. Fast, functional, and deployed.
+My CV chatbot responds in 1.87s P95 (LLM-dominated). Users ask about my TypeScript experience, AWS expertise, or specific projects. The system performs semantic search, retrieves context, and generates responses using an LLM. Fast, functional, and deployed.
 
 But I had no idea what people were actually asking.
 
@@ -39,8 +39,8 @@ I called my system "microservices" because it had multiple services across three
 
 **The 6 services:**
 
-1. **Angular CV Site** (user-facing portfolio) - Vercel hosting
-2. **Cloudflare Worker** (chatbot API, 12ms responses) - Edge compute
+1. **Angular CV Site** (user-facing portfolio) - Cloudflare Pages
+2. **Cloudflare Worker** (chatbot API, 1.87s P95 end-to-end) - Edge compute
 3. **AWS Lambda Processor** (analytics aggregation) - Batch processing
 4. **AWS Lambda Reporter** (weekly email reports) - Scheduled task
 5. **GCP Cloud Function** (webhook receiver) - Real-time ingestion
@@ -79,7 +79,7 @@ My first implementation: Cloudflare Worker tried calling AWS Lambda directly aft
 
 **Event-driven solution (three clouds working together):**
 
-1. **Cloudflare Worker** responds to user in 12ms (no blocking)
+1. **Cloudflare Worker** responds to user in 1.87s (LLM processing), analytics logged in 12ms fire-and-forget (no blocking)
 2. Worker writes analytics event to **AWS DynamoDB** (`Query Events` table)
 3. **DynamoDB Streams** automatically triggers **SQS** (FIFO queue)
 4. **AWS Lambda** processes batches of 10 events asynchronously

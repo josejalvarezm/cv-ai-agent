@@ -1,6 +1,6 @@
 # Fire-and-Forget Analytics for Edge Systems (Evolution Series: Production Analytics on AWS, Part II)
 
-*Analytics shouldn’t add latency. Fire‑and‑forget decouples visibility from response paths, delivering 12ms edge speed with 99.97% reliability: all within AWS free‑tier limits*
+*Analytics shouldn't add latency. Fire-and-forget decouples visibility from response paths, eliminating 100ms analytics overhead with 99.97% reliability, all within AWS free-tier limits*
 
 ## Contents
 
@@ -21,7 +21,7 @@
 
 Adding analytics to an edge function should be straightforward: log the query, send it to a queue, return the response. In practice, this sequence creates a latency problem.
 
-My CV chatbot processes queries in 12ms. Adding a synchronous SQS call increased response time to 112ms. The analytics operation, which users never see, dominated the execution time of the entire request.
+My CV chatbot processes queries with 1.87s P95 end-to-end latency (dominated by LLM generation). Adding a synchronous SQS call to the response path increased this to 1.97s. Whilst 100ms seems minor, the analytics operation provides zero value to users and shouldn't add any latency.
 
 The solution wasn't to remove analytics. It was to decouple analytics from the response path entirely.
 
@@ -59,11 +59,11 @@ sequenceDiagram
 
 **Before optimisation:**
 
-- Query processing: 12ms
+- Query processing: 1.87s (embedding + search + LLM)
 - Analytics logging: 100ms (blocking)
-- **Total response time:** 112ms
+- **Total response time:** 1.97s
 
-The analytics call consumed 89% of the request duration. Users waited for a background operation that provided zero value to their experience.
+The analytics call added 5% to the request duration. Users waited for a background operation that provided zero value to their experience.
 
 This wasn't acceptable. Edge functions exist to minimise latency. Analytics shouldn't compromise that goal.
 
@@ -130,14 +130,14 @@ async function logAnalytics(
 **Execution context lifecycle:**
 
 1. Request arrives at Worker
-2. Worker processes query (12ms)
+2. Worker processes query (1.87s: embedding + search + LLM)
 3. Worker calls `ctx.waitUntil(logAnalytics(...))`
 4. Worker returns HTTP response immediately
 5. Runtime keeps Worker alive until promise resolves
-6. Analytics call completes in background (100ms)
+6. Analytics call completes in background (~12ms)
 7. Worker terminates
 
-The user receives their response in 12ms. The analytics call completes without blocking.
+The user receives their response in 1.87s. The analytics call completes without adding latency.
 
 ---
 
@@ -146,13 +146,13 @@ The user receives their response in 12ms. The analytics call completes without b
 ```mermaid
 graph LR
     subgraph "Before: Blocking Analytics"
-        A1[Query<br/>12ms] --> A2[Analytics<br/>100ms]
-        A2 --> A3[Response<br/>112ms total]
+        A1[Query<br/>1.87s] --> A2[Analytics<br/>100ms]
+        A2 --> A3[Response<br/>1.97s total]
     end
     
     subgraph "After: Fire-and-Forget"
-        B1[Query<br/>12ms] --> B2[Response<br/>12ms total]
-        B1 -.->|Background| B3[Analytics<br/>100ms]
+        B1[Query<br/>1.87s] --> B2[Response<br/>1.87s total]
+        B1 -.->|Background| B3[Analytics<br/>12ms]
     end
     
     style A2 fill:#ef4444,color:#fff
@@ -165,12 +165,12 @@ graph LR
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| Query processing | 12ms | 12ms | No change |
+| Query processing | 1.87s | 1.87s | No change |
 | Analytics overhead | 100ms | 0ms | 100% reduction |
-| **Total response time** | **112ms** | **12ms** | **89% faster** |
+| **Total response time** | **1.97s** | **1.87s** | **5% faster** |
 | Analytics success rate | 100% | 100% | No degradation |
 
-The pattern eliminated user-facing latency whilst maintaining 100% analytics reliability.
+The pattern eliminated user-facing analytics latency whilst maintaining 100% reliability.
 
 ---
 

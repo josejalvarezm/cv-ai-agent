@@ -18,7 +18,7 @@
 
 ## The Dilemma
 
-My CV chatbot responds in 12ms. Users ask about my experience with TypeScript, AWS, or specific projects. The system performs semantic search over vectorised skills, retrieves relevant context, and generates natural language responses using an LLM. Fast, functional, and deployed at the edge.
+My CV chatbot logs analytics in 12ms using a fire-and-forget pattern. The full end-to-end response takes 1.87s P95, dominated by LLM generation (88% of total time). Users ask about my experience with TypeScript, AWS, or specific projects. The system performs semantic search over vectorised skills, retrieves relevant context, and generates natural language responses using an LLM. Fast analytics logging, functional responses, and deployed at the edge.
 
 But I had no idea what people were actually asking.
 
@@ -32,7 +32,7 @@ Performance is measurable. Impact is invisible.
 
 ```mermaid
 graph LR
-    A[Fast System<br/>12ms responses] -->|Without Analytics| B{Blind Spots}
+    A[Fast Analytics<br/>12ms fire-and-forget] -->|Without Analytics| B{Blind Spots}
     
     B --> C[Unknown:<br/>User intent]
     B --> D[Unknown:<br/>Response quality]
@@ -150,7 +150,7 @@ These features might make sense at commercial scale. For a portfolio project, th
 ```mermaid
 graph TB
     subgraph "Edge Layer"
-        A[Cloudflare Worker<br/>12ms response] -->|Fire-and-Forget| B[AWS SQS Queue<br/>FIFO ordering]
+        A[Cloudflare Worker<br/>1.87s response] -->|Fire-and-Forget<br/>12ms| B[AWS SQS Queue<br/>FIFO ordering]
     end
     
     subgraph "Processing Layer"
@@ -239,9 +239,10 @@ After implementing analytics, I learned:
 
 **Performance insights:**
 
-- Median response time: 11ms
-- p95 response time: 12ms
-- p99 response time: 18ms
+- Analytics write latency: 12ms (fire-and-forget)
+- End-to-end response time (P50): 1.65s
+- End-to-end response time (P95): 1.87s
+- LLM generation: 1,650ms (88% of response time)
 - Error rate: 0.03% (3 failed queries per 10,000)
 
 **Surprising discoveries:**
@@ -257,7 +258,7 @@ This visibility transformed the chatbot from a technical demo into a credible po
 
 ## The Core Principle
 
-Fast systems don't guarantee credible systems. You can measure latency, throughput, and error rates. But you can't measure impact without visibility.
+Fast analytics don't guarantee credible systems. You can measure latency, throughput, and error rates. But you can't measure impact without visibility.
 
 Analytics aren't optional for production systems. They're the difference between knowing your system works and knowing your system matters.
 

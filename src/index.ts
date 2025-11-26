@@ -22,7 +22,7 @@ import { handleHealth } from './handlers/healthHandler';
 import { handleQuotaStatus, handleAdminQuota, handleQuotaReset, handleQuotaSync } from './handlers/quotaHandler';
 import { handleSession } from './handlers/sessionHandler';
 import { handleIndex } from './handlers/indexHandler';
-import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector } from './handlers/indexManagementHandler';
+import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector, handleTestUpsert } from './handlers/indexManagementHandler';
 import { handleCORSPreflight, addCORSHeaders, verifyAuth, handleWorkerError, handle404 } from './middleware';
 import { checkRateLimit } from './middleware/rateLimiter';
 import { initializeSQSLogger } from './aws/sqs-logger';
@@ -462,6 +462,10 @@ export default {
 
       if (path === ENDPOINTS.DEBUG_VECTOR && request.method === 'GET') {
         return await handleDebugVector(env);
+      }
+
+      if (path === '/debug/test-upsert' && request.method === 'POST') {
+        return await handleTestUpsert(request, env);
       }
       
       if (path === ENDPOINTS.QUOTA && request.method === 'GET') {

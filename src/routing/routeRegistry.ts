@@ -110,6 +110,7 @@ export function createRouteRegistry(handlers: {
   handleQuotaSync: RouteHandler;
   handleHealth: RouteHandler;
   handleDebugVector: RouteHandler;
+  handleTestUpsert: RouteHandler;
   handleIds: RouteHandler;
   handleIndexProgress: RouteHandler;
   handleIndexResume: RouteHandler;
@@ -142,6 +143,7 @@ export function createRouteRegistry(handlers: {
 
   // Debug endpoints
   registry.register('/debug/vector', 'GET', handlers.handleDebugVector, true);
+  registry.register('/debug/test-upsert', 'POST', handlers.handleTestUpsert, true);
   registry.register('/ids', 'GET', handlers.handleIds, true);
 
   return registry;

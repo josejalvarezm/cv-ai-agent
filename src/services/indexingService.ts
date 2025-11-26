@@ -137,10 +137,10 @@ export class IndexingService {
 
     for (const item of items) {
       try {
-        // Generate text representation
+        // Generate rich text representation for better semantic matching
         const text =
           itemType === 'technology'
-            ? `${item.name} (${item.experience || ''})`
+            ? this.buildTechnologyEmbeddingText(item)
             : createSkillText(item as Skill);
 
         // Generate embedding
@@ -220,5 +220,27 @@ export class IndexingService {
       batchSize,
     };
     return this.execute(request);
+  }
+
+  /**
+   * Build rich embedding text for technology items
+   * Includes name, experience, summary, and outcome for better semantic matching
+   */
+  private buildTechnologyEmbeddingText(item: any): string {
+    const parts: string[] = [];
+    
+    // Core identification
+    parts.push(item.name);
+    if (item.experience) parts.push(item.experience);
+    if (item.level) parts.push(item.level);
+    
+    // Rich context for semantic search
+    if (item.summary) parts.push(item.summary);
+    if (item.action) parts.push(item.action);
+    if (item.effect) parts.push(item.effect);
+    if (item.outcome) parts.push(item.outcome);
+    if (item.related_project) parts.push(item.related_project);
+    
+    return parts.join(' ');
   }
 }

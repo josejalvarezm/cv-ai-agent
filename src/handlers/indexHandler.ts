@@ -63,6 +63,7 @@ export async function handleIndex(request: Request, env: FullEnv): Promise<Respo
     const indexResult = await services.indexingService.execute({
       type: itemType,
       batchSize: params.batchSize,
+      offset: params.offset,
     });
 
     // Mark that lock was acquired (indexingService acquires it internally)

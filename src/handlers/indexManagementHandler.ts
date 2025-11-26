@@ -208,3 +208,61 @@ export async function handleDebugVector(env: FullEnv): Promise<Response> {
     return errorToResponse(error);
   }
 }
+
+/**
+ * POST /debug/test-upsert - Test vector upsert with a single technology
+ */
+export async function handleTestUpsert(request: Request, env: FullEnv): Promise<Response> {
+  const requestId = crypto.randomUUID();
+  const logger = getLogger();
+
+  try {
+    const { id } = await request.json() as { id: number };
+    if (!id) {
+      return Response.json({ error: 'id required' }, { status: 400 });
+    }
+
+    const services = createServiceContainer(env);
+    
+    // Fetch the technology from D1
+    const allTech = await services.d1Repository.getTechnology(100, 0);
+    const found = allTech.results?.find((t: any) => t.id === id);
+    if (!found) {
+      return Response.json({ error: `Technology ${id} not found` }, { status: 404 });
+    }
+    
+    const item = found;
+    
+    // Generate embedding
+    const text = `${item.name} ${item.experience || ''} ${item.summary || ''} ${item.action || ''}`;
+    const embeddingResult = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: [text] });
+    const embedding = embeddingResult.data[0];
+    
+    // Try direct Vectorize upsert
+    const vectorId = `technology-${item.id}`;
+    const vector = {
+      id: vectorId,
+      values: embedding,
+      metadata: { id: item.id, name: item.name, version: 999 }
+    };
+    
+    console.log(`Test upsert: ${vectorId}, embedding length: ${embedding.length}`);
+    
+    // Direct upsert to Vectorize
+    await env.VECTORIZE.upsert([vector]);
+    
+    return Response.json({
+      success: true,
+      vectorId,
+      embeddingLength: embedding.length,
+      text: text.substring(0, 200),
+      item: { id: item.id, name: item.name }
+    });
+  } catch (error) {
+    logger.error('Test upsert failed', error);
+    return Response.json({ 
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    }, { status: 500 });
+  }
+}

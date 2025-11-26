@@ -8,7 +8,7 @@
 
 const WORKER_URL = process.env.WORKER_URL || 'https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}';
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '10', 10);
-const TOTAL_RECORDS = parseInt(process.env.TOTAL_RECORDS || '64', 10);
+const TOTAL_RECORDS = parseInt(process.env.TOTAL_RECORDS || '100', 10);
 const DELAY_MS = parseInt(process.env.DELAY_MS || '200', 10);
 
 // Colors for terminal output

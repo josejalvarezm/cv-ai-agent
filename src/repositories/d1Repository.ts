@@ -51,11 +51,13 @@ export class D1Repository {
   }
 
   /**
-   * Get all technology with pagination
+   * Get all technology with pagination (includes all fields for embedding)
    */
   async getTechnology(limit: number, offset: number = 0) {
     return await this.db.prepare(
-      'SELECT id, category_id, name, experience, experience_years FROM technology ORDER BY id LIMIT ? OFFSET ?'
+      `SELECT id, category_id, name, experience, experience_years, level, 
+              summary, action, effect, outcome, related_project, employer 
+       FROM technology ORDER BY id LIMIT ? OFFSET ?`
     ).bind(limit, offset).all<any>();
   }
 

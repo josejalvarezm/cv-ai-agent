@@ -25,6 +25,20 @@ import { QueryService } from './queryService';
 import { IndexingService } from './indexingService';
 import { type FullEnv } from '../types/env';
 
+// New SOLID-compliant services
+import { QuestionValidatorService } from './questionValidator';
+import { ResponseValidatorService } from './responseValidator';
+import { ProjectDetectorService } from './projectDetector';
+import { PromptBuilderService } from './promptBuilder';
+import { AIInferenceService } from './aiInference';
+import type {
+  IQuestionValidator,
+  IResponseValidator,
+  IProjectDetector,
+  IPromptBuilder,
+  IAIInference,
+} from '../types/validators';
+
 /**
  * Service container interface
  * Exposes all services available to handlers
@@ -39,11 +53,18 @@ export interface ServiceContainer {
   // Vector Store (abstraction layer)
   vectorStore: IVectorStore;
 
-  // Services
+  // Core Services
   embeddingService: EmbeddingService;
   cacheService: CacheService;
   queryService: QueryService;
   indexingService: IndexingService;
+
+  // Validator Services (SOLID-compliant)
+  questionValidator: IQuestionValidator;
+  responseValidator: IResponseValidator;
+  projectDetector: IProjectDetector;
+  promptBuilder: IPromptBuilder;
+  aiInference: IAIInference;
 }
 
 /**
@@ -73,6 +94,13 @@ export function createServiceContainer(env: FullEnv): ServiceContainer {
   const kvAdapter = new KVVectorAdapter(env.KV, cosineSimilarity);
   const vectorStore = new CompositeVectorStore(vectorizeAdapter, kvAdapter);
 
+  // Instantiate SOLID-compliant validator services
+  const questionValidator = new QuestionValidatorService();
+  const responseValidator = new ResponseValidatorService();
+  const projectDetector = new ProjectDetectorService();
+  const promptBuilder = new PromptBuilderService();
+  const aiInference = new AIInferenceService(env.AI);
+
   // Create base container for orchestration services
   const baseContainer = {
     d1Repository,
@@ -82,6 +110,11 @@ export function createServiceContainer(env: FullEnv): ServiceContainer {
     vectorStore,
     embeddingService,
     cacheService,
+    questionValidator,
+    responseValidator,
+    projectDetector,
+    promptBuilder,
+    aiInference,
   } as unknown as ServiceContainer;
 
   // Create high-level orchestration services
@@ -98,6 +131,11 @@ export function createServiceContainer(env: FullEnv): ServiceContainer {
     cacheService,
     queryService,
     indexingService,
+    questionValidator,
+    responseValidator,
+    projectDetector,
+    promptBuilder,
+    aiInference,
   };
 }
 
@@ -118,5 +156,10 @@ export function createMockServiceContainer(): ServiceContainer {
     cacheService: undefined as any,
     queryService: undefined as any,
     indexingService: undefined as any,
+    questionValidator: undefined as any,
+    responseValidator: undefined as any,
+    projectDetector: undefined as any,
+    promptBuilder: undefined as any,
+    aiInference: undefined as any,
   };
 }

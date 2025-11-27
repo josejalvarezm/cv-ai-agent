@@ -6,6 +6,7 @@
  */
 
 import type { IPromptBuilder, SkillMatch, ProjectDetectionResult, PromptContext } from '../types/validators';
+import { PROMPT_CONFIG } from '../config';
 
 /**
  * Prompt Builder Service Implementation
@@ -18,36 +19,44 @@ export class PromptBuilderService implements IPromptBuilder {
   /**
    * Build the system prompt for the CV assistant
    */
-  buildSystemPrompt(_projectDetection?: ProjectDetectionResult): string {
+  buildSystemPrompt(projectDetection?: ProjectDetectionResult): string {
+    const projectHint = projectDetection?.isProjectSpecific 
+      ? `\n\n**IMPORTANT:** This question is about a specific project (${projectDetection.projectName}). Focus on accomplishments AT that project, not total career years.`
+      : '';
+
     return `You are a recruiter-facing assistant answering questions about José's professional profile. Respond in FIRST PERSON as José using British English.
 
 ## CORE RULES
 
-1. **LACONIC STYLE (2 sentences maximum)**
-   - Start with a strong verb: "I engineered...", "I delivered...", "I architected..."
-   - End with the employer: "...at CCHQ." or "...at Wairbut."
-   - Maximum 40 words total
-   - NO filler: "I've worked with...", "My expertise spans...", "I have experience in..."
+1. **EVIDENCE-BASED RESPONSES** (let facts speak, no self-assessment)
+   - Lead with WHAT was done, not labels: "I built...", "I delivered...", "I architected..."
+   - Include measurable outcomes when available
+   - End with the employer for credibility
+   - NEVER use self-assessed labels: "senior", "expert", "specialist", "proficient"
 
-2. **BRITISH ENGLISH**
+2. **LACONIC STYLE (${PROMPT_CONFIG.MAX_SENTENCES} sentences max, ${PROMPT_CONFIG.MAX_WORDS} words)**
+   - NO filler: "I've worked with...", "My expertise spans...", "I have experience in..."
+   - NO self-promotion: "I'm a senior...", "As an expert...", "I'm highly skilled..."
+
+3. **BRITISH ENGLISH**
    - Use -ise spellings: optimise, specialise, analyse, utilise
    - Use British conventions: organisation, programme, colour
 
-3. **ACCURACY**
-   - Use EXACT years from the data (if data says 5 years, never say 7)
+4. **ACCURACY**
+   - Use EXACT years from the data (exposure time, not competence)
    - Each skill has its OWN outcomes - never mix them
    - Angular (3y) ≠ AngularJS (10y) ≠ JavaScript (19y) - keep separate
 
-4. **ANSWER FORMAT**
-   Sentence 1: [Strong verb] + [technology] + [measurable outcome] + [employer]
-   Sentence 2 (optional): [Additional context or related skill] + [employer]
+5. **ANSWER FORMAT**
+   [Action verb] + [technology] + [measurable outcome] + [at employer]
 
 ## EXAMPLES
 
 ✅ GOOD: "I engineered C# microservices achieving 99.9% uptime at CCHQ."
-✅ GOOD: "I delivered Angular applications with 40% faster load times at Wairbut."
-❌ BAD: "I've worked with C# for 19 years, implementing various systems across multiple projects..."
-❌ BAD: "I have extensive experience in JavaScript, Angular, and React..."`;
+✅ GOOD: "I've worked with Angular for 3 years, delivering 40% faster load times at Wairbut."
+❌ BAD: "I'm a senior C# developer with extensive experience..."
+❌ BAD: "As an expert in JavaScript, I have..."
+❌ BAD: "I'm highly proficient in React..."${projectHint}`;
   }
 
   /**
@@ -56,19 +65,26 @@ export class PromptBuilderService implements IPromptBuilder {
   buildUserPrompt(context: PromptContext): string {
     const { query, projectDetection, skills, confidence, topScore } = context;
     
+    // Handle empty skills case
+    if (!skills.length) {
+      return `USER QUESTION: "${query}"
+
+No matching skills found in the database. Please respond honestly that this skill/technology is not in José's profile.`;
+    }
+    
     // Build results text
     const resultsText = this.buildResultsText(skills);
     
     // Build context analysis
     const contextAnalysis = this.buildContextAnalysis(skills);
-    
-    // Extract unique employers from skills
-    const employers = [...new Set(skills.map(s => s.technology.employer).filter(Boolean))];
 
     // Build project context if applicable
     const projectContext = projectDetection.isProjectSpecific 
       ? `\n**PROJECT CONTEXT:** Question is about ${projectDetection.projectName}. The "years" field shows TOTAL career experience, not time at ${projectDetection.projectName}. Focus on WHAT was accomplished, not how long.\n`
       : '';
+
+    // Build evidence summary from the data (factual, no labels)
+    const evidenceSummary = this.buildEvidenceSummary(skills);
 
     return `USER QUESTION: "${query}"
 ${projectContext}
@@ -78,22 +94,19 @@ ${resultsText}
 
 ${contextAnalysis}
 
+${evidenceSummary}
+
 ## RESPONSE RULES
 
-1. **2 sentences maximum** - Be laconic, no filler
-2. **Start with action verb** - "I engineered...", "I delivered...", "I architected..."
-3. **End with employer** - Use one of: ${employers.length ? employers.join(', ') : 'CCHQ, Wairbut'}
-4. **Use EXACT data** - Don't invent years, outcomes, or projects
-5. **Keep skills separate** - Angular (3y) ≠ AngularJS (10y) - different skills, different outcomes
-${projectDetection.isProjectSpecific ? `6. **Project-specific** - Don't say "19 years at ${projectDetection.projectName}" - mention what was DONE, not total career years` : ''}
+1. **Evidence only** - State facts: years of exposure, what was built, where
+2. **No self-labels** - NEVER say "senior", "expert", "specialist" - let recruiter decide
+3. **${PROMPT_CONFIG.MAX_SENTENCES} sentences max** - Be laconic, no filler
+4. **Action + Outcome + Employer** - "I built X achieving Y at Z"
+5. **Use EXACT data** - Don't invent years, outcomes, or projects
+6. **Keep skills separate** - Angular (3y) ≠ AngularJS (10y) - different skills, different outcomes
+${projectDetection.isProjectSpecific ? `7. **Project-specific** - Focus on WHAT was done at ${projectDetection.projectName}, not total career years` : ''}
 
-## CLASSIFICATION (if asked about level)
-- 0–3 years = Junior
-- 3–7 years = Mid-level  
-- 7–15 years = Senior
-- 15+ years = Principal/Lead
-
-Answer directly. If asked "Is he qualified for X?", say "Yes, I'm qualified because..."`;
+Answer with facts. Let the evidence speak for itself.`;
   }
 
   /**
@@ -127,18 +140,56 @@ Answer directly. If asked "Is he qualified for X?", say "Yes, I'm qualified beca
   }
 
   /**
-   * Build context analysis section
+   * Build context analysis section (factual, no labels)
    */
   private buildContextAnalysis(skills: SkillMatch[]): string {
     const categories = new Set(skills.map(r => r.technology.category));
     const hasRecent = skills.some(r => r.technology.recency);
-    const expertSkills = skills.filter(r => r.technology.level === 'Expert');
-    const seniorSkills = skills.filter(r => r.technology.years >= 10);
+    const longExposure = skills.filter(r => r.technology.years >= 10);
+    const recentSkills = skills.filter(r => r.technology.recency === 'current' || r.technology.recency === 'recent');
 
-    return `CONTEXT FOR ASSESSMENT:
-- Categories represented: ${Array.from(categories).join(', ')}
-- Expert-level skills: ${expertSkills.length} (${expertSkills.map(s => s.technology.name).join(', ')})
-- Senior experience (10+ years): ${seniorSkills.length} (${seniorSkills.map(s => s.technology.name).join(', ')})
-- Recent/current skills: ${hasRecent ? 'Yes' : 'No'}`;
+    return `FACTUAL CONTEXT (for reference, do NOT use labels in response):
+- Categories: ${Array.from(categories).join(', ')}
+- Long exposure (10+ years): ${longExposure.length > 0 ? longExposure.map(s => `${s.technology.name} (${s.technology.years}y)`).join(', ') : 'None'}
+- Currently active: ${recentSkills.length > 0 ? recentSkills.map(s => s.technology.name).join(', ') : 'Not specified'}
+- Has recent work: ${hasRecent ? 'Yes' : 'No'}`;
+  }
+
+  /**
+   * Build evidence summary - factual data for AI to use
+   * NO labels, NO seniority, just verifiable facts
+   */
+  private buildEvidenceSummary(skills: SkillMatch[]): string {
+    if (!skills.length) return '';
+
+    // Extract verifiable evidence from each skill
+    const evidence = skills.map(s => {
+      const tech = s.technology;
+      const facts: string[] = [];
+      
+      // Exposure time (fact, not competence)
+      facts.push(`${tech.years} years exposure`);
+      
+      // Recency (verifiable)
+      if (tech.recency) facts.push(tech.recency);
+      
+      // Employer (verifiable)
+      if (tech.employer) facts.push(`at ${tech.employer}`);
+      
+      // Outcome (the actual proof of competence)
+      if (tech.outcome) facts.push(`outcome: ${tech.outcome}`);
+      
+      return `- ${tech.name}: ${facts.join(', ')}`;
+    });
+
+    return `## EVIDENCE SUMMARY (use these facts, not labels)
+${evidence.join('\n')}
+
+IMPORTANT: Let the recruiter infer competence from:
+- What was BUILT (outcomes)
+- Where it was built (employer credibility)
+- How recently (recency)
+
+Do NOT say: "senior", "expert", "specialist", "proficient", "skilled"`;
   }
 }

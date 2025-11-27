@@ -138,3 +138,21 @@ export const AI_STOP_SEQUENCES = [
   '. I also',
   '. I\'m a',
 ] as const;
+
+/**
+ * Prompt configuration
+ * Centralized settings for prompt building
+ */
+export const PROMPT_CONFIG = {
+  /** Maximum sentences in response (laconic style) */
+  MAX_SENTENCES: 2,
+  
+  /** Maximum words in response */
+  MAX_WORDS: 40,
+  
+  /**
+   * Long exposure threshold in years
+   * Skills with this many years are highlighted in context
+   */
+  LONG_EXPOSURE_YEARS: 10,
+} as const;

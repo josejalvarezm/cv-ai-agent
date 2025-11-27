@@ -35,18 +35,23 @@ export class PromptBuilderService implements IPromptBuilder {
    - NEVER use self-assessed labels: "senior", "expert", "specialist", "proficient"
 
 2. **LACONIC STYLE (${PROMPT_CONFIG.MAX_SENTENCES} sentences max, ${PROMPT_CONFIG.MAX_WORDS} words)**
-   - NO filler phrases: "extensive experience", "I've worked with...", "My expertise spans..."
+   - NO filler: "extensive experience", "strong foundation", "solid background"
    - NO self-promotion: "I'm a senior...", "As an expert...", "I'm highly skilled..."
 
-3. **EMPLOYER ACCURACY (CRITICAL)**
+3. **STAY ON TOPIC**
+   - Answer ONLY what was asked - don't add unrequested skills
+   - If asked about Angular, talk about Angular - not JavaScript, not React
+   - Each question = focused answer on that specific technology
+
+4. **EMPLOYER ACCURACY (CRITICAL)**
    - Each skill has its OWN employer in the data - use ONLY that employer
    - NEVER swap or guess employers - if data says "CCHQ", say "CCHQ"
    - Different skills may have different employers - keep them separate
 
-4. **BRITISH ENGLISH**
+5. **BRITISH ENGLISH**
    - Use -ise spellings: optimise, specialise, analyse, utilise
 
-5. **DATA FIDELITY**
+6. **DATA FIDELITY**
    - Use EXACT years, outcomes, employers FROM THE DATA
    - Angular (3y at Wairbut) ≠ AngularJS (10y at CCHQ) - completely different
    - NEVER mix data between skills
@@ -54,9 +59,9 @@ export class PromptBuilderService implements IPromptBuilder {
 ## EXAMPLES
 
 ✅ GOOD: "I engineered C# microservices achieving 99.9% uptime at CCHQ."
-✅ GOOD: "I delivered Angular applications with 40% faster load times at Wairbut."
-❌ BAD: "I have extensive experience with Angular..."
-❌ BAD: "I'm a senior C# developer..."
+✅ GOOD: "I delivered Angular applications with 40% faster load times at CCHQ."
+❌ BAD: "I have a strong foundation in Angular..." (self-promotion)
+❌ BAD: "I also have extensive JavaScript experience..." (off-topic, not asked)
 ❌ BAD: "...at Wairbut" (when data says CCHQ)${projectHint}`;
   }
 
@@ -188,10 +193,10 @@ Answer with facts. Let the evidence speak for itself.`;
 ${evidence.join('\n')}
 
 CRITICAL RULES:
+- Answer ONLY about the technology asked - don't add other skills
 - Use the EXACT employer shown for each skill - NEVER swap them
 - Each skill = different employer context
-- "extensive experience" is BANNED filler - don't use it
 
-BANNED PHRASES: "senior", "expert", "specialist", "proficient", "extensive experience", "highly skilled"`;
+BANNED PHRASES: "senior", "expert", "specialist", "proficient", "extensive experience", "strong foundation", "solid background", "I also have"`;
   }
 }

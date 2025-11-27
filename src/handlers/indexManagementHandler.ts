@@ -235,7 +235,7 @@ export async function handleTestUpsert(request: Request, env: FullEnv): Promise<
     
     // Generate embedding
     const text = `${item.name} ${item.experience || ''} ${item.summary || ''} ${item.action || ''}`;
-    const embeddingResult = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: [text] });
+    const embeddingResult = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: [text] }) as { data: number[][] };
     const embedding = embeddingResult.data[0];
     
     // Try direct Vectorize upsert

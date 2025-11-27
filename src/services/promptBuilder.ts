@@ -29,34 +29,35 @@ export class PromptBuilderService implements IPromptBuilder {
 ## CORE RULES
 
 1. **EVIDENCE-BASED RESPONSES** (let facts speak, no self-assessment)
-   - Lead with WHAT was done, not labels: "I built...", "I delivered...", "I architected..."
+   - Lead with WHAT was done: "I built...", "I delivered...", "I architected..."
    - Include measurable outcomes when available
-   - End with the employer for credibility
+   - End with the EXACT employer FROM THE DATA
    - NEVER use self-assessed labels: "senior", "expert", "specialist", "proficient"
 
 2. **LACONIC STYLE (${PROMPT_CONFIG.MAX_SENTENCES} sentences max, ${PROMPT_CONFIG.MAX_WORDS} words)**
-   - NO filler: "I've worked with...", "My expertise spans...", "I have experience in..."
+   - NO filler phrases: "extensive experience", "I've worked with...", "My expertise spans..."
    - NO self-promotion: "I'm a senior...", "As an expert...", "I'm highly skilled..."
 
-3. **BRITISH ENGLISH**
+3. **EMPLOYER ACCURACY (CRITICAL)**
+   - Each skill has its OWN employer in the data - use ONLY that employer
+   - NEVER swap or guess employers - if data says "CCHQ", say "CCHQ"
+   - Different skills may have different employers - keep them separate
+
+4. **BRITISH ENGLISH**
    - Use -ise spellings: optimise, specialise, analyse, utilise
-   - Use British conventions: organisation, programme, colour
 
-4. **ACCURACY**
-   - Use EXACT years from the data (exposure time, not competence)
-   - Each skill has its OWN outcomes - never mix them
-   - Angular (3y) ≠ AngularJS (10y) ≠ JavaScript (19y) - keep separate
-
-5. **ANSWER FORMAT**
-   [Action verb] + [technology] + [measurable outcome] + [at employer]
+5. **DATA FIDELITY**
+   - Use EXACT years, outcomes, employers FROM THE DATA
+   - Angular (3y at Wairbut) ≠ AngularJS (10y at CCHQ) - completely different
+   - NEVER mix data between skills
 
 ## EXAMPLES
 
 ✅ GOOD: "I engineered C# microservices achieving 99.9% uptime at CCHQ."
-✅ GOOD: "I've worked with Angular for 3 years, delivering 40% faster load times at Wairbut."
-❌ BAD: "I'm a senior C# developer with extensive experience..."
-❌ BAD: "As an expert in JavaScript, I have..."
-❌ BAD: "I'm highly proficient in React..."${projectHint}`;
+✅ GOOD: "I delivered Angular applications with 40% faster load times at Wairbut."
+❌ BAD: "I have extensive experience with Angular..."
+❌ BAD: "I'm a senior C# developer..."
+❌ BAD: "...at Wairbut" (when data says CCHQ)${projectHint}`;
   }
 
   /**
@@ -125,14 +126,15 @@ Answer with facts. Let the evidence speak for itself.`;
   private buildResultsText(skills: SkillMatch[]): string {
     return skills.map((r, i) => {
       const tech = r.technology;
-      let text = `${i + 1}. ${tech.name} — ${tech.years} years, ${tech.level}${tech.recency ? ` (${tech.recency})` : ''}
+      // Put employer prominently at the top
+      let text = `${i + 1}. ${tech.name} — ${tech.years} years @ ${tech.employer || 'Unknown'}
+   Level: ${tech.level}${tech.recency ? ` (${tech.recency})` : ''}
    Category: ${tech.category}`;
       
       if (tech.action) text += `\n   Action: ${tech.action}`;
       if (tech.effect) text += `\n   Effect: ${tech.effect}`;
       if (tech.outcome) text += `\n   Outcome: ${tech.outcome}`;
       if (tech.related_project) text += `\n   Project: ${tech.related_project}`;
-      if (tech.summary) text += `\n   Summary: ${tech.summary}`;
       
       text += `\n   Similarity: ${r.similarity.toFixed(3)}`;
       return text;
@@ -167,29 +169,29 @@ Answer with facts. Let the evidence speak for itself.`;
       const tech = s.technology;
       const facts: string[] = [];
       
+      // Employer FIRST (critical for accuracy)
+      if (tech.employer) facts.push(`at ${tech.employer}`);
+      
       // Exposure time (fact, not competence)
-      facts.push(`${tech.years} years exposure`);
+      facts.push(`${tech.years}y`);
       
       // Recency (verifiable)
       if (tech.recency) facts.push(tech.recency);
       
-      // Employer (verifiable)
-      if (tech.employer) facts.push(`at ${tech.employer}`);
-      
       // Outcome (the actual proof of competence)
-      if (tech.outcome) facts.push(`outcome: ${tech.outcome}`);
+      if (tech.outcome) facts.push(`→ ${tech.outcome}`);
       
       return `- ${tech.name}: ${facts.join(', ')}`;
     });
 
-    return `## EVIDENCE SUMMARY (use these facts, not labels)
+    return `## EVIDENCE SUMMARY (use EXACTLY as shown)
 ${evidence.join('\n')}
 
-IMPORTANT: Let the recruiter infer competence from:
-- What was BUILT (outcomes)
-- Where it was built (employer credibility)
-- How recently (recency)
+CRITICAL RULES:
+- Use the EXACT employer shown for each skill - NEVER swap them
+- Each skill = different employer context
+- "extensive experience" is BANNED filler - don't use it
 
-Do NOT say: "senior", "expert", "specialist", "proficient", "skilled"`;
+BANNED PHRASES: "senior", "expert", "specialist", "proficient", "extensive experience", "highly skilled"`;
   }
 }

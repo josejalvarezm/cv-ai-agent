@@ -1,0 +1,63 @@
+# CV Assistant Worker - Example Configuration
+# Copy this file to wrangler.toml and fill in your own values
+
+name = "cv-assistant-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+# Create with: wrangler d1 create cv_assistant_db
+[[d1_databases]]
+binding = "DB"
+database_name = "cv_assistant_db"
+database_id = "YOUR_D1_DATABASE_ID_HERE"
+
+# Vectorize binding
+# Create with: wrangler vectorize create cv-skills-index --dimensions=768 --metric=cosine
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "cv-skills-index"
+
+# KV namespace for fallback vector storage (optional)
+# Create with: wrangler kv:namespace create cv_assistant_kv
+[[kv_namespaces]]
+binding = "KV"
+id = "YOUR_KV_NAMESPACE_ID_HERE"
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+CACHE_TTL = "3600"
+VECTORIZE_FALLBACK = "true"
+AI_REPLY_ENABLED = "true"
+
+# Development configuration
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Production configuration
+[env.production]
+vars = { ENVIRONMENT = "production", CACHE_TTL = "7200", VECTORIZE_FALLBACK = "true", AI_REPLY_ENABLED = "true" }
+
+# Secrets (set via wrangler secret put):
+#   wrangler secret put TURNSTILE_SECRET_KEY
+#   wrangler secret put JWT_SECRET
+# Optional for analytics:
+#   wrangler secret put AWS_SQS_URL
+#   wrangler secret put AWS_REGION
+#   wrangler secret put AWS_ACCESS_KEY_ID
+#   wrangler secret put AWS_SECRET_ACCESS_KEY
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "cv_assistant_db"
+database_id = "YOUR_D1_DATABASE_ID_HERE"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "YOUR_KV_NAMESPACE_ID_HERE"

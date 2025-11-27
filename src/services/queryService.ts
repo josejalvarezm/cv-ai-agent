@@ -1,0 +1,218 @@
+/**
+ * Query Service
+ *
+ * Addresses Single Responsibility Principle (SRP) by extracting all query
+ * orchestration logic from index.ts into a focused service.
+ *
+ * Responsibilities:
+ * - Validate query input
+ * - Generate embeddings
+ * - Search vectors
+ * - Cache coordination
+ * - Response formatting
+ *
+ * Before: Complex logic scattered across index.ts handleQuery function
+ * After: Focused service with clear inputs/outputs
+ */
+
+import { type ServiceContainer } from './container';
+import { generateCacheKey, getCachedResponse, setCachedResponse } from './cacheService';
+import { ValidationError, ExternalServiceError } from '../types/errors';
+import { getLogger } from '../utils/logger';
+import { CACHE_CONFIG, SEARCH_CONFIG } from '../config';
+
+/**
+ * Query request
+ */
+export interface QueryRequest {
+  query: string;
+  topK?: number;
+}
+
+/**
+ * Query result entry
+ */
+export interface QueryResultEntry {
+  id: number;
+  name: string;
+  mastery: string;
+  years: number;
+  category?: string;
+  description?: string;
+  distance: number;
+  provenance: {
+    id: number;
+    distance: number;
+    source: 'vectorize' | 'kv-fallback';
+  };
+}
+
+/**
+ * Query response
+ */
+export interface QueryResponse {
+  query: string;
+  results: QueryResultEntry[];
+  source: 'vectorize' | 'kv-fallback';
+  timestamp: string;
+  cached: boolean;
+  assistantReply?: string;
+}
+
+/**
+ * Query Service
+ * Orchestrates semantic search operations
+ */
+export class QueryService {
+  constructor(private services: ServiceContainer, private aiEnabled: boolean = false) {}
+
+  /**
+   * Execute a semantic search query
+   */
+  async execute(
+    request: QueryRequest,
+    requestUrl: string
+  ): Promise<QueryResponse> {
+    const logger = getLogger();
+    const { query } = request;
+    const topK = request.topK || SEARCH_CONFIG.TOP_K;
+
+    // Validate query
+    if (!query || query.trim().length === 0) {
+      logger.apiError('Query validation failed: empty query');
+      throw new ValidationError('Query parameter "q" is required');
+    }
+
+    logger.apiRequest('QUERY', query);
+
+    // Check cache
+    const cacheKey = generateCacheKey(query);
+    const cachedData = await getCachedResponse(cacheKey, requestUrl);
+    if (cachedData) {
+      logger.cacheHit(cacheKey);
+      return cachedData as QueryResponse;
+    }
+
+    logger.cacheMiss(cacheKey);
+
+    // Generate embedding for query
+    const queryEmbedding = await this.services.embeddingService.generate(query);
+
+    // Search vectors
+    const results = await this.searchVectors(queryEmbedding, topK);
+
+    // Build response
+    const responseData: QueryResponse = {
+      query,
+      results,
+      source: results.length > 0 ? (results[0].provenance.source as 'vectorize' | 'kv-fallback') : 'vectorize',
+      timestamp: new Date().toISOString(),
+      cached: false,
+    };
+
+    // Generate AI reply if enabled
+    if (this.aiEnabled && results.length > 0) {
+      responseData.assistantReply = await this.generateAssistantReply(query, results);
+    }
+
+    // Cache the response
+    const cacheTtl = CACHE_CONFIG.DEFAULT_TTL;
+    await setCachedResponse(cacheKey, requestUrl, responseData, cacheTtl);
+
+    return responseData;
+  }
+
+  /**
+   * Search vectors using configured store
+   */
+  private async searchVectors(embedding: number[], topK: number): Promise<QueryResultEntry[]> {
+    const logger = getLogger();
+    const results: QueryResultEntry[] = [];
+
+    try {
+      // Query vector store (with automatic fallback)
+      const vectorMatches = await this.services.vectorStore.query(embedding, topK);
+      logger.vectorOperation('query', vectorMatches.length, 0);
+
+      // Fetch canonical data for each match
+      for (const match of vectorMatches) {
+        try {
+          const skill = await this.services.skillRepthe candidatery.getById(match.metadata.id);
+          if (skill) {
+            results.push({
+              id: skill.id,
+              name: skill.name,
+              mastery: skill.mastery,
+              years: skill.years,
+              category: skill.category,
+              description: skill.description,
+              distance: match.score,
+              provenance: {
+                id: match.metadata.id,
+                distance: match.score,
+                source: 'vectorize', // This would need to be tracked from match
+              },
+            });
+          }
+        } catch (error) {
+          logger.repthe candidateryError(`Error fetching skill data for id ${match.metadata.id}`, undefined, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    } catch (error) {
+      logger.vectorError('Vector search failed', undefined, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new ExternalServiceError('Vectorize', 'Vector search failed');
+    }
+
+    return results;
+  }
+
+  /**
+   * Generate AI reply using Workers AI
+   */
+  private async generateAssistantReply(query: string, results: QueryResultEntry[]): Promise<string> {
+    const logger = getLogger();
+
+    try {
+      if (results.length === 0) {
+        return '';
+      }
+
+      const topResults = results.slice(0, SEARCH_CONFIG.TOP_K);
+      const topScore = topResults[0]?.distance ?? 0;
+      const confidence = topScore >= SEARCH_CONFIG.HIGH_CONFIDENCE ? 'high' : (topScore >= SEARCH_CONFIG.MEDIUM_CONFIDENCE ? 'medium' : 'low');
+
+      const resultsText = topResults
+        .map(
+          (r, i) => `${i + 1}) ${r.name} — ${r.description || ''} (id:${r.id}, score:${r.distance.toFixed(3)})`
+        )
+        .join('\n');
+
+      // TODO: Use this prompt with Workers AI when AI binding is available
+      const _prompt = `You are a concise technical assistant. User question: "${query}"
+
+Top matching technologies:
+${resultsText}
+
+Provide a short 2-3 sentence answer that:
+- Uses the top match as the primary answer
+- Mentions confidence level (${confidence} based on score ${topScore.toFixed(3)})
+- Suggests one practical follow-up action
+- Keep it conversational and helpful`;
+
+      logger.service('Generating AI reply...');
+
+      // This would need the AI binding passed in
+      // For now, return empty
+      return '';
+    } catch (error) {
+      logger.serviceError('AI reply generation failed', undefined, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return '';
+    }
+  }
+}

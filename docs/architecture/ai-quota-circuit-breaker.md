@@ -7,12 +7,15 @@ The CV Assistant implements a **circuit breaker pattern** to manage Cloudflare W
 ## How It Works
 
 ### 1. **Quota Tracking**
+
 - Every AI inference call is counted
 - Counter is stored in KV with daily expiration (resets at midnight UTC)
 - Limit set to **9,500** (500 safety margin below 10k)
 
 ### 2. **Circuit Breaker**
+
 Before each AI call, the system checks:
+
 ```typescript
 const { allowed, status } = await canUseAI(env.KV);
 
@@ -27,13 +30,16 @@ if (!allowed) {
 ```
 
 ### 3. **Friendly Fallback**
+
 When quota is exceeded, users see:
 > "I've found highly relevant skills matching your query: [skill names]. However, I've reached my daily AI response limit (10,000 inferences). The system will reset at midnight UTC. In the meantime, you can review the detailed skill information provided above..."
 
 ## API Endpoints
 
 ### **GET `/quota`**
+
 Check current quota status:
+
 ```json
 {
   "date": "2025-10-16",
@@ -46,7 +52,9 @@ Check current quota status:
 ```
 
 ### **GET `/health`**
+
 Health check includes quota status:
+
 ```json
 {
   "status": "healthy",
@@ -61,7 +69,9 @@ Health check includes quota status:
 ```
 
 ### **POST `/quota/reset`** (Admin Only)
+
 Manually reset quota counter:
+
 ```bash
 curl -X POST https://cv-assistant-worker.your-subdomain.workers.dev/quota/reset
 ```
@@ -115,11 +125,12 @@ const DAILY_QUOTA_LIMIT = 5; // Set low for testing
 ```
 
 Then make several queries and observe:
+
 - First 5 queries: AI responses
 - Query 6+: Friendly fallback messages
 
 ## Deployment
 
-Already deployed in version: `f9007ac6-bb34-418d-af24-ac9b9e2488c3`
+Deploy using `wrangler deploy --env production`
 
-Status: ✅ **ACTIVE**
+Status: Ready for deployment

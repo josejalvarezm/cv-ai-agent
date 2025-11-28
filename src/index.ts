@@ -436,6 +436,44 @@ Output answer:
 // Handlers moved to handlers/ directory
 
 /**
+ * GET /api/technologies/:stableId
+ * Fetch single technology by stable_id
+ */
+async function handleApiTechnology(stableId: string, env: Env): Promise<Response> {
+  try {
+    const technology = await env.DB.prepare(`
+      SELECT 
+        id, stable_id, name, experience, experience_years, 
+        proficiency_percent, level, summary, category, recency,
+        action, effect, outcome, related_project, employer
+      FROM technology 
+      WHERE stable_id = ?
+    `).bind(stableId).first();
+
+    if (!technology) {
+      return new Response(JSON.stringify({
+        error: 'Technology not found',
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify(technology), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error: any) {
+    console.error('Get technology error:', error);
+    return new Response(JSON.stringify({
+      error: error.message || 'Failed to fetch technology',
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
  * Main Worker entry point
  */
 export default {
@@ -550,6 +588,12 @@ export default {
       // API: Get all technologies for admin dashboard matching
       if (path === ENDPOINTS.API_TECHNOLOGIES && request.method === 'GET') {
         return addCORSHeaders(await handleApiTechnologies(env));
+      }
+
+      // API: Get single technology by stable_id (e.g., /api/technologies/angular-1)
+      if (path.startsWith(ENDPOINTS.API_TECHNOLOGIES + '/') && request.method === 'GET') {
+        const stableId = path.replace(ENDPOINTS.API_TECHNOLOGIES + '/', '');
+        return addCORSHeaders(await handleApiTechnology(stableId, env));
       }
       
       // 404 for unknown routes

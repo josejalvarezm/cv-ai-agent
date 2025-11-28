@@ -117,53 +117,6 @@ async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
 
 // Handlers moved to handlers/ directory
 
-/**
- * /api/technologies endpoint: List all technologies for admin matching
- * Returns all technology records from D1 for the admin dashboard to match against D1CV
- */
-async function handleApiTechnologies(env: Env): Promise<Response> {
-  try {
-    const stmt = env.DB.prepare(`
-      SELECT 
-        id, 
-        stable_id,
-        name, 
-        experience, 
-        experience_years, 
-        proficiency_percent,
-        level,
-        summary, 
-        category, 
-        recency,
-        action, 
-        effect, 
-        outcome, 
-        related_project,
-        employer
-      FROM technology 
-      ORDER BY name ASC
-    `);
-    
-    const result = await stmt.all();
-    
-    return new Response(JSON.stringify({
-      technologies: result.results || [],
-      count: result.results?.length || 0,
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error: any) {
-    console.error('Error fetching technologies:', error);
-    return new Response(JSON.stringify({
-      error: 'Failed to fetch technologies',
-      message: error.message,
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
 // Handlers moved to handlers/ directory
 
 /**
@@ -354,7 +307,7 @@ Provide a short 2-3 sentence answer that:
           messages: [
             { 
               role: 'system', 
-              content: `You are a recruiter-facing assistant that answers questions about José's professional profile.
+              content: `You are a recruiter-facing assistant that answers questions about the candidate's professional profile.
 
 Always follow these rules:
 
@@ -392,10 +345,10 @@ Input skill:
 - Action: Broke down monolithic applications into modular services
 - Effect: Enabled teams to deploy independently and faster
 - Outcome: Cut release cycles from weeks to days
-- Related_project: CCHQ national campaign platform
+- Related_project: Acme Corp enterprise platform
 
 Output answer:
-"With 5+ years of advanced experience in Full‑Stack Service Decomposition at CCHQ, José broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring campaign responsiveness during national elections."`
+"With 5+ years of advanced experience in Full‑Stack Service Decomposition at Acme Corp, the candidate broke down monolithic applications into modular services. This enabled teams to deploy independently, cutting release cycles from weeks to days and ensuring rapid feature delivery."`
             },
             { role: 'user', content: prompt }
           ]
@@ -545,11 +498,6 @@ export default {
 
       if (path === ENDPOINTS.INDEX_STOP && request.method === 'POST') {
         return await handleIndexStop(request, env);
-      }
-
-      // API: Get all technologies for admin dashboard matching
-      if (path === ENDPOINTS.API_TECHNOLOGIES && request.method === 'GET') {
-        return addCORSHeaders(await handleApiTechnologies(env));
       }
       
       // 404 for unknown routes

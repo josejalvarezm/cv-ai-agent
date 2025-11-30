@@ -53,6 +53,7 @@ export interface AIEnv {
 export interface AuthEnv {
   TURNSTILE_SECRET_KEY?: string; // Cloudflare Turnstile secret
   JWT_SECRET?: string; // Secret for signing JWTs
+  ADMIN_WEBHOOK_SECRET?: string; // Secret for HMAC signing webhook callbacks
 }
 
 /**
@@ -70,19 +71,19 @@ export interface AnalyticsEnv {
  * Composed Env for query operations
  * Query needs: DB access, vector search, caching, authentication
  */
-export interface QueryEnv extends DatabaseEnv, VectorEnv, CacheEnv, AuthEnv {}
+export interface QueryEnv extends DatabaseEnv, VectorEnv, CacheEnv, AuthEnv { }
 
 /**
  * Composed Env for indexing operations
  * Indexing needs: DB access, vector storage, AI models, caching for locks
  */
-export interface IndexEnv extends DatabaseEnv, VectorEnv, AIEnv, CacheEnv {}
+export interface IndexEnv extends DatabaseEnv, VectorEnv, AIEnv, CacheEnv { }
 
 /**
  * Composed Env for session creation
  * Sessions need: authentication secrets, caching
  */
-export interface SessionEnv extends AuthEnv, CacheEnv {}
+export interface SessionEnv extends AuthEnv, CacheEnv { }
 
 /**
  * Composed Env for health checks
@@ -100,7 +101,7 @@ export type QuotaEnv = CacheEnv;
  * Composed Env for analytics
  * Analytics needs: database, caching, AWS credentials
  */
-export interface AnalyticsHandlerEnv extends DatabaseEnv, CacheEnv, AnalyticsEnv {}
+export interface AnalyticsHandlerEnv extends DatabaseEnv, CacheEnv, AnalyticsEnv { }
 
 /**
  * Full Env for internal use only (service container initialization)
@@ -108,8 +109,8 @@ export interface AnalyticsHandlerEnv extends DatabaseEnv, CacheEnv, AnalyticsEnv
  */
 export interface FullEnv
   extends DatabaseEnv,
-    VectorEnv,
-    CacheEnv,
-    AIEnv,
-    AuthEnv,
-    AnalyticsEnv {}
+  VectorEnv,
+  CacheEnv,
+  AIEnv,
+  AuthEnv,
+  AnalyticsEnv { }

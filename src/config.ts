@@ -92,6 +92,7 @@ export const ENDPOINTS = {
   INDEX_RESUME: '/index/resume',
   INDEX_STOP: '/index/stop',
   API_TECHNOLOGIES: '/api/technologies',
+  API_CATEGORIES: '/api/categories',
   ROOT: '/',
 } as const;
 

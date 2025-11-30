@@ -119,6 +119,39 @@ async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
 // Handlers moved to handlers/ directory
 
 /**
+ * /api/categories endpoint: List AI categories
+ * Returns categories from the technology_category table for dropdown population
+ */
+async function handleApiCategories(env: Env): Promise<Response> {
+  try {
+    const stmt = env.DB.prepare(`
+      SELECT id, name 
+      FROM technology_category 
+      ORDER BY id ASC
+    `);
+
+    const result = await stmt.all();
+    const categories = (result.results || []).map((r: any) => r.name);
+
+    return new Response(JSON.stringify({
+      categories,
+      count: categories.length,
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error: any) {
+    console.error('Error fetching categories:', error);
+    return new Response(JSON.stringify({
+      error: 'Failed to fetch categories',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
  * /api/technologies endpoint: List all technologies for admin matching
  * Returns all technology records from D1 for the admin dashboard to match against D1CV
  */
@@ -594,6 +627,11 @@ export default {
       // API: Get all technologies for admin dashboard matching
       if (path === ENDPOINTS.API_TECHNOLOGIES && request.method === 'GET') {
         return addCORSHeaders(await handleApiTechnologies(env));
+      }
+
+      // API: Get distinct categories for AI enrichment dropdown
+      if (path === ENDPOINTS.API_CATEGORIES && request.method === 'GET') {
+        return addCORSHeaders(await handleApiCategories(env));
       }
 
       // API: Get single technology by stable_id (e.g., /api/technologies/angular-1)

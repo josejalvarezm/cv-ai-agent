@@ -301,16 +301,52 @@ npx wrangler deploy --env production
 
 #### Step 4: Full Re-index
 
+The API processes **50 records per call** (batch size cap to avoid timeouts). You need multiple calls:
+
+**Quick Method (if you have ~100 records):**
+
 ```powershell
-# Index first batch (0-49)
-$body = '{"type":"technology"}'
-Invoke-RestMethod -Uri "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index" -Method POST -Body $body -ContentType "application/json"
+# Check how many records you have first
+npx wrangler d1 execute cv_assistant_db --remote --command "SELECT COUNT(*) FROM technology"
 
-# Index remaining (50+)
-$body = '{"type":"technology","offset":50}'
-Invoke-RestMethod -Uri "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index" -Method POST -Body $body -ContentType "application/json"
+# Index in batches (each call does 50)
+$uri = "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index"
 
-# Repeat with offset 100, 150, etc. if you have more records
+# Batch 1: records 0-49
+Invoke-RestMethod -Uri $uri -Method POST -Body '{"type":"technology"}' -ContentType "application/json"
+
+# Batch 2: records 50-99
+Invoke-RestMethod -Uri $uri -Method POST -Body '{"type":"technology","offset":50}' -ContentType "application/json"
+
+# Batch 3: records 100-149 (if needed)
+Invoke-RestMethod -Uri $uri -Method POST -Body '{"type":"technology","offset":100}' -ContentType "application/json"
+```
+
+**Automated Method (handles any number of records):**
+
+```powershell
+# Full re-index script - copy and run this entire block
+$uri = "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index"
+$offset = 0
+$batchSize = 50
+$totalProcessed = 0
+
+Write-Host "Starting full re-index..." -ForegroundColor Cyan
+
+do {
+    $body = @{ type = "technology"; offset = $offset } | ConvertTo-Json
+    Write-Host "  Indexing offset $offset..." -NoNewline
+    
+    $result = Invoke-RestMethod -Uri $uri -Method POST -Body $body -ContentType "application/json"
+    
+    Write-Host " $($result.processed) records" -ForegroundColor Green
+    $totalProcessed += $result.processed
+    $offset += $batchSize
+    
+    # Stop when we get less than a full batch
+} while ($result.processed -eq $batchSize)
+
+Write-Host "`nTotal indexed: $totalProcessed records" -ForegroundColor Cyan
 ```
 
 #### Step 5: Verify

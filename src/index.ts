@@ -470,19 +470,33 @@ Output answer:
 // Handlers moved to handlers/ directory
 
 /**
- * GET /api/technologies/:stableId
- * Fetch single technology by stable_id
+ * GET /api/technologies/:identifier
+ * Fetch single technology by stable_id OR name (case-insensitive)
+ * Tries stable_id first, then falls back to name lookup
  */
-async function handleApiTechnology(stableId: string, env: Env): Promise<Response> {
+async function handleApiTechnology(identifier: string, env: Env): Promise<Response> {
   try {
-    const technology = await env.DB.prepare(`
+    // First try exact stable_id match
+    let technology = await env.DB.prepare(`
       SELECT 
         id, stable_id, name, experience, experience_years, 
         proficiency_percent, level, summary, category, recency,
         action, effect, outcome, related_project, employer
       FROM technology 
       WHERE stable_id = ?
-    `).bind(stableId).first();
+    `).bind(identifier).first();
+
+    // If not found, try case-insensitive name match
+    if (!technology) {
+      technology = await env.DB.prepare(`
+        SELECT 
+          id, stable_id, name, experience, experience_years, 
+          proficiency_percent, level, summary, category, recency,
+          action, effect, outcome, related_project, employer
+        FROM technology 
+        WHERE LOWER(name) = LOWER(?)
+      `).bind(identifier).first();
+    }
 
     if (!technology) {
       return new Response(JSON.stringify({
@@ -634,10 +648,10 @@ export default {
         return addCORSHeaders(await handleApiCategories(env));
       }
 
-      // API: Get single technology by stable_id (e.g., /api/technologies/angular-1)
+      // API: Get single technology by stable_id or name (e.g., /api/technologies/angular-1 or /api/technologies/Angular)
       if (path.startsWith(ENDPOINTS.API_TECHNOLOGIES + '/') && request.method === 'GET') {
-        const stableId = path.replace(ENDPOINTS.API_TECHNOLOGIES + '/', '');
-        return addCORSHeaders(await handleApiTechnology(stableId, env));
+        const identifier = decodeURIComponent(path.replace(ENDPOINTS.API_TECHNOLOGIES + '/', ''));
+        return addCORSHeaders(await handleApiTechnology(identifier, env));
       }
 
       // 404 for unknown routes

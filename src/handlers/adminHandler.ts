@@ -274,37 +274,38 @@ async function applyOperations(
     // Process deletes
     for (const id of operations.deletes || []) {
         try {
-            // Determine if ID is stable_id or numeric id
-            const isStableId = typeof id === 'string' && id.startsWith('tech_');
+            // Determine if ID is stable_id (string) or numeric id
+            const isStableId = typeof id === 'string' && isNaN(parseInt(id, 10));
             const whereClause = isStableId ? 'stable_id = ?' : 'id = ?';
+            const bindValue = isStableId ? id : (typeof id === 'number' ? id : parseInt(id, 10));
 
             // Get numeric ID for Vectorize deletion
-            let numericId: number | null = null;
-            if (isStableId) {
-                const tech = await env.DB.prepare(
-                    `SELECT id FROM technology WHERE ${whereClause}`
-                ).bind(id).first<{ id: number }>();
-                numericId = tech?.id || null;
-            } else {
-                numericId = typeof id === 'number' ? id : parseInt(id, 10);
+            const tech = await env.DB.prepare(
+                `SELECT id FROM technology WHERE ${whereClause}`
+            ).bind(bindValue).first<{ id: number }>();
+
+            if (!tech) {
+                logger.service(`Technology not found for delete: ${id}`, context);
+                continue;
             }
+
+            const numericId = tech.id;
 
             // Delete from D1
             const deleteResult = await env.DB.prepare(
                 `DELETE FROM technology WHERE ${whereClause}`
-            ).bind(id).run();
+            ).bind(bindValue).run();
 
             if (deleteResult.success) {
-                // Delete from Vectorize
-                if (numericId) {
-                    try {
-                        await env.VECTORIZE.deleteByIds([`tech_${numericId}`]);
-                    } catch (vecErr) {
-                        logger.apiError(`Vectorize delete failed: ${vecErr}`, context);
-                    }
+                // Delete from Vectorize (use technology-{id} format)
+                try {
+                    await env.VECTORIZE.deleteByIds([`technology-${numericId}`]);
+                    logger.service(`Deleted vector: technology-${numericId}`, context);
+                } catch (vecErr) {
+                    logger.apiError(`Vectorize delete failed for technology-${numericId}: ${vecErr}`, context);
                 }
                 deleted++;
-                logger.service(`Deleted technology: ${id}`, context);
+                logger.service(`Deleted technology: ${id} (D1 id: ${numericId})`, context);
             }
         } catch (err) {
             errors.push(`Delete failed for ${id}: ${err}`);

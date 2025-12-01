@@ -138,12 +138,12 @@ async function applyOperations(
     let updated = 0;
     let deleted = 0;
 
-    // Process inserts
+    // Process inserts (using INSERT OR REPLACE for idempotency)
     for (const item of operations.inserts || []) {
         try {
-            // Insert into D1
+            // Upsert into D1 - if stable_id exists, replace the row
             const insertResult = await env.DB.prepare(`
-        INSERT INTO technology (
+        INSERT OR REPLACE INTO technology (
           stable_id, name, experience, experience_years, proficiency_percent,
           level, summary, category, recency, action, effect, outcome,
           related_project, employer
@@ -350,9 +350,9 @@ async function indexTechnology(
     // Generate embedding
     const embedding = await services.embeddingService.generate(searchText);
 
-    // Upsert to Vectorize
+    // Upsert to Vectorize - use 'technology-${id}' format to match indexingService
     await env.VECTORIZE.upsert([{
-        id: `tech_${id}`,
+        id: `technology-${id}`,
         values: embedding,
         metadata: {
             id,

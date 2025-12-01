@@ -58,8 +58,8 @@ export async function handleD1VectorQuery(
     const requestId = crypto.randomUUID();
     const sessionId = request.headers.get('x-session-id') || 'anonymous';
 
-    // Log query event (fire-and-forget)
-    ctx.waitUntil(logQueryEvent(requestId, sessionId, query, request));
+    // DISABLED: AWS SQS logging disabled to save resources
+    // ctx.waitUntil(logQueryEvent(requestId, sessionId, query, request));
 
     // ===== STEP 2: QUESTION TYPE VALIDATION =====
     const questionValidation = services.questionValidator.validate(query);
@@ -122,8 +122,8 @@ export async function handleD1VectorQuery(
       isVerbose
     );
 
-    // Log response event (fire-and-forget)
-    ctx.waitUntil(logResponseEvent(requestId, sessionId, topResults));
+    // DISABLED: AWS SQS logging disabled to save resources
+    // ctx.waitUntil(logResponseEvent(requestId, sessionId, topResults));
 
     return Response.json(responseData);
 

@@ -2,6 +2,8 @@
 
 *Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics, all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
 
+## Contents
+
 - [The Dilemma](#the-dilemma)
 - [What This Series Covers](#what-this-series-covers)
 - [Series Prerequisites](#series-prerequisites)

@@ -1,6 +1,6 @@
 # Real-Time Dashboard: React, TypeScript, and Firestore WebSockets
 
-*Building a real-time analytics dashboard with React, TypeScript, Vite, and Firestore WebSocket listeners—eliminating polling overhead, achieving instant updates across cloud boundaries, and visualizing cross-cloud data flow from AWS Lambda to GCP to browser.*
+*Building a real-time analytics dashboard with React, TypeScript, Vite, and Firestore WebSocket listeners, eliminating polling overhead, achieving instant updates across cloud boundaries, and visualizing cross-cloud data flow from AWS Lambda to GCP to browser.*
 
 ## Quick Summary
 

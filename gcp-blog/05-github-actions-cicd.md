@@ -1,6 +1,6 @@
 # Automated Deployments with GitHub Actions: Multi-Cloud CI/CD
 
-*Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2—with automated testing, secrets management, and zero-downtime deployments across three clouds.*
+*Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2, with automated testing, secrets management, and zero-downtime deployments across three clouds.*
 
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)

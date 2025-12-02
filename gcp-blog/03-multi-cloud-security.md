@@ -1,6 +1,6 @@
 # Multi-Cloud Security: HMAC, IAM, and Secrets Management
 
-*Securing cross-cloud webhooks with HMAC-SHA256, enforcing least-privilege IAM policies across AWS and GCP, managing secrets in GitHub Actions, and protecting databases with Firestore security rules—all validated under real attack attempts.*
+*Securing cross-cloud webhooks with HMAC-SHA256, enforcing least-privilege IAM policies across AWS and GCP, managing secrets in GitHub Actions, and protecting databases with Firestore security rules, all validated under real attack attempts.*
 
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)

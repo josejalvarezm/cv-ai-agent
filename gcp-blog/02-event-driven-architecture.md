@@ -1,6 +1,6 @@
 # Event-Driven Architecture: Decoupling Microservices with Queues and Streams
 
-*Breaking synchronous coupling through DynamoDB Streams, SQS FIFO queues, Firestore WebSocket listeners, and event correlation—enabling independent service operation across Cloudflare, AWS, and GCP.*
+*Breaking synchronous coupling through DynamoDB Streams, SQS FIFO queues, Firestore WebSocket listeners, and event correlation, enabling independent service operation across Cloudflare, AWS, and GCP.*
 
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)

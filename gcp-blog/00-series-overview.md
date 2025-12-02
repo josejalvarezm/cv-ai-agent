@@ -1,6 +1,6 @@
 # CV Analytics: Multi-Cloud Microservices at £0/Month
 
-*Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics—all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
+*Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics, all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
 
 - [The Dilemma](#the-dilemma)
 - [What This Series Covers](#what-this-series-covers)
@@ -100,7 +100,7 @@ My first implementation: Cloudflare Worker tried calling AWS Lambda directly aft
 
 ### Part 3: Multi-Cloud Security (Cross-Cloud Webhook Authentication)
 
-I deployed the GCP webhook receiver on Friday afternoon. No HMAC validation—"AWS Lambda is internal, it's fine."
+I deployed the GCP webhook receiver on Friday afternoon. No HMAC validation, "AWS Lambda is internal, it's fine."
 
 By Monday morning: 347 fake events in my Firestore database. Someone discovered the public Cloud Function URL and flooded it. My dashboard showed garbage.
 
@@ -169,7 +169,7 @@ One definition, infinite environments. Change memory, run `terraform apply`, bot
 - Why multi-cloud Terraform beats console clicking (version control + repeatability)
 - How to manage AWS + GCP providers in same codebase (separate state, shared variables)
 - How to handle cross-cloud dependencies (AWS Lambda needs GCP webhook URL)
-- Which Terraform features free tier supports (all of them—Terraform CLI is free, both cloud APIs free tier)
+- Which Terraform features free tier supports (all of them, Terraform CLI is free, both cloud APIs free tier)
 - What I chose not to build: Pulumi (less mature), CloudFormation + Deployment Manager (vendor lock-in), Terraform Cloud paid (£0 constraint)
 
 ---
@@ -201,9 +201,9 @@ Worse: I deployed dashboard with a typo in the Firestore query. Broke production
 
 **What you'll learn:**
 
-- Why GitHub Actions free tier is generous (2,000 minutes/month—way more than needed)
+- Why GitHub Actions free tier is generous (2,000 minutes/month, way more than needed)
 - How to deploy AWS + GCP from same workflow (service account keys in GitHub Secrets)
-- When manual approval gates matter (production only—staging deploys automatically)
+- When manual approval gates matter (production only, staging deploys automatically)
 - What I chose not to build: Jenkins server (£10/month EC2), CircleCI paid tier (£15/month), AWS CodePipeline (£1 per active pipeline)
 
 ---
@@ -212,7 +212,7 @@ Worse: I deployed dashboard with a typo in the Firestore query. Broke production
 
 I changed the DynamoDB table schema. Added a new required field: `eventType`. Deployed the Processor Lambda first (writes new field). Reporter Lambda still expected old schema (didn't read new field). Reports broke for 3 hours.
 
-**The mistake:** I versioned the Processor as v1.2.1 (patch). Should have been v2.0.0 (major—breaking change).
+**The mistake:** I versioned the Processor as v1.2.1 (patch). Should have been v2.0.0 (major, breaking change).
 
 **SemVer would have caught this:**
 

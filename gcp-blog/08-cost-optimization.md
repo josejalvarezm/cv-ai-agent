@@ -1,6 +1,6 @@
 # Serverless Cost Optimization: Running Production at £0/Month
 
-*Exploiting free tiers across Cloudflare Workers (100K req/day), AWS Lambda (1M req/month), DynamoDB (25GB), GCP Cloud Functions (2M invocations), and Firestore (50K reads/day)—with 10:1 SQS batching reducing Lambda invocations from 3,000 to 300 monthly.*
+*Exploiting free tiers across Cloudflare Workers (100K req/day), AWS Lambda (1M req/month), DynamoDB (25GB), GCP Cloud Functions (2M invocations), and Firestore (50K reads/day), with 10:1 SQS batching reducing Lambda invocations from 3,000 to 300 monthly.*
 
 ## Quick Summary
 

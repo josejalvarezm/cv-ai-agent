@@ -1,6 +1,6 @@
 # Multi-Cloud Infrastructure as Code: Terraform for GCP and AWS
 
-*Managing six microservices across Cloudflare, AWS, and GCP with 1,200 lines of Terraform configuration—eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
+*Managing six microservices across Cloudflare, AWS, and GCP with 1,200 lines of Terraform configuration, eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
 
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)

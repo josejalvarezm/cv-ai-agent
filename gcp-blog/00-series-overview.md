@@ -1,4 +1,4 @@
-# CV Analytics: Multi-Cloud Microservices at £0/Month
+# CV Analytics: Multi-Cloud Microservices at £0/Month (GCP Series: Real-time Analytics & Firestore, Part I)
 
 *Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics, all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
 
@@ -323,17 +323,20 @@ Using three clouds costs the same as using one (£0), but leverages each platfor
 ## Series Prerequisites
 
 **Required knowledge:**
+
 - Basic command-line proficiency (Git, npm, CLI tools)
 - Understanding of HTTP, REST APIs, and webhooks
 - Familiarity with at least one cloud provider (AWS or GCP)
 - JavaScript/TypeScript or Go (for code examples)
 
 **Nice to have:**
+
 - Docker/containerization concepts
 - CI/CD basics (GitHub Actions or similar)
 - NoSQL database experience (DynamoDB, Firestore)
 
 **What you don't need:**
+
 - Kubernetes or container orchestration
 - Advanced infrastructure knowledge
 - Multi-cloud experience (we'll cover it)
@@ -353,6 +356,7 @@ All code is public and production-ready:
 | `cv-analytics-infrastructure-private` | IaC automation | Terraform (GCP + AWS) |
 
 **Architecture metrics:**
+
 - 6 independent services
 - 87.5% microservices purity score
 - 4 programming languages/runtimes
@@ -365,17 +369,20 @@ All code is public and production-ready:
 ## How to Use This Series
 
 **If you want to build something similar:**
+
 1. Start with Part 1 (architecture patterns)
 2. Follow Part 2 (infrastructure setup)
 3. Implement Part 3 (CI/CD automation)
 4. Read Part 4-8 based on your needs
 
 **If you want to learn multi-cloud patterns:**
+
 1. Read Part 1 (architecture decisions)
 2. Study Part 2 (Terraform multi-cloud)
 3. Review Part 6 (security patterns)
 
 **If you want to improve existing systems:**
+
 1. Part 1: Assess your microservices purity
 2. Part 4: Implement event-driven patterns
 3. Part 5: Add proper versioning
@@ -386,18 +393,21 @@ All code is public and production-ready:
 ## What Makes This Series Different
 
 **Not another tutorial project:**
+
 - This is a production system, not a toy example
 - Real trade-offs, not perfect solutions
 - Actual costs, performance metrics, and constraints
 - Public repositories you can clone and deploy
 
 **Not vendor hype:**
+
 - Multi-cloud architecture (avoiding lock-in)
 - Measured cost analysis (free tier optimization)
 - Honest assessment of complexity
 - Clear guidance on when NOT to use these patterns
 
 **Not academic theory:**
+
 - Practical deployment patterns
 - Real-world constraints (cold starts, costs, complexity)
 - Actual code in production
@@ -425,11 +435,12 @@ By the end of this series, you should be able to:
 **Start with Part 1:** Understanding pure microservices architecture and how to measure it.
 
 **Questions before we begin?**
+
 - What's your current deployment approach?
 - Have you tried multi-cloud before?
 - What's your biggest infrastructure challenge?
 
-**Next:** [Part 1: Pure Microservices Architecture →](01-pure-microservices-architecture.md)
+**Next:** [Part 1: Pure Microservices Architecture →]((https://blog.{YOUR_DOMAIN}/blog/gcp-cv-analytics-0))
 
 ---
 

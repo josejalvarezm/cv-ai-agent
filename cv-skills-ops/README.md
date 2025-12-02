@@ -231,3 +231,150 @@ CREATE TABLE technology (
 - Worker code: `src/services/indexingService.ts`
 - Vector store: `src/repositories/vectorStore.ts`
 - npm scripts: `package.json` → `index:remote`
+- Sync process docs: `docs/VECTORIZE_SYNC_PROCESS.md`
+
+---
+
+## 🧹 Orphan Cleanup & Disaster Recovery
+
+### Understanding Orphans
+
+Orphan vectors occur when D1 records are deleted **without** using the Admin Portal sync:
+
+| Scenario | D1 | Vectorize | Result |
+|----------|-----|-----------|--------|
+| Delete via Admin Portal → Sync | ✅ Deleted | ✅ Deleted | Clean |
+| Manual D1 delete | ✅ Deleted | ❌ Orphan remains | Orphan |
+
+Orphans are **harmless** (chatbot gracefully skips them) but **wasteful** (consume Vectorize storage).
+
+### Option 1: Leave Orphans (Lazy Approach)
+
+If you have few orphans, they're harmless:
+
+- Vectorize queries return orphan IDs
+- D1 lookup finds nothing  
+- Code gracefully skips → no bad data shown
+
+### Option 2: Full Re-index (Partial Cleanup)
+
+Re-indexing **overwrites** existing vectors but **doesn't delete** orphans:
+
+```powershell
+# API call - processes in batches of 50
+$body = '{"type":"technology"}'
+Invoke-RestMethod -Uri "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index" -Method POST -Body $body -ContentType "application/json"
+
+# For 93+ records, run with offset to get all:
+$body = '{"type":"technology","offset":50}'
+Invoke-RestMethod -Uri "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index" -Method POST -Body $body -ContentType "application/json"
+```
+
+### Option 3: Delete & Recreate Vectorize Index (Nuclear Option)
+
+For complete cleanup (e.g., many orphans, corrupted index):
+
+#### Step 1: Delete the Index
+
+```bash
+# Via Cloudflare Dashboard:
+# Workers & Pages → cv-assistant-worker-production → Settings → Bindings → Vectorize
+# Click cv-skills-index → Delete
+
+# Or via Wrangler CLI:
+npx wrangler vectorize delete cv-skills-index
+```
+
+#### Step 2: Recreate the Index
+
+```bash
+npx wrangler vectorize create cv-skills-index --dimensions 768 --metric cosine
+```
+
+#### Step 3: Re-bind to Worker
+
+Update `wrangler.toml` if needed, then redeploy:
+
+```bash
+npx wrangler deploy --env production
+```
+
+#### Step 4: Full Re-index
+
+The API processes **50 records per call** (batch size cap to avoid timeouts). You need multiple calls:
+
+**Quick Method (if you have ~100 records):**
+
+```powershell
+# Check how many records you have first
+npx wrangler d1 execute cv_assistant_db --remote --command "SELECT COUNT(*) FROM technology"
+
+# Index in batches (each call does 50)
+$uri = "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index"
+
+# Batch 1: records 0-49
+Invoke-RestMethod -Uri $uri -Method POST -Body '{"type":"technology"}' -ContentType "application/json"
+
+# Batch 2: records 50-99
+Invoke-RestMethod -Uri $uri -Method POST -Body '{"type":"technology","offset":50}' -ContentType "application/json"
+
+# Batch 3: records 100-149 (if needed)
+Invoke-RestMethod -Uri $uri -Method POST -Body '{"type":"technology","offset":100}' -ContentType "application/json"
+```
+
+**Automated Method (handles any number of records):**
+
+```powershell
+# Full re-index script - copy and run this entire block
+$uri = "https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/index"
+$offset = 0
+$batchSize = 50
+$totalProcessed = 0
+
+Write-Host "Starting full re-index..." -ForegroundColor Cyan
+
+do {
+    $body = @{ type = "technology"; offset = $offset } | ConvertTo-Json
+    Write-Host "  Indexing offset $offset..." -NoNewline
+    
+    $result = Invoke-RestMethod -Uri $uri -Method POST -Body $body -ContentType "application/json"
+    
+    Write-Host " $($result.processed) records" -ForegroundColor Green
+    $totalProcessed += $result.processed
+    $offset += $batchSize
+    
+    # Stop when we get less than a full batch
+} while ($result.processed -eq $batchSize)
+
+Write-Host "`nTotal indexed: $totalProcessed records" -ForegroundColor Cyan
+```
+
+#### Step 5: Verify
+
+```powershell
+# Check vector count
+npx wrangler vectorize info cv-skills-index
+
+# Check D1 count
+npx wrangler d1 execute cv_assistant_db --remote --command "SELECT COUNT(*) FROM technology"
+
+# Counts should match!
+```
+
+### When to Use Each Option
+
+| Situation | Recommended Action |
+|-----------|-------------------|
+| Few test records deleted manually | Leave orphans (Option 1) |
+| Many manual deletes | Re-index (Option 2) |
+| Corrupted index / major issues | Delete & recreate (Option 3) |
+| Regular operations via Admin Portal | Nothing needed - sync handles it |
+
+---
+
+## 🎯 Best Practices
+
+1. **Always use Admin Portal** for add/update/delete - it handles sync automatically
+2. **Avoid manual D1 deletes** - creates orphans
+3. **Re-index after bulk imports** - if adding via SQL directly
+4. **Monitor counts** - `npx wrangler vectorize info cv-skills-index` should match D1 count

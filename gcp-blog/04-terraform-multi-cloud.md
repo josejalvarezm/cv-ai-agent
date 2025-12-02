@@ -1,4 +1,4 @@
-# Multi-Cloud Infrastructure as Code: Terraform for GCP and AWS
+# Multi-Cloud Infrastructure as Code: Terraform for GCP and AWS (GCP Series: Real-time Analytics & Firestore, Part V)
 
 *Managing six microservices across Cloudflare, AWS, and GCP with 1,200 lines of Terraform configuration, eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
 
@@ -38,6 +38,7 @@ CV Analytics uses Terraform to provision 100% of its infrastructure across **thr
 This post explains how Terraform manages multi-cloud infrastructure: how providers abstract GCP and AWS APIs, how to handle cross-cloud dependencies (AWS Lambda needs GCP webhook URL), how remote state enables team collaboration across clouds, how to manage secrets securely in three cloud providers, and how rollback strategies protect against failed deployments.
 
 **What you'll learn:**
+
 - ✓ How Terraform providers abstract GCP and AWS APIs (multi-cloud in one codebase)
 - ✓ How to handle cross-cloud dependencies (AWS Lambda → GCP Cloud Function)
 - ✓ How to structure multi-cloud Terraform configurations (3 clouds, 6 services)
@@ -54,6 +55,7 @@ This post explains how Terraform manages multi-cloud infrastructure: how provide
 Terraform uses HashiCorp Configuration Language (HCL) to describe infrastructure. You declare what you want, not how to create it.
 
 **Imperative (bash script):**
+
 ```bash
 # Create Lambda function
 aws lambda create-function \
@@ -71,6 +73,7 @@ fi
 ```
 
 **Declarative (Terraform):**
+
 ```hcl
 resource "aws_lambda_function" "processor" {
   function_name = "processor"
@@ -113,6 +116,7 @@ provider "aws" {
 ```
 
 **Version constraints:**
+
 - `~> 5.0` means "5.0 or higher, but less than 6.0"
 - Prevents breaking changes from major version upgrades
 - Terraform locks exact versions in `.terraform.lock.hcl`
@@ -144,6 +148,7 @@ resource "aws_security_group" "lambda_sg" {
 ```
 
 **CV Analytics uses data sources for:**
+
 - Existing GCP project metadata
 - AWS account ID
 - Default VPCs (if needed)
@@ -154,17 +159,20 @@ resource "aws_security_group" "lambda_sg" {
 Terraform stores infrastructure state in `terraform.tfstate` file. State maps configuration to real resources.
 
 **State contains:**
+
 - Resource IDs (Lambda ARN, Cloud Function URL)
 - Resource attributes (memory size, runtime version)
 - Dependencies between resources
 - Provider metadata
 
 **State enables:**
+
 - **Change detection:** Terraform compares desired state (HCL) with current state (tfstate) to determine what changed
 - **Resource tracking:** Terraform knows which resources it created (safe to destroy)
 - **Dependency ordering:** Terraform creates resources in correct order (IAM role before Lambda)
 
 **Local state problem:**
+
 ```bash
 # Developer A provisions infrastructure
 terraform apply  # Creates terraform.tfstate locally
@@ -197,12 +205,14 @@ graph TB
 ```
 
 **terraform init:**
+
 - Downloads provider plugins
 - Initialises backend (remote state)
 - Creates `.terraform/` directory
 - Generates `.terraform.lock.hcl` (provider version lock file)
 
 **terraform plan:**
+
 - Reads configuration files (*.tf)
 - Queries current state (terraform.tfstate)
 - Queries cloud APIs (actual resources)
@@ -210,6 +220,7 @@ graph TB
 - Shows preview of changes
 
 **Example plan output:**
+
 ```
 Terraform will perform the following actions:
 
@@ -224,12 +235,14 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 ```
 
 **terraform apply:**
+
 - Executes plan (creates/updates/deletes resources)
 - Updates state file
 - Shows progress and results
 - Fails fast (stops on first error)
 
 **terraform destroy:**
+
 - Deletes all resources managed by Terraform
 - Use for: tearing down staging environments, cleanup after testing
 - Dangerous: no undo, confirmation required
@@ -367,6 +380,7 @@ output "webhook_url" {
 **Public access:** `allUsers` allows GitHub to call function without authentication. HMAC signature provides security.
 
 **Dependency chain:**
+
 1. Storage bucket created
 2. Source code uploaded to bucket
 3. Service account created
@@ -418,6 +432,7 @@ resource "google_firestore_index" "analytics_by_date" {
 Firebase Hosting isn't fully supported by Terraform (Firebase uses its own CLI). Hybrid approach:
 
 **Terraform provisions Firebase project:**
+
 ```hcl
 resource "google_firebase_project" "dashboard" {
   provider = google-beta
@@ -433,6 +448,7 @@ resource "google_firebase_web_app" "dashboard" {
 ```
 
 **GitHub Actions deploys site:**
+
 ```yaml
 # .github/workflows/deploy-dashboard.yml
 - name: Deploy to Firebase Hosting
@@ -442,12 +458,14 @@ resource "google_firebase_web_app" "dashboard" {
 ```
 
 **Why split?**
+
 - Terraform: Infrastructure that rarely changes (project setup, web app registration)
 - GitHub Actions: Application code that changes frequently (React build, hosting deployment)
 
 ### Variables and Outputs
 
 **variables.tf:**
+
 ```hcl
 variable "gcp_project_id" {
   description = "GCP project ID"
@@ -468,6 +486,7 @@ variable "version" {
 ```
 
 **outputs.tf:**
+
 ```hcl
 output "webhook_url" {
   value       = google_cloudfunctions_function.webhook_receiver.https_trigger_url
@@ -481,6 +500,7 @@ output "service_account_email" {
 ```
 
 **Usage:**
+
 ```bash
 # Pass variables
 terraform apply \
@@ -671,6 +691,7 @@ resource "aws_cloudwatch_event_target" "sqs_target" {
 **Why EventBridge between DynamoDB Streams and SQS?**
 
 DynamoDB Streams can't write directly to SQS. EventBridge bridges them:
+
 1. DynamoDB table updated
 2. Stream event generated
 3. EventBridge captures stream event
@@ -813,6 +834,7 @@ resource "aws_lambda_event_source_mapping" "processor_sqs_trigger" {
 **Solution: Terraform outputs + variables**
 
 **In GCP Terraform (outputs.tf):**
+
 ```hcl
 output "webhook_url" {
   value       = google_cloudfunctions_function.webhook_receiver.https_trigger_url
@@ -821,6 +843,7 @@ output "webhook_url" {
 ```
 
 **In AWS Terraform (variables.tf):**
+
 ```hcl
 variable "gcp_webhook_url" {
   description = "GCP Cloud Function webhook URL (output from GCP Terraform)"
@@ -831,12 +854,14 @@ variable "gcp_webhook_url" {
 **How to pass the value:**
 
 **Option 1: Terraform Cloud (recommended for teams)**
+
 1. Deploy GCP infrastructure first: `terraform apply` in `gcp/` directory
 2. Copy webhook URL from GCP Terraform outputs
 3. Set `gcp_webhook_url` variable in AWS Terraform Cloud workspace
 4. Deploy AWS infrastructure: `terraform apply` in `aws/` directory
 
 **Option 2: Command line**
+
 ```bash
 # Deploy GCP first
 cd terraform/gcp
@@ -906,6 +931,7 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
 ```
 
 **Cron expression:** `cron(0 9 ? * MON *)` breaks down as:
+
 - `0` = minute (0)
 - `9` = hour (9 AM)
 - `?` = day of month (not specified)
@@ -974,6 +1000,7 @@ sequenceDiagram
 ### Terraform Cloud Configuration
 
 **backend.tf:**
+
 ```hcl
 terraform {
   cloud {
@@ -989,6 +1016,7 @@ terraform {
 ```
 
 **First-time setup:**
+
 ```bash
 # Login to Terraform Cloud
 terraform login
@@ -1017,6 +1045,7 @@ terraform state list
 Terraform Cloud automatically locks state during operations.
 
 **Lock behaviour:**
+
 ```bash
 # Developer 1
 terraform apply
@@ -1030,6 +1059,7 @@ terraform apply
 ```
 
 **Force unlock (emergency only):**
+
 ```bash
 # If apply crashes and lock isn't released
 terraform force-unlock abc-123-def-456
@@ -1043,6 +1073,7 @@ terraform force-unlock abc-123-def-456
 Terraform Cloud keeps history of all state versions.
 
 **Rollback to previous version:**
+
 1. Go to Terraform Cloud workspace
 2. Navigate to States tab
 3. Find previous version (before bad deployment)
@@ -1051,11 +1082,13 @@ Terraform Cloud keeps history of all state versions.
 6. Run `terraform apply` to revert infrastructure
 
 **When to rollback:**
+
 - Deployment created incorrect resources
 - Need to undo recent changes
 - State corrupted by failed apply
 
 **When NOT to rollback:**
+
 - Resources manually deleted in cloud console (state out of sync)
 - Resources modified outside Terraform (drift)
 - Solution: Fix configuration and apply again
@@ -1063,18 +1096,21 @@ Terraform Cloud keeps history of all state versions.
 ### Security Considerations
 
 **State contains sensitive data:**
+
 - Database connection strings
 - API keys in environment variables
 - Private IP addresses
 - Resource IDs (potential information disclosure)
 
 **Terraform Cloud security:**
+
 - State encrypted at-rest (AES-256)
 - State encrypted in-transit (TLS 1.2+)
 - Access control via teams and permissions
 - Audit logs (who accessed state, when)
 
 **Access control configuration:**
+
 ```hcl
 # Terraform Cloud Teams (configured in UI)
 # - Admins: Full access (apply, destroy, state)
@@ -1083,6 +1119,7 @@ Terraform Cloud keeps history of all state versions.
 ```
 
 **Never commit backend configuration with credentials:**
+
 ```hcl
 # WRONG: Hardcoded token
 terraform {
@@ -1108,6 +1145,7 @@ terraform {
 ### The Secrets Problem
 
 Terraform needs secrets to provision infrastructure across 3 clouds:
+
 - **Cross-cloud shared secrets:** HMAC webhook secret (must be same value in AWS Secrets Manager + GCP Secret Manager)
 - **Cloud-specific credentials:** AWS IAM keys for Cloudflare Worker, GCP service account keys
 - **CI/CD credentials:** GitHub Secrets for deployment automation
@@ -1118,6 +1156,7 @@ These secrets must never be committed to git. They must be injected at deploymen
 ### Environment Variables Pattern
 
 **Define variables in Terraform:**
+
 ```hcl
 # variables.tf
 variable "webhook_shared_secret" {
@@ -1139,6 +1178,7 @@ variable "cloudflare_worker_aws_key" {
 ```
 
 **Pass secrets via environment variables:**
+
 ```bash
 # Set environment variables for multi-cloud secrets
 export TF_VAR_webhook_shared_secret="$(openssl rand -hex 32)"  # Generate 256-bit secret
@@ -1150,6 +1190,7 @@ terraform apply
 ```
 
 **Use in resources:**
+
 ```hcl
 # GCP Cloud Function uses secret from GCP Secret Manager
 resource "google_secret_manager_secret" "webhook_secret" {
@@ -1183,6 +1224,7 @@ resource "aws_secretsmanager_secret_version" "webhook_secret_version" {
 Terraform Cloud provides encrypted variable storage.
 
 **Configure in Terraform Cloud UI:**
+
 1. Navigate to workspace → Variables
 2. Add variable:
    - Key: `webhook_shared_secret`
@@ -1196,6 +1238,7 @@ Terraform Cloud provides encrypted variable storage.
 4. Save
 
 **Benefits:**
+
 - Encrypted at-rest and in-transit
 - Not visible in Terraform Cloud UI after saving
 - Automatically injected into Terraform runs
@@ -1212,6 +1255,7 @@ Terraform Cloud provides encrypted variable storage.
 GitHub Actions can provision infrastructure using Terraform.
 
 **Workflow configuration:**
+
 ```yaml
 name: Deploy Infrastructure
 on:
@@ -1249,11 +1293,13 @@ jobs:
 ```
 
 **GitHub Secrets required:**
+
 - `TF_API_TOKEN`: Terraform Cloud API token (for authentication)
 - `GITHUB_WEBHOOK_SECRET`: Webhook HMAC secret
 - `GCP_PROJECT_ID`: GCP project identifier
 
 **Security features:**
+
 - GitHub automatically masks secret values in logs
 - Secrets scoped to repository (not accessible by forks)
 - Secrets only exposed to workflow steps that explicitly reference them
@@ -1261,6 +1307,7 @@ jobs:
 ### Git Ignore Patterns
 
 **.gitignore:**
+
 ```bash
 # Terraform state files
 terraform.tfstate
@@ -1310,6 +1357,7 @@ crash.log
 **Problem:** Terraform needs GCP credentials to provision resources.
 
 **Bad approach (service account key file):**
+
 ```bash
 # WRONG: Download service account key
 gcloud iam service-accounts keys create key.json \
@@ -1322,6 +1370,7 @@ export GOOGLE_APPLICATION_CREDENTIALS=key.json
 ```
 
 **Good approach (Workload Identity Federation):**
+
 ```yaml
 # GitHub Actions with Workload Identity (no keys)
 steps:
@@ -1335,12 +1384,14 @@ steps:
 ```
 
 **Benefits:**
+
 - No service account keys (nothing to leak)
 - Temporary credentials (expire after job completes)
 - Scoped to specific GitHub repository
 - Auditable in GCP logs
 
 **Terraform Cloud approach:**
+
 - Store `GOOGLE_CREDENTIALS` (service account key JSON) in Terraform Cloud variables
 - Encrypted storage, not visible after saving
 - Only accessible during Terraform runs
@@ -1388,6 +1439,7 @@ graph TB
 ### State Rollback
 
 Restore previous state from Terraform Cloud:
+
 1. Workspace → States → Previous version
 2. Click "Restore"
 3. Run `terraform apply` to revert
@@ -1424,13 +1476,13 @@ Infrastructure as code transforms cloud management from manual clicking to autom
 
 ### Implementation Roadmap
 
-**Week 1:** Setup Terraform project structure, configure providers (AWS + GCP), create state backend (S3 + DynamoDB).
+**Step 1:** Setup Terraform project structure, configure providers (AWS + GCP), create state backend (S3 + DynamoDB).
 
-**Week 2:** Write Lambda/Cloud Functions modules, test locally with `terraform plan`, apply to development environment.
+**Step 2:** Write Lambda/Cloud Functions modules, test locally with `terraform plan`, apply to development environment.
 
-**Week 3:** Create DynamoDB/Firestore modules, implement cross-cloud IAM policies, document all resources.
+**Step 3:** Create DynamoDB/Firestore modules, implement cross-cloud IAM policies, document all resources.
 
-**Week 4:** Integrate with CI/CD (GitHub Actions), automate `terraform plan` on PRs, require manual approval for `terraform apply`.
+**Step 4:** Integrate with CI/CD (GitHub Actions), automate `terraform plan` on PRs, require manual approval for `terraform apply`.
 
 ### Success Metrics
 
@@ -1452,6 +1504,7 @@ CV Analytics infrastructure fully automated:
 Infrastructure provisioned. Now: automated deployments.
 
 Part 5 covers:
+
 - ✓ GitHub Actions workflows per service
 - ✓ Secrets management across repositories
 - ✓ Deployment pipelines (React, Go, Node.js)

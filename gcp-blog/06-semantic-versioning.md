@@ -1,4 +1,4 @@
-# Semantic Versioning for Microservices: Independent Evolution at Scale
+# Semantic Versioning for Microservices: Independent Evolution at Scale (GCP Series: Real-time Analytics & Firestore, Part VII)
 
 *Tracking six services with independent version numbers using SemVer 2.0.0 (MAJOR.MINOR.PATCH), git tags, and automated CI/CD, enabling Angular v1.2.0, Cloudflare Worker v2.1.3, AWS Lambda v3.1.0, and GCP Cloud Function v1.5.0 to evolve without coordination.*
 
@@ -31,7 +31,7 @@
 
 ## Introduction
 
-In February 2024, I changed the CV Analytics event schema. Added a new field: `repository_visibility`. Seemed harmless. The webhook wrote events with this field. The processor expected the old schema. Production processor crashed for 4 hours before I noticed.
+In October 2025, I changed the CV Analytics event schema. Added a new field: `repository_visibility`. Seemed harmless. The webhook wrote events with this field. The processor expected the old schema. Production processor crashed for 4 hours before I noticed.
 
 No version numbers. No changelog. No migration plan. Just a silent breaking change that broke downstream consumers.
 
@@ -2157,7 +2157,7 @@ CV Analytics achieved these improvements after 3 weeks of SemVer implementation.
 
 ## What's Next
 
-**Part 7: Real-Time Dashboard with React and Firestore**
+**Part 7: Real-Time Dashboard with React and Firestore**  
 
 Services versioned independently. Now: building the frontend that visualizes everything.
 

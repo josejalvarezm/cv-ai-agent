@@ -23,6 +23,7 @@ import { handleQuotaStatus, handleAdminQuota, handleQuotaReset, handleQuotaSync 
 import { handleSession } from './handlers/sessionHandler';
 import { handleIndex } from './handlers/indexHandler';
 import { handleIndexProgress, handleIndexResume, handleIndexStop, handleIds, handleDebugVector, handleTestUpsert } from './handlers/indexManagementHandler';
+import { handleAdminApply } from './handlers/adminHandler';
 import { handleCORSPreflight, addCORSHeaders, verifyAuth, handleWorkerError, handle404 } from './middleware';
 import { checkRateLimit } from './middleware/rateLimiter';
 import { initializeSQSLogger } from './aws/sqs-logger';
@@ -118,6 +119,39 @@ async function fetchCanonicalById(id: number, env: Env): Promise<Skill | null> {
 // Handlers moved to handlers/ directory
 
 /**
+ * /api/categories endpoint: List AI categories
+ * Returns categories from the technology_category table for dropdown population
+ */
+async function handleApiCategories(env: Env): Promise<Response> {
+  try {
+    const stmt = env.DB.prepare(`
+      SELECT id, name 
+      FROM technology_category 
+      ORDER BY id ASC
+    `);
+
+    const result = await stmt.all();
+    const categories = (result.results || []).map((r: any) => r.name);
+
+    return new Response(JSON.stringify({
+      categories,
+      count: categories.length,
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error: any) {
+    console.error('Error fetching categories:', error);
+    return new Response(JSON.stringify({
+      error: 'Failed to fetch categories',
+      message: error.message,
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
  * /api/technologies endpoint: List all technologies for admin matching
  * Returns all technology records from D1 for the admin dashboard to match against D1CV
  */
@@ -143,9 +177,9 @@ async function handleApiTechnologies(env: Env): Promise<Response> {
       FROM technology 
       ORDER BY name ASC
     `);
-    
+
     const result = await stmt.all();
-    
+
     return new Response(JSON.stringify({
       technologies: result.results || [],
       count: result.results?.length || 0,
@@ -181,7 +215,7 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
     // Parse query from request
     const url = new URL(request.url);
     const query = url.searchParams.get('q') || await request.text();
-    
+
     if (!query || query.trim().length === 0) {
       return new Response(JSON.stringify({
         error: 'Query parameter "q" is required',
@@ -190,29 +224,29 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    
+
     console.log(`Processing query: "${query}"`);
-    
+
     // Check cache first
     const cacheKey = generateCacheKey(query);
     const cachedData = await getCachedResponse(cacheKey, request.url);
-    
+
     if (cachedData) {
       console.log('Cache hit');
       return new Response(JSON.stringify(cachedData), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    
+
     console.log('Cache miss, processing query...');
-    
+
     // Generate embedding for query
     const ai = env.AI;
     const queryEmbedding = await generateEmbedding(query, ai);
-    
+
     let results: QueryResult[] = [];
     let source: 'vectorize' | 'kv-fallback' = 'vectorize';
-    
+
     try {
       // Try Vectorize first
       console.log('Querying Vectorize...');
@@ -220,7 +254,7 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
         topK: SEARCH_CONFIG.TOP_K,
         returnMetadata: true,
       });
-      
+
       // Fetch canonical data from D1 for each result
       const skillPromises = vectorResults.matches.map(async (match) => {
         // Vectorize returns a generic metadata object; treat as any and map required fields
@@ -233,8 +267,8 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
           years: metadataAny?.years,
           category: metadataAny?.category || '',
         };
-          const skill = await fetchCanonicalById(metadata.id, env);
-        
+        const skill = await fetchCanonicalById(metadata.id, env);
+
         if (skill) {
           return {
             skill,
@@ -248,46 +282,46 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
         }
         return null;
       });
-      
-  const skillResults = await Promise.all(skillPromises);
-  results = (skillResults.filter(r => r !== null) as unknown) as QueryResult[];
-      
+
+      const skillResults = await Promise.all(skillPromises);
+      results = (skillResults.filter(r => r !== null) as unknown) as QueryResult[];
+
     } catch (vectorizeError) {
       console.error('Vectorize error, falling back to KV:', vectorizeError);
-      
+
       // Fallback to KV if Vectorize is unavailable
       if (env.VECTORIZE_FALLBACK === 'true') {
         source = 'kv-fallback';
-        
+
         // List all vectors from KV (in production, you'd maintain an index)
-          const { results: allTechnologies } = await env.DB.prepare(
-            'SELECT id FROM technology ORDER BY id'
-          ).all<{ id: number }>();
-        
+        const { results: allTechnologies } = await env.DB.prepare(
+          'SELECT id FROM technology ORDER BY id'
+        ).all<{ id: number }>();
+
         const similarities: Array<{ id: number; similarity: number }> = [];
-        
+
         // Calculate cosine similarity for each stored vector
-          for (const technology of allTechnologies.slice(0, 20)) { // Limit for performance
-            const vectorKey = `vector:technology-${technology.id}`;
+        for (const technology of allTechnologies.slice(0, 20)) { // Limit for performance
+          const vectorKey = `vector:technology-${technology.id}`;
           const vectorData = await env.KV.get(vectorKey, 'json') as {
             values: number[];
             metadata: VectorMetadata;
           } | null;
-          
+
           if (vectorData) {
             const similarity = cosineSimilarity(queryEmbedding, vectorData.values);
             similarities.push({ id: technology.id, similarity });
           }
         }
-        
+
         // Sort by similarity and take top 3
         similarities.sort((a, b) => b.similarity - a.similarity);
         const topMatches = similarities.slice(0, SEARCH_CONFIG.TOP_K);
-        
+
         // Fetch skills from D1
         const skillPromises = topMatches.map(async (match) => {
-            const skill = await fetchCanonicalById(match.id, env);
-          
+          const skill = await fetchCanonicalById(match.id, env);
+
           if (skill) {
             return {
               skill,
@@ -301,14 +335,14 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
           }
           return null;
         });
-        
-  const skillResults = await Promise.all(skillPromises);
-  results = (skillResults.filter(r => r !== null) as unknown) as QueryResult[];
+
+        const skillResults = await Promise.all(skillPromises);
+        results = (skillResults.filter(r => r !== null) as unknown) as QueryResult[];
       } else {
         throw vectorizeError;
       }
     }
-    
+
     // Prepare response
     const responseData: any = {
       query,
@@ -326,18 +360,18 @@ async function handleQuery(request: Request, env: Env): Promise<Response> {
       timestamp: new Date().toISOString(),
       cached: false,
     };
-    
+
     // Generate assistant reply using Workers AI (if enabled)
     if (env.AI_REPLY_ENABLED === 'true' && responseData.results.length > 0) {
       try {
         const topResults = responseData.results.slice(0, SEARCH_CONFIG.TOP_K);
         const topScore = topResults[0]?.distance ?? 0;
         const confidence = topScore >= SEARCH_CONFIG.HIGH_CONFIDENCE ? 'high' : (topScore >= SEARCH_CONFIG.MEDIUM_CONFIDENCE ? 'medium' : 'low');
-        
-        const resultsText = topResults.map((r: any, i: number) => 
-          `${i+1}) ${r.name} — ${r.description || ''} (id:${r.id}, score:${r.distance.toFixed(3)})`
+
+        const resultsText = topResults.map((r: any, i: number) =>
+          `${i + 1}) ${r.name} — ${r.description || ''} (id:${r.id}, score:${r.distance.toFixed(3)})`
         ).join('\n');
-        
+
         const prompt = `You are a concise technical assistant. User question: "${query}"
 
 Top matching technologies:
@@ -352,8 +386,8 @@ Provide a short 2-3 sentence answer that:
         // Using Mistral 7B HuggingFace model
         const response = await env.AI.run(AI_CONFIG.FALLBACK_MODEL as any, {
           messages: [
-            { 
-              role: 'system', 
+            {
+              role: 'system',
               content: `You are a recruiter-facing assistant that answers questions about José's professional profile.
 
 Always follow these rules:
@@ -400,27 +434,27 @@ Output answer:
             { role: 'user', content: prompt }
           ]
         }) as { response?: string };
-        
+
         responseData.assistantReply = response?.response || '';
       } catch (aiError) {
         console.error('AI reply generation failed:', aiError);
         responseData.assistantReply = '';
       }
     }
-    
+
     // Cache the response
     const cacheTtl = parseInt(env.CACHE_TTL || CACHE_CONFIG.DEFAULT_TTL.toString(), 10);
-    
+
     // Store in Cache API (non-blocking)
     await setCachedResponse(cacheKey, request.url, responseData, cacheTtl);
-    
+
     return new Response(JSON.stringify(responseData), {
       headers: { 'Content-Type': 'application/json' },
     });
-    
+
   } catch (error: any) {
     console.error('Query error:', error);
-    
+
     return new Response(JSON.stringify({
       error: error.message || 'Query failed',
     }), {
@@ -436,19 +470,33 @@ Output answer:
 // Handlers moved to handlers/ directory
 
 /**
- * GET /api/technologies/:stableId
- * Fetch single technology by stable_id
+ * GET /api/technologies/:identifier
+ * Fetch single technology by stable_id OR name (case-insensitive)
+ * Tries stable_id first, then falls back to name lookup
  */
-async function handleApiTechnology(stableId: string, env: Env): Promise<Response> {
+async function handleApiTechnology(identifier: string, env: Env): Promise<Response> {
   try {
-    const technology = await env.DB.prepare(`
+    // First try exact stable_id match
+    let technology = await env.DB.prepare(`
       SELECT 
         id, stable_id, name, experience, experience_years, 
         proficiency_percent, level, summary, category, recency,
         action, effect, outcome, related_project, employer
       FROM technology 
       WHERE stable_id = ?
-    `).bind(stableId).first();
+    `).bind(identifier).first();
+
+    // If not found, try case-insensitive name match
+    if (!technology) {
+      technology = await env.DB.prepare(`
+        SELECT 
+          id, stable_id, name, experience, experience_years, 
+          proficiency_percent, level, summary, category, recency,
+          action, effect, outcome, related_project, employer
+        FROM technology 
+        WHERE LOWER(name) = LOWER(?)
+      `).bind(identifier).first();
+    }
 
     if (!technology) {
       return new Response(JSON.stringify({
@@ -488,22 +536,22 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
-    
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return handleCORSPreflight();
     }
-    
+
     try {
       // Route handling
       if (path === ENDPOINTS.SESSION && request.method === 'POST') {
         return addCORSHeaders(await handleSession(request, env));
       }
-      
+
       if (path === ENDPOINTS.INDEX && request.method === 'POST') {
         return addCORSHeaders(await handleIndex(request, env));
       }
-      
+
       if (path === ENDPOINTS.QUERY && (request.method === 'GET' || request.method === 'POST')) {
         // Rate limiting check (prevents quota exhaustion)
         const rateLimitResult = await checkRateLimit(request, env.KV);
@@ -535,6 +583,11 @@ export default {
         return await handleAdminQuota(request, env);
       }
 
+      // Admin: apply staged changes from Admin Worker
+      if (path === ENDPOINTS.ADMIN_APPLY && request.method === 'POST') {
+        return addCORSHeaders(await handleAdminApply(request, env));
+      }
+
       // Legacy endpoint - redirects to /query
       if (path === ENDPOINTS.QUERY_D1 && (request.method === 'GET' || request.method === 'POST')) {
         return addCORSHeaders(await handleD1VectorQuery(request, env, _ctx));
@@ -552,19 +605,19 @@ export default {
       if (path === '/debug/test-upsert' && request.method === 'POST') {
         return await handleTestUpsert(request, env);
       }
-      
+
       if (path === ENDPOINTS.QUOTA && request.method === 'GET') {
         return await handleQuotaStatus(env);
       }
-      
+
       if (path === ENDPOINTS.QUOTA_RESET && request.method === 'POST') {
         return await handleQuotaReset(env);
       }
-      
+
       if (path === ENDPOINTS.QUOTA_SYNC && request.method === 'POST') {
         return await handleQuotaSync(request, env);
       }
-      
+
       if (path === ENDPOINTS.HEALTH || path === ENDPOINTS.ROOT) {
         return addCORSHeaders(await handleHealth(env));
       }
@@ -590,15 +643,20 @@ export default {
         return addCORSHeaders(await handleApiTechnologies(env));
       }
 
-      // API: Get single technology by stable_id (e.g., /api/technologies/angular-1)
-      if (path.startsWith(ENDPOINTS.API_TECHNOLOGIES + '/') && request.method === 'GET') {
-        const stableId = path.replace(ENDPOINTS.API_TECHNOLOGIES + '/', '');
-        return addCORSHeaders(await handleApiTechnology(stableId, env));
+      // API: Get distinct categories for AI enrichment dropdown
+      if (path === ENDPOINTS.API_CATEGORIES && request.method === 'GET') {
+        return addCORSHeaders(await handleApiCategories(env));
       }
-      
+
+      // API: Get single technology by stable_id or name (e.g., /api/technologies/angular-1 or /api/technologies/Angular)
+      if (path.startsWith(ENDPOINTS.API_TECHNOLOGIES + '/') && request.method === 'GET') {
+        const identifier = decodeURIComponent(path.replace(ENDPOINTS.API_TECHNOLOGIES + '/', ''));
+        return addCORSHeaders(await handleApiTechnology(identifier, env));
+      }
+
       // 404 for unknown routes
       return handle404();
-      
+
     } catch (error: any) {
       return handleWorkerError(error);
     }

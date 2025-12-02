@@ -52,7 +52,7 @@ export interface IndexingResponse {
 export class IndexingService {
   private lockTimeout = 120; // seconds
 
-  constructor(private services: ServiceContainer, private ai: Ai) {}
+  constructor(private services: ServiceContainer, private ai: Ai) { }
 
   /**
    * Execute indexing operation
@@ -83,44 +83,71 @@ export class IndexingService {
 
       // Determine batch parameters
       const batchSize = request.batchSize
-        ? request.batchSize
+        ? Math.min(request.batchSize, 50) // Cap at 50 to avoid timeout
         : itemType === 'technology'
           ? INDEX_CONFIG.TECHNOLOGY_BATCH_SIZE
           : INDEX_CONFIG.DEFAULT_BATCH_SIZE;
-      const offset = request.offset ?? 0;
 
-      // Fetch batch from database
-      const itemsResult =
-        itemType === 'technology'
-          ? await this.services.d1Repository.getTechnology(batchSize, offset)
-          : await this.services.d1Repository.getSkills(batchSize, offset);
-      const items = itemsResult.results || [];
+      // Start from requested offset or 0
+      let offset = request.offset ?? 0;
+      let totalProcessed = 0;
+      let hasMore = true;
+      let batchErrors: string[] = [];
 
-      if (!items.length) {
-        await this.services.d1Repository.updateIndexMetadata(version, 0, 'completed');
-        return {
-          success: true,
-          message: 'No items to index',
-          version,
-          processed: 0,
-          itemType,
-        };
+      // Loop through ALL items in batches
+      while (hasMore) {
+        try {
+          // Fetch batch from database
+          const itemsResult =
+            itemType === 'technology'
+              ? await this.services.d1Repository.getTechnology(batchSize, offset)
+              : await this.services.d1Repository.getSkills(batchSize, offset);
+          const items = itemsResult.results || [];
+
+          logger.service(`Fetched batch: offset=${offset}, count=${items.length}`);
+
+          if (!items.length) {
+            hasMore = false;
+            break;
+          }
+
+          // Index this batch
+          const processed = await this.indexBatch(items, version, itemType, batchSize);
+          totalProcessed += processed;
+
+          logger.service(`Indexed batch: offset=${offset}, processed=${processed}, total=${totalProcessed}`);
+
+          // Move to next batch
+          offset += batchSize;
+          hasMore = items.length === batchSize;
+
+          // Update metadata after each batch
+          await this.services.d1Repository.updateIndexMetadata(version, totalProcessed, 'in_progress');
+        } catch (batchError) {
+          const errorMsg = batchError instanceof Error ? batchError.message : String(batchError);
+          logger.serviceError(`Batch error at offset ${offset}: ${errorMsg}`);
+          batchErrors.push(`Offset ${offset}: ${errorMsg}`);
+
+          // Continue to next batch instead of failing completely
+          offset += batchSize;
+          // Check if we should continue (don't infinite loop on persistent errors)
+          if (batchErrors.length >= 3) {
+            logger.serviceError('Too many batch errors, stopping indexing');
+            break;
+          }
+        }
       }
 
-      // Index items
-      const processed = await this.indexBatch(items, version, itemType, batchSize);
-
-      // Update metadata
-      await this.services.d1Repository.updateIndexMetadata(version, processed, 'in_progress');
+      // Mark as completed
+      await this.services.d1Repository.updateIndexMetadata(version, totalProcessed, 'completed');
 
       return {
         success: true,
-        message: `Indexed ${processed} ${itemType} items`,
+        message: `Indexed ${totalProcessed} ${itemType} items (all batches complete)`,
         version,
-        processed,
+        processed: totalProcessed,
         itemType,
-        nextOffset: offset + batchSize,
-        hasMore: items.length === batchSize,
+        errors: batchErrors.length > 0 ? batchErrors : undefined,
       };
     } finally {
       // Release lock
@@ -197,11 +224,11 @@ export class IndexingService {
       const metadata = await this.services.d1Repository.getLastIndexMetadata();
       return metadata
         ? {
-            version: metadata.version,
-            indexed_at: metadata.indexed_at,
-            total_skills: metadata.total_skills,
-            status: metadata.status,
-          }
+          version: metadata.version,
+          indexed_at: metadata.indexed_at,
+          total_skills: metadata.total_skills,
+          status: metadata.status,
+        }
         : { error: 'No indexing metadata found', status: 'never' };
     } catch (error) {
       logger.databaseError('Error getting index progress', undefined, {
@@ -228,19 +255,19 @@ export class IndexingService {
    */
   private buildTechnologyEmbeddingText(item: any): string {
     const parts: string[] = [];
-    
+
     // Core identification
     parts.push(item.name);
     if (item.experience) parts.push(item.experience);
     if (item.level) parts.push(item.level);
-    
+
     // Rich context for semantic search
     if (item.summary) parts.push(item.summary);
     if (item.action) parts.push(item.action);
     if (item.effect) parts.push(item.effect);
     if (item.outcome) parts.push(item.outcome);
     if (item.related_project) parts.push(item.related_project);
-    
+
     return parts.join(' ');
   }
 }

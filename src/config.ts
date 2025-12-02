@@ -85,12 +85,14 @@ export const ENDPOINTS = {
   QUOTA_RESET: '/quota/reset',
   QUOTA_SYNC: '/quota/sync',
   ADMIN_QUOTA: '/admin/quota',
+  ADMIN_APPLY: '/api/admin/apply',
   DEBUG_VECTOR: '/debug/vector',
   IDS: '/ids',
   INDEX_PROGRESS: '/index/progress',
   INDEX_RESUME: '/index/resume',
   INDEX_STOP: '/index/stop',
   API_TECHNOLOGIES: '/api/technologies',
+  API_CATEGORIES: '/api/categories',
   ROOT: '/',
 } as const;
 
@@ -147,10 +149,10 @@ export const AI_STOP_SEQUENCES = [
 export const PROMPT_CONFIG = {
   /** Maximum sentences in response (laconic style) */
   MAX_SENTENCES: 2,
-  
+
   /** Maximum words in response */
   MAX_WORDS: 40,
-  
+
   /**
    * Long exposure threshold in years
    * Skills with this many years are highlighted in context

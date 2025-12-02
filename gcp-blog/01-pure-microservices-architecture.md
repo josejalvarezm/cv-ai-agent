@@ -1,4 +1,4 @@
-# Pure Microservices Architecture: What 87.5% Really Means
+# Pure Microservices Architecture: What 87.5% Really Means (GCP Series: Real-time Analytics & Firestore, Part II)
 
 *Six services across three clouds scored against 8 independence criteria: deployment, versioning, storage, scaling, CI/CD, management, communication, and infrastructure, achieving 87.5% purity with measured trade-offs.*
 
@@ -636,8 +636,6 @@ User → Cloudflare Worker (12ms) → AWS DynamoDB (fire-and-forget)
 
 **From this series:**
 
-- [00-series-overview.md](./00-series-overview.md) - Series introduction and architecture metrics
-- Part 2: Infrastructure as Code (coming next)
 
 **External resources:**
 
@@ -645,14 +643,3 @@ User → Cloudflare Worker (12ms) → AWS DynamoDB (fire-and-forget)
 - [Sam Newman: Building Microservices](https://samnewman.io/books/building_microservices_2nd_edition/)
 - [Semantic Versioning 2.0.0](https://semver.org/)
 
-**CV Analytics documentation:**
-
-- [PURE-MICROSERVICES-ARCHITECTURE.md](https://github.com/josejalvarezm/cv-analytics-dashboard-private/blob/main/PURE-MICROSERVICES-ARCHITECTURE.md)
-- [ARCHITECTURE-COMPLETE.md](https://github.com/josejalvarezm/cv-analytics-dashboard-private/blob/main/ARCHITECTURE-COMPLETE.md)
-
----
-
-**Author:** José Álvarez  
-**Series:** CV Analytics Multi-Cloud Microservices  
-**Published:** November 2025  
-**Tags:** microservices, architecture, multi-cloud, GCP, AWS, event-driven

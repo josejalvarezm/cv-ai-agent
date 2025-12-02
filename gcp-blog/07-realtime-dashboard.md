@@ -1,6 +1,6 @@
-# Real-Time Dashboard: React, TypeScript, and Firestore WebSockets
+# Real-Time Dashboard: React, TypeScript, and Firestore WebSockets (GCP Series: Real-time Analytics & Firestore, Part VIII)
 
-*Building a real-time analytics dashboard with React, TypeScript, Vite, and Firestore WebSocket listeners—eliminating polling overhead, achieving instant updates across cloud boundaries, and visualizing cross-cloud data flow from AWS Lambda to GCP to browser.*
+*Building a real-time analytics dashboard with React, TypeScript, Vite, and Firestore WebSocket listeners, eliminating polling overhead, achieving instant updates across cloud boundaries, and visualizing cross-cloud data flow from AWS Lambda to GCP to browser.*
 
 ## Quick Summary
 
@@ -34,6 +34,7 @@ After switching to Firestore real-time listeners, updates appear instantly. WebS
 This post explains how CV Analytics built a production-grade real-time dashboard:
 
 **You'll learn:**
+
 - ✓ React + TypeScript + Vite modern stack setup
 - ✓ Firestore real-time listeners (WebSocket-based, no polling)
 - ✓ Data visualization with Recharts (responsive charts)
@@ -44,6 +45,7 @@ This post explains how CV Analytics built a production-grade real-time dashboard
 **Why real-time matters for analytics:**
 
 Analytics dashboards lose value with stale data:
+
 - **Monitoring**: Can't detect issues if data is 5 minutes old
 - **Debugging**: Need immediate feedback when testing changes
 - **User experience**: Manual refresh feels broken
@@ -67,12 +69,14 @@ setInterval(async () => {
 ```
 
 **Problems:**
+
 - Wastes bandwidth (requests when nothing changed)
 - Increases latency (wait up to 30 seconds for updates)
 - Scales poorly (N users = N polling requests every 30s)
 - Costs money (every poll = 1 read operation)
 
 **CV Analytics with polling (before):**
+
 - 120 requests/hour per user
 - 5 concurrent users = 600 requests/hour
 - 99% of requests: "no changes"
@@ -93,6 +97,7 @@ socket.onmessage = (event) => {
 ```
 
 **Benefits:**
+
 - Zero polling (server pushes updates)
 - Instant updates (200ms latency)
 - Scales well (1 connection per user, idle when no updates)
@@ -101,6 +106,7 @@ socket.onmessage = (event) => {
 **Firestore real-time listeners** use WebSockets under the hood. You get WebSocket benefits without managing connections.
 
 **CV Analytics with WebSockets (after):**
+
 - 1 connection per user
 - Updates pushed when data changes
 - 0 wasted requests
@@ -109,6 +115,7 @@ socket.onmessage = (event) => {
 **Building production-grade React apps:**
 
 CV Analytics dashboard requirements:
+
 - ✓ Type safety (TypeScript prevents runtime errors)
 - ✓ Fast builds (Vite compiles in <1 second)
 - ✓ Component reusability (custom hooks, composition)
@@ -146,7 +153,7 @@ npm install
 npm run dev
 ```
 
-Server starts at http://localhost:5173 in <1 second.
+Server starts at <http://localhost:5173> in <1 second.
 
 **`vite.config.ts`:**
 
@@ -362,6 +369,7 @@ dashboard/
 ```
 
 **Component organisation principles:**
+
 - Small, focused components (single responsibility)
 - Extract reusable logic to custom hooks
 - Colocate related files (component + test + styles)
@@ -543,6 +551,7 @@ onSnapshot(q, (snapshot) => {
 ```
 
 **Query operators:**
+
 - `==`, `!=`, `>`, `>=`, `<`, `<=`
 - `in`, `not-in` (array membership)
 - `array-contains`, `array-contains-any`
@@ -612,6 +621,7 @@ function QueryList() {
 ```
 
 **Critical:** Always return cleanup function from `useEffect`. Forgetting this causes:
+
 - Memory leaks (listener never removed)
 - Multiple active listeners (re-renders create new listeners)
 - Wasted Firestore reads (old listeners still active)
@@ -1044,6 +1054,7 @@ firebase init hosting
 ```
 
 **Select options:**
+
 - Public directory: `dist` (Vite output)
 - Single-page app: Yes
 - Automatic builds: No (GitHub Actions handles this)
@@ -1103,6 +1114,7 @@ firebase deploy     # Uploads to Firebase Hosting
 ### CDN and Global Edge Locations
 
 Firebase Hosting uses Google Cloud CDN:
+
 - 200+ edge locations worldwide
 - Automatic geo-routing (serves from nearest edge)
 - Sub-100ms latency globally
@@ -1110,6 +1122,7 @@ Firebase Hosting uses Google Cloud CDN:
 - HTTP/2 and HTTP/3 support
 
 **CV Analytics performance:**
+
 - London: 15ms latency
 - New York: 45ms latency
 - Tokyo: 85ms latency
@@ -1124,6 +1137,7 @@ firebase hosting:channel:deploy production --only cv-analytics.com
 ```
 
 **DNS configuration:**
+
 - Add A records pointing to Firebase IPs
 - Firebase provisions SSL certificate (Let's Encrypt)
 - Certificate renews automatically
@@ -1212,12 +1226,14 @@ function Dashboard({ queries }: { queries: CVQuery[] }) {
 ### Lighthouse Scores
 
 **CV Analytics scores (November 2025):**
+
 - Performance: 95
 - Accessibility: 100
 - Best Practices: 100
 - SEO: 92
 
 **Optimization techniques applied:**
+
 - Code splitting (lazy loading)
 - Image optimization (WebP format)
 - Font preloading
@@ -1233,23 +1249,27 @@ Real-time isn't always best. Consider trade-offs.
 ### WebSocket Connection Overhead
 
 **Real-time costs:**
+
 - Persistent connection (1 connection per user)
 - Mobile battery drain (keep-alive packets)
 - Firestore charges per document change
 - 100 users watching same data = 100 read events
 
 **Polling costs:**
+
 - Request overhead (HTTP handshake each poll)
 - Server load (N users × polls per minute)
 - Delayed updates (poll interval latency)
 
 **When real-time wins:**
+
 - Critical updates (monitoring dashboards)
 - Collaborative apps (multiple users editing)
 - Chat applications
 - Live sports scores
 
 **When polling wins:**
+
 - Batch analytics (updated hourly/daily)
 - Public data (same for all users, cache aggressively)
 - Mobile apps (save battery)
@@ -1257,15 +1277,18 @@ Real-time isn't always best. Consider trade-offs.
 ### Firestore Read Costs
 
 **Pricing (November 2025):**
+
 - 50,000 reads/day: Free
 - After that: $0.06 per 100,000 reads
 
 **Real-time listener behaviour:**
+
 - Initial query: 1 read per document
 - Updates: 1 read per modified document
 - New documents: 1 read per new document
 
 **Example:**
+
 - 1,000 documents in collection
 - User connects: 1,000 reads (initial load)
 - 10 documents updated: 10 reads
@@ -1344,18 +1367,21 @@ Building real-time dashboard in 2 weeks:
 ### Week 1: Foundation
 
 **Day 1-2: Setup Vite + TypeScript**
+
 - ✓ Create project: `npm create vite@latest`
 - ✓ Configure TypeScript
 - ✓ Setup Tailwind CSS
 - ✓ Project structure
 
 **Day 3-4: Firebase Integration**
+
 - ✓ Create Firebase project
 - ✓ Setup Firestore
 - ✓ Configure Firebase SDK
 - ✓ Test basic query
 
 **Day 5-7: Real-time Hooks**
+
 - ✓ Create useAnalytics hook
 - ✓ Implement onSnapshot listeners
 - ✓ Test real-time updates
@@ -1364,18 +1390,21 @@ Building real-time dashboard in 2 weeks:
 ### Week 2: UI and Deployment
 
 **Day 8-10: Components**
+
 - ✓ Dashboard layout
 - ✓ Stats cards
 - ✓ Query list
 - ✓ Loading states
 
 **Day 11-12: Charts**
+
 - ✓ Install Recharts
 - ✓ Line chart (trends)
 - ✓ Bar chart (comparisons)
 - ✓ Custom tooltips
 
 **Day 13-14: Deployment**
+
 - ✓ Firebase Hosting setup
 - ✓ Build optimization
 - ✓ Deploy to production
@@ -1384,26 +1413,31 @@ Building real-time dashboard in 2 weeks:
 ### Key Principles
 
 **1. Vite for fast builds:**
+
 - Dev server starts in <1s
 - Hot module replacement instant
 - Production builds optimized
 
 **2. TypeScript for safety:**
+
 - Catch errors at compile time
 - IDE autocomplete
 - Refactoring confidence
 
 **3. Firestore for real-time:**
+
 - No polling needed
 - WebSocket-based updates
 - Scales automatically
 
 **4. Recharts for visualization:**
+
 - Declarative API
 - Responsive by default
 - Customizable
 
 **5. Firebase Hosting for global CDN:**
+
 - Deploy in 30 seconds
 - HTTPS automatic
 - Global edge locations
@@ -1411,11 +1445,13 @@ Building real-time dashboard in 2 weeks:
 ### Success Metrics
 
 **Performance:**
+
 - Lighthouse score: 95+
 - Time to interactive: <2s
 - Bundle size: <150 KB
 
 **User experience:**
+
 - Real-time updates: <200ms latency
 - Mobile-friendly: Responsive design
 - Offline support: IndexedDB caching
@@ -1431,6 +1467,7 @@ CV Analytics achieved these metrics with 2 weeks of focused development.
 Dashboard built. Now: how to keep it running at £0/month.
 
 Part 8 covers:
+
 - ✓ Cloudflare Workers free tier (100K req/day)
 - ✓ AWS Lambda free tier (1M requests/month)
 - ✓ DynamoDB always-free tier (25 GB)

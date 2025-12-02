@@ -1,6 +1,6 @@
-# Automated Deployments with GitHub Actions: Multi-Cloud CI/CD
+# Automated Deployments with GitHub Actions: Multi-Cloud CI/CD (GCP Series: Real-time Analytics & Firestore, Part VI)
 
-*Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2—with automated testing, secrets management, and zero-downtime deployments across three clouds.*
+*Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2, with automated testing, secrets management, and zero-downtime deployments across three clouds.*
 
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)
@@ -34,6 +34,7 @@ After automating with GitHub Actions, every git push triggers tested deployments
 This post explains how CV Analytics uses GitHub Actions for multi-cloud CI/CD across three clouds:
 
 **You'll learn:**
+
 - ✓ GitHub Actions fundamentals (workflows, jobs, steps, triggers)
 - ✓ 6 independent pipelines for Angular CV site, Cloudflare Worker, React dashboard, GCP webhook, AWS processor, AWS reporter
 - ✓ Multi-cloud deployments to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, AWS Lambda
@@ -44,6 +45,7 @@ This post explains how CV Analytics uses GitHub Actions for multi-cloud CI/CD ac
 **Why CI/CD matters for microservices:**
 
 Microservices architectures create deployment complexity. CV Analytics has 6 independent services across 3 cloud providers (Cloudflare, AWS, GCP). Manual coordination fails:
+
 - Forgotten environment variables break production (3 clouds = 3 different secret managers)
 - Stale builds deploy outdated code
 - No consistent testing before deployment
@@ -54,6 +56,7 @@ Microservices architectures create deployment complexity. CV Analytics has 6 ind
 **The cost of manual deployments:**
 
 Every manual deployment introduces risk:
+
 1. **Human error**: Typos in gcloud/aws commands
 2. **Inconsistency**: Different steps each time
 3. **No audit trail**: Who deployed what, when?
@@ -67,6 +70,7 @@ Automation eliminates these problems. Push code, pipeline handles everything.
 GitHub Actions integrates directly with your repository. No external CI/CD platform required. Workflows defined in .github/workflows/ alongside your code.
 
 **Advantages:**
+
 - Free for public repos (2,000 minutes/month for private repos)
 - GitHub-hosted runners (Ubuntu, Windows, macOS)
 - Built-in secrets management
@@ -76,6 +80,7 @@ GitHub Actions integrates directly with your repository. No external CI/CD platf
 **How independent pipelines enable velocity:**
 
 CV Analytics runs 6 separate workflows across 3 clouds:
+
 1. **Angular CV site pipeline**: Angular build → Cloudflare Pages
 2. **Cloudflare Worker pipeline**: TypeScript build → Cloudflare Workers
 3. **React Dashboard pipeline**: React build → Firebase Hosting
@@ -98,18 +103,21 @@ GitHub Actions orchestrates CI/CD through **workflows**, **jobs**, and **steps**
 ### Workflow, Job, Step Hierarchy
 
 **Workflow** (top level):
+
 - YAML file in .github/workflows/
 - Defines when to run (triggers)
 - Contains one or more jobs
 - Example: deploy-dashboard.yml
 
 **Job** (middle level):
+
 - Named unit of work
 - Runs on a runner (virtual machine)
 - Can run in parallel or sequentially
 - Example: build, test, deploy
 
 **Step** (bottom level):
+
 - Individual command or action
 - Runs inside a job
 - Sequential execution
@@ -144,6 +152,7 @@ graph TD
 GitHub Actions supports multiple trigger types:
 
 **1. Push triggers** (most common):
+
 ```yaml
 on:
   push:
@@ -154,26 +163,32 @@ on:
       - 'src/**'
       - 'package.json'
 ```
+
 Runs on every push to specified branches/paths. CV Analytics uses this for automatic deployments.
 
 **2. Pull request triggers** (for testing):
+
 ```yaml
 on:
   pull_request:
     branches:
       - main
 ```
+
 Runs on PR creation/update. Use for tests before merging.
 
 **3. Schedule triggers** (cron jobs):
+
 ```yaml
 on:
   schedule:
     - cron: '0 2 * * *'  # 2am UTC daily
 ```
+
 CV Analytics reporter uses this for daily summary generation.
 
 **4. Manual triggers** (workflow_dispatch):
+
 ```yaml
 on:
   workflow_dispatch:
@@ -183,19 +198,23 @@ on:
         required: true
         default: 'staging'
 ```
+
 Adds "Run workflow" button in GitHub UI. Useful for controlled deployments.
 
 **5. Repository events** (release, issue, etc.):
+
 ```yaml
 on:
   release:
     types: [published]
 ```
+
 CV Analytics uses this for semantic versioning workflows (Part 6).
 
 ### Runners: Where Jobs Execute
 
 **GitHub-hosted runners** (CV Analytics uses these):
+
 - Ubuntu, Windows, macOS available
 - Clean VM for each job
 - Pre-installed tools (Node.js, Python, Docker, AWS CLI, gcloud)
@@ -203,6 +222,7 @@ CV Analytics uses this for semantic versioning workflows (Part 6).
 - Free for public repos
 
 **Self-hosted runners** (for special cases):
+
 - Your own infrastructure
 - Persistent environment
 - Custom tools/configs
@@ -210,6 +230,7 @@ CV Analytics uses this for semantic versioning workflows (Part 6).
 - CV Analytics doesn't need these (GitHub-hosted sufficient)
 
 **Runner selection:**
+
 ```yaml
 jobs:
   deploy:
@@ -224,12 +245,14 @@ jobs:
 GitHub Actions provides secure secret storage:
 
 **Repository secrets** (CV Analytics uses 7):
+
 - Encrypted at rest (AES-256)
 - Never logged or exposed
 - Accessible via ${{ secrets.SECRET_NAME }}
 - Per-repository or organisation-wide
 
 **Example secret usage:**
+
 ```yaml
 steps:
   - name: Deploy to Firebase
@@ -239,6 +262,7 @@ steps:
 ```
 
 **Environment variables** (non-secret config):
+
 ```yaml
 env:
   NODE_ENV: production
@@ -249,6 +273,7 @@ steps:
 ```
 
 **Built-in environment variables:**
+
 - ${{ github.repository }}: repo name
 - ${{ github.sha }}: commit SHA
 - ${{ github.ref }}: branch/tag ref
@@ -259,6 +284,7 @@ steps:
 Reusable actions from community/GitHub:
 
 **CV Analytics uses:**
+
 - actions/checkout@v3 (clone repo)
 - actions/setup-node@v3 (install Node.js)
 - actions/setup-go@v4 (install Go)
@@ -267,6 +293,7 @@ Reusable actions from community/GitHub:
 - aws-actions/configure-aws-credentials@v2 (AWS authentication)
 
 **Example action usage:**
+
 ```yaml
 steps:
   - uses: actions/checkout@v3
@@ -280,6 +307,7 @@ steps:
 ```
 
 **Custom actions** (not needed for CV Analytics):
+
 - Docker container actions
 - JavaScript actions
 - Composite actions (reusable workflow fragments)
@@ -389,6 +417,7 @@ jobs:
 ### Trigger Configuration
 
 **Push to main with path filters:**
+
 ```yaml
 on:
   push:
@@ -405,6 +434,7 @@ on:
 **Why path filters?** Changing documentation shouldn't trigger deployments. CV Analytics only deploys when code/dependencies change.
 
 **No paths filter alternative:**
+
 ```yaml
 paths-ignore:
   - '**.md'
@@ -422,6 +452,7 @@ paths-ignore:
 4. Action uses this token for authentication
 
 **Alternative: firebase login:ci** (deprecated):
+
 ```bash
 firebase login:ci
 # Outputs token, store in GitHub Secrets
@@ -434,6 +465,7 @@ Google recommends service accounts for CI/CD (more granular permissions).
 Dashboard needs different API URLs per environment:
 
 **Production:**
+
 ```yaml
 env:
   REACT_APP_API_URL: https://us-central1-cv-analytics-prod.cloudfunctions.net/webhook-receiver
@@ -441,6 +473,7 @@ env:
 ```
 
 **Staging:**
+
 ```yaml
 env:
   REACT_APP_API_URL: https://us-central1-cv-analytics-staging.cloudfunctions.net/webhook-receiver
@@ -450,6 +483,7 @@ env:
 React embeds these at build time (REACT_APP_* prefix required).
 
 **Multiple environments workflow:**
+
 ```yaml
 on:
   push:
@@ -483,16 +517,19 @@ jobs:
 ### CDN Cache Invalidation
 
 Firebase Hosting uses Google Cloud CDN. After deployment:
+
 - New files immediately available
 - Existing files cached (up to 1 hour by default)
 - Users might see stale content
 
 **Firebase handles cache invalidation automatically:**
+
 - Generates unique URLs for assets (content hashing)
 - index.html has short cache (1 hour)
 - JS/CSS bundles have long cache (1 year)
 
 **Example build output:**
+
 ```
 build/static/js/main.a1b2c3d4.js
 build/static/css/main.e5f6g7h8.css
@@ -501,6 +538,7 @@ build/static/css/main.e5f6g7h8.css
 Content hash (a1b2c3d4) changes when code changes. CDN serves new file.
 
 **Manual cache clearing** (not needed for CV Analytics):
+
 ```yaml
 - name: Clear CDN cache
   run: |
@@ -512,6 +550,7 @@ Content hash (a1b2c3d4) changes when code changes. CDN serves new file.
 ### Deployment Verification
 
 Firebase action outputs deployment URL:
+
 ```yaml
 - name: Deploy to Firebase
   id: deploy
@@ -525,6 +564,7 @@ Firebase action outputs deployment URL:
 ```
 
 **Health check endpoint** (recommended):
+
 ```yaml
 - name: Health check
   run: |
@@ -540,12 +580,14 @@ CV Analytics dashboard includes /health endpoint returning {"status": "ok"}.
 ### Build Optimisation
 
 **npm ci vs npm install:**
+
 - `npm ci`: Clean install from package-lock.json (reproducible)
 - `npm install`: Updates package-lock.json (non-reproducible)
 
 Always use `npm ci` in CI/CD.
 
 **Caching dependencies:**
+
 ```yaml
 - uses: actions/setup-node@v3
   with:
@@ -556,6 +598,7 @@ Always use `npm ci` in CI/CD.
 First build: 90 seconds. Subsequent builds (cache hit): 30 seconds.
 
 **Build matrix** (test multiple Node versions):
+
 ```yaml
 strategy:
   matrix:
@@ -705,6 +748,7 @@ jobs:
 ### Go Build Process
 
 **Go modules** (dependency management):
+
 ```yaml
 - name: Download dependencies
   run: go mod download
@@ -713,6 +757,7 @@ jobs:
 Caches dependencies between builds. go.mod/go.sum lock versions.
 
 **Testing before deployment:**
+
 ```yaml
 - name: Run tests
   run: go test -v -race -coverprofile=coverage.out ./...
@@ -726,6 +771,7 @@ Caches dependencies between builds. go.mod/go.sum lock versions.
 Tests must pass before deployment proceeds.
 
 **Build verification** (optional for Cloud Functions):
+
 ```yaml
 - name: Build
   run: go build -v .
@@ -743,6 +789,7 @@ Cloud Functions compiles Go code during deployment. Local build verifies compila
    - Cloud Build Service Account
 
 2. Generate JSON key:
+
 ```bash
 gcloud iam service-accounts keys create key.json \
   --iam-account github-actions@cv-analytics-prod.iam.gserviceaccount.com
@@ -751,6 +798,7 @@ gcloud iam service-accounts keys create key.json \
 3. Store in GitHub Secrets as `GCP_SA_KEY`
 
 4. Authenticate in workflow:
+
 ```yaml
 - uses: google-github-actions/auth@v1
   with:
@@ -758,6 +806,7 @@ gcloud iam service-accounts keys create key.json \
 ```
 
 **Workload Identity Federation** (more secure, no keys):
+
 ```yaml
 - uses: google-github-actions/auth@v1
   with:
@@ -770,6 +819,7 @@ CV Analytics uses service account keys (simpler setup). Workload Identity Federa
 ### Cloud Functions Deployment
 
 **gcloud functions deploy command:**
+
 ```bash
 gcloud functions deploy webhook-receiver \
   --gen2 \                    # 2nd generation Cloud Functions
@@ -783,12 +833,14 @@ gcloud functions deploy webhook-receiver \
 ```
 
 **Generation 2 vs Generation 1:**
+
 - Gen 2: Cloud Run based, better scaling, longer timeouts (60 minutes)
 - Gen 1: Legacy, 9-minute timeout
 
 Always use Gen 2 for new functions.
 
 **Entry point** (Go function signature):
+
 ```go
 package webhook
 
@@ -811,11 +863,13 @@ Entry point must match `--entry-point` flag.
 ### Environment Variables Injection
 
 **Secrets as environment variables:**
+
 ```yaml
 --set-env-vars GITHUB_SECRET=${{ secrets.GITHUB_WEBHOOK_SECRET }},FIRESTORE_COLLECTION=cv_events
 ```
 
 **Access in Go code:**
+
 ```go
 import "os"
 
@@ -826,6 +880,7 @@ func validateSignature(payload []byte, signature string) bool {
 ```
 
 **Multiple variables:**
+
 ```bash
 --set-env-vars \
   VAR1=value1,\
@@ -834,11 +889,13 @@ func validateSignature(payload []byte, signature string) bool {
 ```
 
 **Environment file** (alternative):
+
 ```yaml
 --env-vars-file .env.yaml
 ```
 
 .env.yaml:
+
 ```yaml
 GITHUB_SECRET: "secret-value"
 FIRESTORE_COLLECTION: "cv_events"
@@ -851,25 +908,30 @@ CV Analytics uses inline `--set-env-vars` (clearer in workflow).
 **Cloud Function service account:**
 
 Each Cloud Function runs as a service account. CV Analytics uses default Compute Engine service account:
+
 ```
 PROJECT_NUMBER-compute@developer.gserviceaccount.com
 ```
 
 **Custom service account** (better security):
+
 ```yaml
 --service-account webhook-sa@cv-analytics-prod.iam.gserviceaccount.com
 ```
 
 Grant minimal permissions:
+
 - Firestore User (write to cv_events collection)
 - Cloud Logging Writer (write logs)
 
 **IAM binding for public access:**
+
 ```yaml
 --allow-unauthenticated
 ```
 
 Equivalent to:
+
 ```bash
 gcloud functions add-iam-policy-binding webhook-receiver \
   --region us-central1 \
@@ -882,6 +944,7 @@ Webhook must be public (GitHub calls it). Security via HMAC signature validation
 ### Deployment Verification
 
 **Get function URL:**
+
 ```bash
 FUNCTION_URL=$(gcloud functions describe webhook-receiver \
   --region us-central1 \
@@ -889,6 +952,7 @@ FUNCTION_URL=$(gcloud functions describe webhook-receiver \
 ```
 
 **Health check endpoint:**
+
 ```go
 func receiveWebhook(w http.ResponseWriter, r *http.Request) {
     if r.URL.Path == "/health" {
@@ -901,6 +965,7 @@ func receiveWebhook(w http.ResponseWriter, r *http.Request) {
 ```
 
 **Verify in workflow:**
+
 ```yaml
 - name: Verify deployment
   run: |
@@ -1115,6 +1180,7 @@ jobs:
 ### Node.js Build and Packaging
 
 **Production dependencies only:**
+
 ```yaml
 - name: Install dependencies
   run: npm ci --production
@@ -1123,6 +1189,7 @@ jobs:
 `--production` excludes devDependencies (smaller package, faster deployment).
 
 **Creating ZIP package:**
+
 ```bash
 zip -r function.zip . \
   -x "*.git*" \           # Exclude .git directory
@@ -1132,12 +1199,14 @@ zip -r function.zip . \
 ```
 
 **Lambda deployment package requirements:**
+
 - Must be ZIP or container image
 - Maximum size: 50 MB (zipped), 250 MB (unzipped)
 - Must include all dependencies (no npm install at runtime)
 - Must have handler file at root or in specified path
 
 **Lambda handler** (Node.js):
+
 ```javascript
 // index.js
 exports.handler = async (event) => {
@@ -1155,6 +1224,7 @@ Handler format: `filename.exportedFunction` (e.g., `index.handler`).
 ### AWS CLI Authentication
 
 **Access keys approach** (CV Analytics uses this):
+
 ```yaml
 - uses: aws-actions/configure-aws-credentials@v2
   with:
@@ -1166,12 +1236,14 @@ Handler format: `filename.exportedFunction` (e.g., `index.handler`).
 Store IAM user access keys in GitHub Secrets.
 
 **IAM user permissions required:**
+
 - lambda:UpdateFunctionCode
 - lambda:UpdateFunctionConfiguration
 - lambda:PublishVersion
 - lambda:GetFunction
 
 **OIDC/Workload Identity** (more secure, no long-lived keys):
+
 ```yaml
 - uses: aws-actions/configure-aws-credentials@v2
   with:
@@ -1184,6 +1256,7 @@ Requires OIDC provider configuration in AWS IAM.
 ### Lambda Deployment Strategies
 
 **1. Update function code** (CV Analytics uses this):
+
 ```bash
 aws lambda update-function-code \
   --function-name cv-processor \
@@ -1195,6 +1268,7 @@ Pros: Simple, fast (~10 seconds).
 Cons: No blue/green, no gradual rollout.
 
 **2. Function versioning:**
+
 ```bash
 # Update $LATEST
 aws lambda update-function-code --function-name cv-processor --zip-file fileb://function.zip
@@ -1213,6 +1287,7 @@ Pros: Immutable versions, easy rollback.
 Cons: More complex workflow.
 
 **3. Blue/green with traffic shifting:**
+
 ```bash
 aws lambda update-alias \
   --function-name cv-processor \
@@ -1224,6 +1299,7 @@ Pros: Gradual rollout, canary testing.
 Cons: Requires aliases and versions.
 
 **4. CloudFormation/SAM deployment:**
+
 ```yaml
 # template.yaml
 Resources:
@@ -1248,10 +1324,12 @@ CV Analytics uses simple update-function-code (sufficient for small projects).
 ### Function Versioning
 
 **Lambda versions:**
+
 - `$LATEST`: Mutable, always points to latest code
 - `1, 2, 3, ...`: Immutable versions
 
 **Publishing version:**
+
 ```bash
 aws lambda publish-version \
   --function-name cv-processor \
@@ -1261,6 +1339,7 @@ aws lambda publish-version \
 Returns version number (e.g., 5).
 
 **Aliases** (pointers to versions):
+
 ```bash
 aws lambda create-alias \
   --function-name cv-processor \
@@ -1271,6 +1350,7 @@ aws lambda create-alias \
 Invoke via alias: `arn:aws:lambda:us-east-1:ACCOUNT:function:cv-processor:production`
 
 **Rollback to previous version:**
+
 ```bash
 aws lambda update-alias \
   --function-name cv-processor \
@@ -1287,12 +1367,14 @@ CV Analytics doesn't use versions/aliases yet (planned for Part 6: Semantic Vers
 Lambda automatically sends logs to CloudWatch Logs. No configuration needed.
 
 **Log group naming:**
+
 ```
 /aws/lambda/cv-processor
 /aws/lambda/cv-reporter
 ```
 
 **Logging in Node.js:**
+
 ```javascript
 exports.handler = async (event) => {
     console.log('Processing event:', JSON.stringify(event));
@@ -1301,6 +1383,7 @@ exports.handler = async (event) => {
 ```
 
 **Structured logging** (recommended):
+
 ```javascript
 const log = (level, message, context = {}) => {
     console.log(JSON.stringify({
@@ -1315,6 +1398,7 @@ log('info', 'Processing CV event', { eventId: event.id });
 ```
 
 **Viewing logs in workflow:**
+
 ```yaml
 - name: Check recent logs
   run: |
@@ -1324,6 +1408,7 @@ log('info', 'Processing CV event', { eventId: event.id });
 ```
 
 **CloudWatch metrics:**
+
 - Invocations (count)
 - Duration (ms)
 - Errors (count)
@@ -1341,6 +1426,7 @@ Lambda pipelines complete. Next: secrets management across all workflows.
 CV Analytics uses 12+ secrets across 6 repositories and 3 cloud providers. GitHub Secrets provides encrypted storage. Secrets never appear in logs or workflow files.
 
 **Multi-cloud secrets coordination:**
+
 - **Angular CV site** (Vercel): `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`
 - **Cloudflare Worker**: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AWS_ACCESS_KEY_ID` (for DynamoDB)
 - **React Dashboard** (Firebase): `FIREBASE_TOKEN`, `GCP_PROJECT_ID`
@@ -1403,6 +1489,7 @@ graph TB
 ### GitHub Secrets Configuration
 
 **Adding secrets via UI:**
+
 1. Repository → Settings → Secrets and variables → Actions
 2. Click "New repository secret"
 3. Name: FIREBASE_TOKEN
@@ -1410,6 +1497,7 @@ graph TB
 5. Click "Add secret"
 
 **Adding secrets via CLI:**
+
 ```bash
 # Using GitHub CLI
 gh secret set FIREBASE_TOKEN < token.txt
@@ -1425,6 +1513,7 @@ curl -X PUT \
 **Organisation secrets** (shared across repos):
 
 For AWS credentials used by processor + reporter:
+
 1. Organisation → Settings → Secrets
 2. Add AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 3. Select repository access (All repositories or Selected repositories)
@@ -1434,11 +1523,13 @@ CV Analytics uses repository-level secrets (clearer permissions).
 ### CV Analytics Secrets Inventory
 
 **1. Dashboard repository:**
+
 - `FIREBASE_TOKEN`: Service account key for Firebase deployment
 - **Generation:** `firebase login:ci` or GCP Console → IAM → Service Accounts
 - **Permissions:** Firebase Admin
 
 **2. Webhook repository:**
+
 - `GCP_SA_KEY`: Service account JSON key for Cloud Functions deployment
   - **Generation:** `gcloud iam service-accounts keys create key.json`
   - **Permissions:** Cloud Functions Developer, Service Account User
@@ -1446,15 +1537,17 @@ CV Analytics uses repository-level secrets (clearer permissions).
   - **Not sensitive** but stored as secret for consistency
 
 **3. Processor repository:**
+
 - `AWS_ACCESS_KEY_ID`: IAM user access key
   - **Generation:** AWS Console → IAM → Users → Security credentials
   - **Permissions:** lambda:UpdateFunctionCode, lambda:UpdateFunctionConfiguration
 - `AWS_SECRET_ACCESS_KEY`: IAM user secret access key
   - **Generation:** Same as access key (shown once at creation)
-- `SQS_QUEUE_URL`: SQS queue URL (e.g., https://sqs.us-east-1.amazonaws.com/123456789/cv-queue)
+- `SQS_QUEUE_URL`: SQS queue URL (e.g., <https://sqs.us-east-1.amazonaws.com/123456789/cv-queue>)
   - **Not sensitive** but stored as secret for environment isolation
 
 **4. Reporter repository:**
+
 - `AWS_ACCESS_KEY_ID`: Same IAM user as processor (or separate user)
 - `AWS_SECRET_ACCESS_KEY`: Same secret key
 
@@ -1465,6 +1558,7 @@ CV Analytics uses repository-level secrets (clearer permissions).
 **1. Never commit secrets to git:**
 
 Add to .gitignore:
+
 ```gitignore
 # Secrets
 *.pem
@@ -1479,11 +1573,13 @@ secrets/
 **2. Use secret references, never hardcode:**
 
 ✗ **Bad:**
+
 ```yaml
 run: firebase deploy --token "1//abc123xyz..."
 ```
 
 ✓ **Good:**
+
 ```yaml
 env:
   FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
@@ -1495,11 +1591,13 @@ run: firebase deploy --token "$FIREBASE_TOKEN"
 GitHub Actions automatically masks secret values. Never echo secrets:
 
 ✗ **Bad:**
+
 ```yaml
 run: echo "Token: ${{ secrets.FIREBASE_TOKEN }}"
 ```
 
 ✓ **Good:**
+
 ```yaml
 run: echo "Token configured"
 ```
@@ -1532,6 +1630,7 @@ Environment secrets override repository secrets.
 **6. Use OIDC instead of long-lived keys** (where possible):
 
 **GCP Workload Identity Federation:**
+
 ```yaml
 - uses: google-github-actions/auth@v1
   with:
@@ -1542,6 +1641,7 @@ Environment secrets override repository secrets.
 No `GCP_SA_KEY` needed (GitHub generates short-lived token).
 
 **AWS OIDC:**
+
 ```yaml
 - uses: aws-actions/configure-aws-credentials@v2
   with:
@@ -1560,6 +1660,7 @@ No `AWS_SECRET_ACCESS_KEY` needed (GitHub exchanges OIDC token for AWS credentia
 - **AWS access keys:** Rotate every 90 days
 
 **Rotation procedure:**
+
 1. Generate new key in cloud provider
 2. Update GitHub Secret
 3. Test workflow with new key
@@ -1572,6 +1673,7 @@ Developer leaves team? Rotate all secrets they had access to.
 **3. Rotate on suspected compromise:**
 
 Secret leaked in logs? Rotate immediately:
+
 ```bash
 # GCP
 gcloud iam service-accounts keys delete KEY_ID --iam-account SA_EMAIL
@@ -1626,6 +1728,7 @@ CV Analytics rotates manually every 90 days (automation planned for future).
 **GitHub Actions automatic masking:**
 
 Secrets are automatically masked in logs:
+
 ```yaml
 env:
   SECRET: ${{ secrets.MY_SECRET }}
@@ -1635,6 +1738,7 @@ run: echo "Secret: $SECRET"
 Output: `Secret: ***`
 
 **Masking additional values:**
+
 ```yaml
 run: |
   TOKEN=$(generate-token)
@@ -1645,11 +1749,13 @@ run: |
 **Common leakage scenarios:**
 
 ✗ **Base64 encoding doesn't hide secrets:**
+
 ```yaml
 run: echo "${{ secrets.TOKEN }}" | base64  # Still logged!
 ```
 
 ✗ **Secrets in multiline strings:**
+
 ```yaml
 run: |
   cat <<EOF
@@ -1660,6 +1766,7 @@ run: |
 ```
 
 ✗ **Secrets in error messages:**
+
 ```javascript
 try {
     await deploy(process.env.FIREBASE_TOKEN);
@@ -1669,6 +1776,7 @@ try {
 ```
 
 ✓ **Safe error handling:**
+
 ```javascript
 try {
     await deploy(process.env.FIREBASE_TOKEN);
@@ -1743,6 +1851,7 @@ graph TB
 ### Per-Service Pipeline Triggers
 
 **Dashboard trigger:**
+
 ```yaml
 on:
   push:
@@ -1756,6 +1865,7 @@ on:
 Only deploys when dashboard code changes. Webhook updates don't trigger dashboard deployment.
 
 **Webhook trigger:**
+
 ```yaml
 on:
   push:
@@ -1768,6 +1878,7 @@ on:
 Only deploys when Go code changes. Dashboard updates don't trigger webhook deployment.
 
 **Processor trigger:**
+
 ```yaml
 on:
   push:
@@ -1780,6 +1891,7 @@ on:
 Only deploys when processor code changes.
 
 **Reporter trigger (dual):**
+
 ```yaml
 on:
   push:
@@ -1797,18 +1909,21 @@ Deploys on code changes AND runs daily report generation.
 Microservices promise independent evolution. Coordinated deployments break this promise:
 
 ✗ **Coordinated (monolith thinking):**
+
 - Deploy all services together
 - Wait for all tests to pass
 - One service failure blocks all deployments
 - Slow feedback loop
 
 ✓ **Independent (microservices thinking):**
+
 - Deploy each service separately
 - Each service tests independently
 - One failure doesn't block others
 - Fast feedback loop
 
 **CV Analytics independence:**
+
 - Dashboard deploys 10x/week
 - Webhook deploys 2x/week
 - Processor deploys 5x/week
@@ -1819,6 +1934,7 @@ Different velocity for different needs.
 **When coordination IS needed:**
 
 Breaking API changes require coordination:
+
 1. Webhook changes event schema
 2. Processor expects old schema
 3. Processor breaks
@@ -1832,6 +1948,7 @@ Prevent broken code from reaching main:
 **Repository → Settings → Branches → Add rule:**
 
 **Required settings:**
+
 - ✓ Require pull request reviews (1 approver minimum)
 - ✓ Require status checks to pass before merging
   - ✓ tests (must pass)
@@ -1841,6 +1958,7 @@ Prevent broken code from reaching main:
 - ✓ Do not allow bypassing the above settings
 
 **Status checks workflow:**
+
 ```yaml
 name: Tests
 
@@ -1862,6 +1980,7 @@ jobs:
 PR cannot merge until tests pass.
 
 **CV Analytics branch protection:**
+
 - All 4 repositories protected
 - Required: tests, build
 - Solo developer (no review requirement)
@@ -1872,6 +1991,7 @@ PR cannot merge until tests pass.
 **Automated checks before merge:**
 
 **1. Tests:**
+
 ```yaml
 - name: Run unit tests
   run: npm test -- --coverage
@@ -1886,6 +2006,7 @@ PR cannot merge until tests pass.
 ```
 
 **2. Linting:**
+
 ```yaml
 - name: Lint code
   run: npm run lint
@@ -1895,6 +2016,7 @@ PR cannot merge until tests pass.
 ```
 
 **3. Build verification:**
+
 ```yaml
 - name: Build production bundle
   run: npm run build
@@ -1909,6 +2031,7 @@ PR cannot merge until tests pass.
 ```
 
 **4. Security scanning:**
+
 ```yaml
 - name: Audit dependencies
   run: npm audit --audit-level=high
@@ -1920,6 +2043,7 @@ PR cannot merge until tests pass.
 ```
 
 **Pull request workflow** (runs on PR, not deployment):
+
 ```yaml
 name: PR Checks
 
@@ -1945,11 +2069,13 @@ PR checks run in parallel with main branch deployments (different triggers).
 **GitHub Environments** provide manual approval:
 
 **Repository → Settings → Environments → New environment:**
+
 - Name: production
 - ✓ Required reviewers (select reviewers)
 - ✓ Wait timer (optional, e.g., 5 minutes)
 
 **Workflow with approval:**
+
 ```yaml
 jobs:
   deploy-production:
@@ -1960,6 +2086,7 @@ jobs:
 ```
 
 **Approval flow:**
+
 1. Workflow triggered
 2. Reaches `environment: production` job
 3. Pauses, waits for reviewer approval
@@ -1967,11 +2094,13 @@ jobs:
 5. Workflow continues
 
 **CV Analytics doesn't use approval gates:**
+
 - Solo developer (no reviewer needed)
 - Branch protection provides safety
 - Serverless rollback is fast (if needed)
 
 **When to use approval gates:**
+
 - Production deployments in team environments
 - Financial/healthcare applications (compliance)
 - Major version releases
@@ -1990,6 +2119,7 @@ Pipelines fail. Authentication expires. Dependencies break. Here's how CV Analyt
 **Symptom:** Deployment fails with "Invalid credentials" or "Permission denied".
 
 **Causes:**
+
 1. Expired service account key
 2. Insufficient IAM permissions
 3. Wrong secret name in workflow
@@ -1998,11 +2128,13 @@ Pipelines fail. Authentication expires. Dependencies break. Here's how CV Analyt
 **Diagnosis:**
 
 **GCP authentication failure:**
+
 ```
 Error: google.auth.exceptions.RefreshError: The credentials do not contain the required field: type
 ```
 
 **Check:**
+
 ```yaml
 - name: Debug GCP auth
   run: |
@@ -2015,11 +2147,13 @@ Error: google.auth.exceptions.RefreshError: The credentials do not contain the r
 If length is 0, secret not configured.
 
 **AWS authentication failure:**
+
 ```
 Error: The security token included in the request is invalid
 ```
 
 **Check:**
+
 ```yaml
 - name: Debug AWS auth
   run: |
@@ -2029,13 +2163,17 @@ Error: The security token included in the request is invalid
 Shows authenticated user/role. Fails if credentials invalid.
 
 **Fixes:**
+
 1. Regenerate service account key:
+
    ```bash
    gcloud iam service-accounts keys create new-key.json \
      --iam-account SA_EMAIL
    ```
+
 2. Update GitHub Secret
 3. Verify IAM permissions:
+
    ```bash
    gcloud projects get-iam-policy PROJECT_ID \
      --flatten="bindings[].members" \
@@ -2049,33 +2187,39 @@ Shows authenticated user/role. Fails if credentials invalid.
 **Common causes:**
 
 **1. Dependency version conflicts:**
+
 ```
 npm ERR! Could not resolve dependency:
 npm ERR! peer react@"^17.0.0" from react-router-dom@6.0.0
 ```
 
 **Fix:**
+
 ```bash
 npm install react@17.0.0
 npm ci  # Verify lock file updated
 ```
 
 **2. Missing dependencies:**
+
 ```
 Error: Cannot find module '@google-cloud/firestore'
 ```
 
 **Fix:**
+
 ```bash
 npm install @google-cloud/firestore
 ```
 
 **3. Outdated lock file:**
+
 ```
 npm ERR! Errors were found in package-lock.json
 ```
 
 **Fix:**
+
 ```bash
 rm package-lock.json
 npm install
@@ -2083,11 +2227,13 @@ git commit -am "fix: update package-lock.json"
 ```
 
 **4. Platform-specific dependencies:**
+
 ```
 Error: The module './native.node' was compiled against a different Node.js version
 ```
 
 **Fix:** Use `--platform=linux` in package.json:
+
 ```json
 {
   "scripts": {
@@ -2097,6 +2243,7 @@ Error: The module './native.node' was compiled against a different Node.js versi
 ```
 
 **Debugging build failures:**
+
 ```yaml
 - name: Debug build
   run: |
@@ -2115,6 +2262,7 @@ Error: The module './native.node' was compiled against a different Node.js versi
 **Common timeout scenarios:**
 
 **1. Firebase Hosting deployment hangs:**
+
 ```yaml
 - name: Deploy to Firebase
   timeout-minutes: 10  # Fail after 10 minutes
@@ -2122,11 +2270,13 @@ Error: The module './native.node' was compiled against a different Node.js versi
 ```
 
 **2. Lambda deployment large package:**
+
 ```
 Error: Timed out waiting for function update
 ```
 
 **Fix:** Reduce package size:
+
 ```bash
 # Before: 60 MB (slow)
 zip -r function.zip .
@@ -2137,6 +2287,7 @@ zip -r function.zip . -x "tests/*" -x "*.md"
 ```
 
 **3. Cloud Functions build timeout:**
+
 ```yaml
 --timeout 540s  # 9 minutes (Gen 1 max)
 --timeout 3600s  # 60 minutes (Gen 2 max)
@@ -2145,6 +2296,7 @@ zip -r function.zip . -x "tests/*" -x "*.md"
 Increase if function initialization takes long.
 
 **Workflow timeout configuration:**
+
 ```yaml
 jobs:
   deploy:
@@ -2161,6 +2313,7 @@ jobs:
 **Symptom:** Deployment fails with "Rate limit exceeded" or "Too many requests".
 
 **GitHub Actions rate limits:**
+
 - API requests: 1,000/hour per repository
 - Workflow runs: Unlimited
 - Concurrent jobs: 20 (free), 60 (Team), 180 (Enterprise)
@@ -2168,19 +2321,23 @@ jobs:
 **Cloud provider rate limits:**
 
 **GCP Cloud Functions:**
+
 - Deployments: 60/minute per region
 - API calls: 100/second
 
 **AWS Lambda:**
+
 - UpdateFunctionCode: 10/second per region
 - Concurrent executions: 1,000 (default, adjustable)
 
 **Firebase Hosting:**
+
 - Deployments: 10/hour per project
 
 **Mitigation strategies:**
 
 **1. Add retry logic:**
+
 ```yaml
 - name: Deploy with retry
   uses: nick-invision/retry@v2
@@ -2192,6 +2349,7 @@ jobs:
 ```
 
 **2. Throttle deployments:**
+
 ```yaml
 on:
   push:
@@ -2201,12 +2359,14 @@ on:
 ```
 
 **3. Request limit increase:**
-- GCP: https://console.cloud.google.com/iam-admin/quotas
-- AWS: https://console.aws.amazon.com/servicequotas
+
+- GCP: <https://console.cloud.google.com/iam-admin/quotas>
+- AWS: <https://console.aws.amazon.com/servicequotas>
 
 **4. Batch multiple changes:**
 
 Instead of deploying on every commit, deploy on PR merge:
+
 ```yaml
 on:
   pull_request:
@@ -2226,6 +2386,7 @@ jobs:
 **When deployment succeeds but breaks production:**
 
 **1. Revert git commit:**
+
 ```bash
 git revert HEAD
 git push origin main
@@ -2235,6 +2396,7 @@ git push origin main
 Automatic rollback via CI/CD.
 
 **2. Manual Lambda rollback:**
+
 ```bash
 # List versions
 aws lambda list-versions-by-function --function-name cv-processor
@@ -2247,6 +2409,7 @@ aws lambda update-alias \
 ```
 
 **3. Cloud Functions rollback:**
+
 ```bash
 # List revisions
 gcloud functions describe webhook-receiver --region us-central1
@@ -2258,6 +2421,7 @@ gcloud functions rollback webhook-receiver \
 ```
 
 **4. Firebase Hosting rollback:**
+
 ```bash
 # List deployments
 firebase hosting:channel:list
@@ -2269,6 +2433,7 @@ firebase hosting:rollback
 **5. Emergency workflow:**
 
 Create manual rollback workflow:
+
 ```yaml
 name: Emergency Rollback
 
@@ -2307,6 +2472,7 @@ jobs:
 ```
 
 **Rollback best practices:**
+
 - Keep last 3 versions (easy rollback)
 - Monitor post-deployment metrics
 - Automated health checks
@@ -2322,16 +2488,19 @@ Building CI/CD for multi-cloud microservices in 4 weeks:
 ### Week 1: Foundation
 
 **Day 1-2: Setup GitHub Actions basics**
+
 - ✓ Create .github/workflows/ directory in each repository
 - ✓ Start with simple workflow (checkout code, run tests)
 - ✓ Verify workflows trigger on push
 
 **Day 3-4: Configure secrets**
+
 - ✓ Generate service account keys (GCP, AWS)
 - ✓ Store in GitHub Secrets
 - ✓ Test authentication in workflows
 
 **Day 5-7: Build first pipeline**
+
 - ✓ Choose simplest service (dashboard recommended)
 - ✓ Add build step
 - ✓ Add deployment step
@@ -2340,32 +2509,38 @@ Building CI/CD for multi-cloud microservices in 4 weeks:
 ### Week 2: Expand Coverage
 
 **Day 8-10: Add remaining pipelines**
+
 - ✓ Webhook pipeline (Go → Cloud Functions)
 - ✓ Processor pipeline (Node.js → Lambda)
 - ✓ Reporter pipeline (Node.js → Lambda)
 
 **Day 11-12: Add testing**
+
 - ✓ Unit tests in each pipeline
 - ✓ Fail pipeline if tests fail
 - ✓ Code coverage reporting
 
 **Day 13-14: Path filters**
+
 - ✓ Configure path filters (only deploy when code changes)
 - ✓ Test that documentation changes don't trigger deployments
 
 ### Week 3: Hardening
 
 **Day 15-17: Branch protection**
+
 - ✓ Enable branch protection on main
 - ✓ Require status checks
 - ✓ Create PR workflow for testing
 
 **Day 18-19: Monitoring**
+
 - ✓ Add deployment verification steps
 - ✓ Health check endpoints
 - ✓ CloudWatch/Cloud Logging integration
 
 **Day 20-21: Error handling**
+
 - ✓ Add retry logic for transient failures
 - ✓ Timeout configuration
 - ✓ Notification on failures (Slack, email)
@@ -2373,15 +2548,18 @@ Building CI/CD for multi-cloud microservices in 4 weeks:
 ### Week 4: Optimisation
 
 **Day 22-23: Dependency caching**
+
 - ✓ Enable npm/Go module caching
 - ✓ Measure build time improvement
 
 **Day 24-25: Rollback procedures**
+
 - ✓ Document rollback steps
 - ✓ Create emergency rollback workflow
 - ✓ Test rollback (controlled environment)
 
 **Day 26-28: Documentation**
+
 - ✓ README with pipeline architecture diagram
 - ✓ Troubleshooting guide
 - ✓ Runbook for common failures
@@ -2393,11 +2571,13 @@ Building CI/CD for multi-cloud microservices in 4 weeks:
 Manual deployments don't scale. Every service should deploy via CI/CD. No exceptions.
 
 ✗ **Don't:**
+
 - SSH into servers and copy files
 - Run gcloud/aws commands locally
 - Deploy from your laptop
 
 ✓ **Do:**
+
 - Push to main branch
 - Let pipeline handle deployment
 - Verify via monitoring
@@ -2405,6 +2585,7 @@ Manual deployments don't scale. Every service should deploy via CI/CD. No except
 **2. Never deploy manually:**
 
 CI/CD is the only deployment path. Even for hotfixes:
+
 ```bash
 git commit -m "hotfix: critical bug"
 git push origin main
@@ -2414,6 +2595,7 @@ git push origin main
 **3. Test before deploying:**
 
 Every pipeline should run tests:
+
 ```yaml
 steps:
   - run: npm test
@@ -2425,6 +2607,7 @@ steps:
 **4. Use secrets properly:**
 
 Never commit secrets. Always use GitHub Secrets:
+
 ```yaml
 env:
   SECRET: ${{ secrets.SECRET_NAME }}
@@ -2433,6 +2616,7 @@ env:
 **5. Monitor pipeline health:**
 
 Set up notifications for failures:
+
 ```yaml
 - name: Notify on failure
   if: failure()
@@ -2466,22 +2650,27 @@ Production and staging need separate secrets.
 Measure CI/CD effectiveness:
 
 **Deployment frequency:**
+
 - Before: 2-3/week (manual)
 - After: 20-30/week (automated)
 
 **Lead time (commit to production):**
+
 - Before: 30 minutes (manual)
 - After: 5 minutes (automated)
 
 **Deployment failure rate:**
+
 - Before: 15% (manual errors)
 - After: 5% (automated, with tests)
 
 **Mean time to recovery:**
+
 - Before: 45 minutes (manual rollback)
 - After: 5 minutes (git revert + auto-deploy)
 
 **Developer time saved:**
+
 - Before: 11.75 hours/month on deployments
 - After: 0 hours (fully automated)
 
@@ -2491,11 +2680,12 @@ CV Analytics achieved these metrics after 4 weeks of CI/CD implementation.
 
 ## What's Next
 
-**Part 6: Semantic Versioning for Microservices**
+**Part 6: Semantic Versioning for Microservices**  
 
 Deployments automated. Now: how to version services independently.
 
 Part 6 covers:
+
 - ✓ SemVer 2.0.0 for microservices
 - ✓ Git tagging strategies
 - ✓ Breaking changes across services

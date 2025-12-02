@@ -1,6 +1,6 @@
-# CV Analytics: Multi-Cloud Microservices at £0/Month
+# CV Analytics: Multi-Cloud Microservices at £0/Month (GCP Series: Real-time Analytics & Firestore, Part I)
 
-*Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics—all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
+*Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics, all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
 
 - [The Dilemma](#the-dilemma)
 - [What This Series Covers](#what-this-series-covers)
@@ -100,7 +100,7 @@ My first implementation: Cloudflare Worker tried calling AWS Lambda directly aft
 
 ### Part 3: Multi-Cloud Security (Cross-Cloud Webhook Authentication)
 
-I deployed the GCP webhook receiver on Friday afternoon. No HMAC validation—"AWS Lambda is internal, it's fine."
+I deployed the GCP webhook receiver on Friday afternoon. No HMAC validation, "AWS Lambda is internal, it's fine."
 
 By Monday morning: 347 fake events in my Firestore database. Someone discovered the public Cloud Function URL and flooded it. My dashboard showed garbage.
 
@@ -169,7 +169,7 @@ One definition, infinite environments. Change memory, run `terraform apply`, bot
 - Why multi-cloud Terraform beats console clicking (version control + repeatability)
 - How to manage AWS + GCP providers in same codebase (separate state, shared variables)
 - How to handle cross-cloud dependencies (AWS Lambda needs GCP webhook URL)
-- Which Terraform features free tier supports (all of them—Terraform CLI is free, both cloud APIs free tier)
+- Which Terraform features free tier supports (all of them, Terraform CLI is free, both cloud APIs free tier)
 - What I chose not to build: Pulumi (less mature), CloudFormation + Deployment Manager (vendor lock-in), Terraform Cloud paid (£0 constraint)
 
 ---
@@ -201,9 +201,9 @@ Worse: I deployed dashboard with a typo in the Firestore query. Broke production
 
 **What you'll learn:**
 
-- Why GitHub Actions free tier is generous (2,000 minutes/month—way more than needed)
+- Why GitHub Actions free tier is generous (2,000 minutes/month, way more than needed)
 - How to deploy AWS + GCP from same workflow (service account keys in GitHub Secrets)
-- When manual approval gates matter (production only—staging deploys automatically)
+- When manual approval gates matter (production only, staging deploys automatically)
 - What I chose not to build: Jenkins server (£10/month EC2), CircleCI paid tier (£15/month), AWS CodePipeline (£1 per active pipeline)
 
 ---
@@ -212,7 +212,7 @@ Worse: I deployed dashboard with a typo in the Firestore query. Broke production
 
 I changed the DynamoDB table schema. Added a new required field: `eventType`. Deployed the Processor Lambda first (writes new field). Reporter Lambda still expected old schema (didn't read new field). Reports broke for 3 hours.
 
-**The mistake:** I versioned the Processor as v1.2.1 (patch). Should have been v2.0.0 (major—breaking change).
+**The mistake:** I versioned the Processor as v1.2.1 (patch). Should have been v2.0.0 (major, breaking change).
 
 **SemVer would have caught this:**
 
@@ -323,17 +323,20 @@ Using three clouds costs the same as using one (£0), but leverages each platfor
 ## Series Prerequisites
 
 **Required knowledge:**
+
 - Basic command-line proficiency (Git, npm, CLI tools)
 - Understanding of HTTP, REST APIs, and webhooks
 - Familiarity with at least one cloud provider (AWS or GCP)
 - JavaScript/TypeScript or Go (for code examples)
 
 **Nice to have:**
+
 - Docker/containerization concepts
 - CI/CD basics (GitHub Actions or similar)
 - NoSQL database experience (DynamoDB, Firestore)
 
 **What you don't need:**
+
 - Kubernetes or container orchestration
 - Advanced infrastructure knowledge
 - Multi-cloud experience (we'll cover it)
@@ -353,6 +356,7 @@ All code is public and production-ready:
 | `cv-analytics-infrastructure-private` | IaC automation | Terraform (GCP + AWS) |
 
 **Architecture metrics:**
+
 - 6 independent services
 - 87.5% microservices purity score
 - 4 programming languages/runtimes
@@ -365,17 +369,20 @@ All code is public and production-ready:
 ## How to Use This Series
 
 **If you want to build something similar:**
+
 1. Start with Part 1 (architecture patterns)
 2. Follow Part 2 (infrastructure setup)
 3. Implement Part 3 (CI/CD automation)
 4. Read Part 4-8 based on your needs
 
 **If you want to learn multi-cloud patterns:**
+
 1. Read Part 1 (architecture decisions)
 2. Study Part 2 (Terraform multi-cloud)
 3. Review Part 6 (security patterns)
 
 **If you want to improve existing systems:**
+
 1. Part 1: Assess your microservices purity
 2. Part 4: Implement event-driven patterns
 3. Part 5: Add proper versioning
@@ -386,18 +393,21 @@ All code is public and production-ready:
 ## What Makes This Series Different
 
 **Not another tutorial project:**
+
 - This is a production system, not a toy example
 - Real trade-offs, not perfect solutions
 - Actual costs, performance metrics, and constraints
 - Public repositories you can clone and deploy
 
 **Not vendor hype:**
+
 - Multi-cloud architecture (avoiding lock-in)
 - Measured cost analysis (free tier optimization)
 - Honest assessment of complexity
 - Clear guidance on when NOT to use these patterns
 
 **Not academic theory:**
+
 - Practical deployment patterns
 - Real-world constraints (cold starts, costs, complexity)
 - Actual code in production
@@ -425,11 +435,12 @@ By the end of this series, you should be able to:
 **Start with Part 1:** Understanding pure microservices architecture and how to measure it.
 
 **Questions before we begin?**
+
 - What's your current deployment approach?
 - Have you tried multi-cloud before?
 - What's your biggest infrastructure challenge?
 
-**Next:** [Part 1: Pure Microservices Architecture →](01-pure-microservices-architecture.md)
+**Next:** [Part 1: Pure Microservices Architecture →]((https://blog.{YOUR_DOMAIN}/blog/gcp-cv-analytics-0))
 
 ---
 

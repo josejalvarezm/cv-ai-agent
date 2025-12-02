@@ -1,6 +1,6 @@
-# Serverless Cost Optimization: Running Production at £0/Month
+# Serverless Cost Optimization: Running Production at £0/Month (GCP Series: Real-time Analytics & Firestore, Part IX)
 
-*Exploiting free tiers across Cloudflare Workers (100K req/day), AWS Lambda (1M req/month), DynamoDB (25GB), GCP Cloud Functions (2M invocations), and Firestore (50K reads/day)—with 10:1 SQS batching reducing Lambda invocations from 3,000 to 300 monthly.*
+*Exploiting free tiers across Cloudflare Workers (100K req/day), AWS Lambda (1M req/month), DynamoDB (25GB), GCP Cloud Functions (2M invocations), and Firestore (50K reads/day), with 10:1 SQS batching reducing Lambda invocations from 3,000 to 300 monthly.*
 
 ## Quick Summary
 
@@ -19,6 +19,7 @@ Serverless promises cost efficiency: pay only for what you use. No idle servers.
 This sounds too good to be true. It isn't. Cloudflare Workers free tier: 100K requests/day. Cloudflare Pages: unlimited bandwidth. AWS Lambda provides 1 million free requests per month. DynamoDB always-free tier includes 25 GB storage plus 25 RCU/WCU. GCP Cloud Functions offers 2 million invocations monthly. Firestore includes 50,000 reads per day. Firebase Hosting free tier: 10 GB bandwidth.
 
 CV Analytics processes ~3,000 CV chatbot queries monthly across 6 services:
+
 - **Cloudflare Worker**: Answers queries in 1.87s P95 (edge compute, LLM processing)
 - **AWS DynamoDB**: Stores query events (TTL 24h) + analytics
 - **AWS Lambda**: Processes batches (Processor + Reporter)
@@ -98,6 +99,7 @@ Total: £0.00
 **CV Analytics usage (2 DynamoDB tables):**
 
 **Query Events table** (TTL 24 hours):
+
 ```text
 Storage: 0.2 GB / 25 GB free = 0.8% used
 Writes: ~3,000/month (1 per Cloudflare Worker query)
@@ -106,6 +108,7 @@ Cost: £0.00 (within always-free limits)
 ```
 
 **Analytics table** (permanent storage):
+
 ```text
 Storage: 0.6 GB / 25 GB free = 2.4% used
 Writes: ~300/month (AWS Lambda Processor aggregations)
@@ -114,6 +117,7 @@ Cost: £0.00 (within always-free limits)
 ```
 
 **Combined DynamoDB usage:**
+
 ```text
 Total storage: 0.8 GB / 25 GB = 3.2%
 Total writes: ~3,300/month
@@ -772,16 +776,19 @@ Batch size 100, window 30s:
 **Choose based on requirements:**
 
 **Real-time (no batching):**
+
 - User-facing notifications
 - Payment processing
 - Security alerts
 
 **Near real-time (small batches):**
+
 - Analytics ingestion
 - Log aggregation
 - Metrics collection
 
 **Batch processing (large batches):**
+
 - Daily reports
 - Bulk data transformations
 - Archive operations
@@ -1549,6 +1556,7 @@ graph TD
 8. **Part 8:** Cost optimization (£0/month across 3 clouds)
 
 **What You've Learned:**
+
 - ✓ Design and score microservices architectures
 - ✓ Build CV chatbot with Cloudflare Workers (12ms, edge compute)
 - ✓ Implement fire-and-forget writes (AWS DynamoDB from Cloudflare)
@@ -1561,6 +1569,7 @@ graph TD
 - ✓ Optimize serverless costs: £0/month across Cloudflare + AWS + GCP
 
 **Next Steps:**
+
 - Clone the repositories and run locally
 - Modify for your own use cases
 - Deploy to your own AWS/GCP accounts
@@ -1569,20 +1578,25 @@ graph TD
 **All repositories (6 services across 3 clouds):**
 
 **Cloudflare:**
+
 - [CV Chatbot Worker](https://github.com/josejalvarezm/cv-chatbot-worker-private) (TypeScript, 1.87s P95 edge compute)
 
 **AWS:**
+
 - [Lambda Processor](https://github.com/josejalvarezm/cv-analytics-processor-private) (Node.js, SQS batching)
 - [Lambda Reporter](https://github.com/josejalvarezm/cv-analytics-reporter-private) (Node.js, weekly emails)
 
 **GCP:**
+
 - [Cloud Function Webhook](https://github.com/josejalvarezm/cv-analytics-webhook-receiver-private) (Go, HMAC validation)
 
 **Frontend:**
+
 - [Angular CV Site](https://github.com/josejalvarezm/cv-site-angular-private) (Cloudflare Pages)
 - [React Dashboard](https://github.com/josejalvarezm/cv-analytics-dashboard-private) (Firebase Hosting, WebSocket)
 
 **Infrastructure:**
+
 - [Terraform Multi-Cloud](https://github.com/josejalvarezm/cv-analytics-infrastructure-private) (AWS + GCP providers)
 
 ---
@@ -1594,9 +1608,3 @@ graph TD
 - [GCP Cloud Functions Pricing](https://cloud.google.com/functions/pricing)
 - [Firestore Pricing](https://firebase.google.com/docs/firestore/quotas)
 
----
-
-**Author:** José Álvarez  
-**Series:** CV Analytics Multi-Cloud Microservices  
-**Published:** November 2025  
-**Tags:** serverless, cost-optimization, AWS, GCP, free-tier, production

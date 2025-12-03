@@ -2,6 +2,22 @@
 
 *Building a real-time analytics dashboard with React, TypeScript, Vite, and Firestore WebSocket listeners, eliminating polling overhead, achieving instant updates across cloud boundaries, and visualizing cross-cloud data flow from AWS Lambda to GCP to browser.*
 
+## Contents
+
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [React Setup: Vite + TypeScript + Tailwind](#react-setup-vite--typescript--tailwind)
+- [Firestore Integration: Real-Time Listeners](#firestore-integration-real-time-listeners)
+- [Data Visualization with Recharts](#data-visualization-with-recharts)
+- [State Management: React Hooks](#state-management-react-hooks)
+- [Firebase Deployment](#firebase-deployment)
+- [Performance Optimization](#performance-optimization)
+- [Trade-offs: Real-Time vs Polling](#trade-offs-real-time-vs-polling)
+- [Practical Takeaways](#practical-takeaways)
+- [What's Next](#whats-next)
+- [Further Reading](#further-reading)
+
+
 ## Quick Summary
 
 - ✓ **React + TypeScript + Vite** for modern frontend development

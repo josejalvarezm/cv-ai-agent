@@ -2,6 +2,8 @@
 
 *Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2, with automated testing, secrets management, and zero-downtime deployments across three clouds.*
 
+## Contents
+
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)
 - [GitHub Actions Fundamentals](#github-actions-fundamentals)

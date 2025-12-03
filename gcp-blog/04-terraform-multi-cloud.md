@@ -2,6 +2,8 @@
 
 *Managing six microservices across Cloudflare, AWS, and GCP with 1,200 lines of Terraform configuration, eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
 
+## Contents
+
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)
 - [Terraform Fundamentals](#terraform-fundamentals)
@@ -991,10 +993,6 @@ sequenceDiagram
     DEV2->>TFC: terraform plan<br/>(retry)
     TFC->>TFC: Acquire lock<br/>(now available)
     TFC->>DEV2: Return updated state
-    
-    style TFC fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style AWS fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style GCP fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
 ```
 
 ### Terraform Cloud Configuration

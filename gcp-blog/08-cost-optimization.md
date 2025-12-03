@@ -2,6 +2,22 @@
 
 *Exploiting free tiers across Cloudflare Workers (100K req/day), AWS Lambda (1M req/month), DynamoDB (25GB), GCP Cloud Functions (2M invocations), and Firestore (50K reads/day), with 10:1 SQS batching reducing Lambda invocations from 3,000 to 300 monthly.*
 
+## Contents
+
+- [Quick Summary](#quick-summary)
+- [Introduction](#introduction)
+- [Understanding Serverless Pricing](#understanding-serverless-pricing)
+- [AWS Free Tier: Lambda and DynamoDB](#aws-free-tier-lambda-and-dynamodb)
+- [GCP Free Tier: Cloud Functions and Firestore](#gcp-free-tier-cloud-functions-and-firestore)
+- [Batching Strategy: Reducing Invocations by 90%](#batching-strategy-reducing-invocations-by-90)
+- [Cold Start Optimization](#cold-start-optimization)
+- [Cost Monitoring and Alerts](#cost-monitoring-and-alerts)
+- [Real Cost Breakdown: CV Analytics](#real-cost-breakdown-cv-analytics)
+- [When to Scale Up: Beyond Free Tier](#when-to-scale-up-beyond-free-tier)
+- [Practical Takeaways](#practical-takeaways)
+- [Series Conclusion](#series-conclusion)
+- [Further Reading](#further-reading)
+
 ## Quick Summary
 
 - ✓ **£0/month** for production CV Analytics system

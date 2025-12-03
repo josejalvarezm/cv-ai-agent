@@ -2,6 +2,8 @@
 
 *Tracking six services with independent version numbers using SemVer 2.0.0 (MAJOR.MINOR.PATCH), git tags, and automated CI/CD, enabling Angular v1.2.0, Cloudflare Worker v2.1.3, AWS Lambda v3.1.0, and GCP Cloud Function v1.5.0 to evolve without coordination.*
 
+## Contents
+
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)
 - [Semantic Versioning Basics](#semantic-versioning-basics)

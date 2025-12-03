@@ -442,7 +442,7 @@ By the end of this series, you should be able to:
 - Have you tried multi-cloud before?
 - What's your biggest infrastructure challenge?
 
-**Next:** [Part 1: Pure Microservices Architecture →]((https://blog.{YOUR_DOMAIN}/blog/gcp-cv-analytics-0))
+**Related:** [Part 1: Pure Microservices Architecture →]((https://blog.{YOUR_DOMAIN}/blog/gcp-cv-analytics-0))
 
 ---
 

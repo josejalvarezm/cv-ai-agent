@@ -2,6 +2,8 @@
 
 *Securing cross-cloud webhooks with HMAC-SHA256, enforcing least-privilege IAM policies across AWS and GCP, managing secrets in GitHub Actions, and protecting databases with Firestore security rules, all validated under real attack attempts.*
 
+## Contents
+
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)
 - [Cross-Cloud Webhook Authentication: HMAC Signatures](#cross-cloud-webhook-authentication-hmac-signatures)
@@ -11,6 +13,7 @@
 - [Secrets Management: Multi-Cloud Strategy](#secrets-management-multi-cloud-strategy)
 - [Database Security](#database-security)
 - [Encryption](#encryption)
+- [Security Headers and Additional Protections](#security-headers-and-additional-protections)
 - [Audit Logging and Monitoring](#audit-logging-and-monitoring)
 - [Practical Takeaways](#practical-takeaways)
 - [What's Next](#whats-next)
@@ -23,6 +26,8 @@
 - ✓ **GitHub Secrets** manage credentials securely in CI/CD
 - ✓ **Firestore security rules** protect database access
 - ✓ **Encryption** at-rest and in-transit across both clouds
+- ✓ **Security headers** protect web applications
+- ✓ **Rate limiting** prevents abuse
 
 ---
 
@@ -30,7 +35,7 @@
 
 Security isn't a feature you add at the end. It's a foundation you build from the start.
 
-Multi-cloud microservices multiply the attack surface across three clouds. **Cloudflare Workers** need IAM credentials to write to AWS DynamoDB. **AWS Lambda** needs HMAC signatures to authenticate when calling **GCP Cloud Functions**. Cloud Functions and Lambda need IAM roles to limit permissions. Databases need security rules to control access. Secrets need secure storage across three providers (AWS Secrets Manager, GCP Secret Manager, Cloudflare environment variables). Each cloud provider has different security mechanisms, patterns, and best practices.
+Multi-cloud microservices multiply the attack surface across three clouds. **Cloudflare Workers** need IAM credentials to write to AWS DynamoDB. **AWS Lambda** needs HMAC signatures to authenticate when calling **GCP Cloud Functions**. Cloud Functions and Lambda need IAM roles to limit permissions. Databases need security rules to control access. Secrets need secure storage across three providers (AWS Secrets Manager, GCP Secret Manager, Cloudflare encrypted secrets). Each cloud provider has different security mechanisms, patterns, and best practices.
 
 CV Analytics implements defense in depth: multiple security layers that work together across three clouds. **Cloudflare Workers** use AWS IAM credentials to write events securely. **AWS Lambda** signs webhook payloads with HMAC-SHA256 before sending to GCP. **GCP Cloud Functions** validate HMAC signatures from AWS Lambda. Service accounts and IAM roles enforce least privilege within each cloud. GitHub Secrets store cross-cloud credentials securely in CI/CD pipelines. Firestore security rules and DynamoDB policies control database access. Encryption protects data at-rest and in-transit.
 
@@ -53,6 +58,8 @@ This post explains the security patterns used in CV Analytics: how IAM credentia
 - ✓ How GitHub Secrets secure multi-cloud credentials in CI/CD pipelines
 - ✓ How Firestore security rules and DynamoDB policies control data access
 - ✓ How encryption protects data at-rest and in-transit across three clouds
+- ✓ How security headers protect web applications
+- ✓ How to implement rate limiting and DDoS protection
 
 ---
 
@@ -287,31 +294,28 @@ func validateHMACWithRotation(payload []byte, signature string) bool {
 
 ```mermaid
 sequenceDiagram
-    participant Lambda as AWS Lambda<br/>(Processor)
-    participant CF as GCP Cloud Function<br/>(Webhook Receiver)
-    participant FS as Firestore<br/>(Database)
+    participant Lambda as AWS Lambda (Processor)
+    participant CF as GCP Cloud Function (Webhook Receiver)
+    participant FS as Firestore (Database)
     
-    Lambda->>Lambda: Read secret from<br/>AWS Secrets Manager
-    Lambda->>Lambda: Compute signature<br/>HMAC-SHA256(payload, secret)
-    Lambda->>CF: POST https://<region>-<project>.cloudfunctions.net<br/>X-Webhook-Signature: sha256=abc123...
+    Lambda->>Lambda: Read secret from AWS Secrets Manager
+    Lambda->>Lambda: Compute signature HMAC-SHA256(payload, secret)
+    Lambda->>CF: POST https://<region>-<project>.cloudfunctions.net\nX-Webhook-Signature: sha256=abc123...
     
     CF->>CF: Read raw payload bytes
     CF->>CF: Extract signature from header
-    CF->>CF: Read secret from<br/>GCP Secret Manager
-    CF->>CF: Compute expected signature<br/>HMAC-SHA256(payload, secret)
+    CF->>CF: Read secret from GCP Secret Manager
+    CF->>CF: Compute expected signature HMAC-SHA256(payload, secret)
     
     alt Signatures match
         CF->>CF: Parse JSON payload
         CF->>FS: Write analytics data
         CF->>Lambda: 200 OK
     else Signatures don't match
-        CF->>CF: Log failed attempt<br/>(timestamp, source IP)
+        CF->>CF: Log failed attempt (timestamp, source IP)
         CF->>Lambda: 401 Unauthorized
-        Note over CF,Lambda: Cross-cloud security failure<br/>Alert DevOps team
+        Note over CF,Lambda: Cross-cloud security failure\nAlert DevOps team
     end
-    
-    style CF fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style FS fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
 ```
 
 ---
@@ -326,9 +330,11 @@ sequenceDiagram
 
 **The security challenge:** How does a Cloudflare Worker authenticate to AWS DynamoDB across cloud boundaries without storing long-lived IAM keys in code?
 
-### IAM Credentials in Cloudflare Environment Variables
+### Encrypted Secrets in Cloudflare Workers
 
-**Solution:** Store AWS IAM credentials as **Cloudflare Worker secrets** (encrypted environment variables). The Worker uses these credentials to sign AWS API requests with IAM Signature Version 4 (SigV4).
+**Solution:** Store AWS IAM credentials as **Cloudflare Worker encrypted secrets** (NOT plain environment variables). These are encrypted at rest by Cloudflare and only decrypted at Worker runtime.
+
+**Important:** Cloudflare Secrets are encrypted and managed by Cloudflare's infrastructure. They are never stored in plaintext, never committed to git, and only accessible to the specific Worker.
 
 **AWS IAM user for Cloudflare Worker:**
 
@@ -350,20 +356,20 @@ sequenceDiagram
 
 **Least privilege principle:**
 
-- ✅ Only `PutItem` (can't read existing data or delete)
-- ✅ Only on Query Events table (can't access Analytics table)
-- ✅ No Lambda permissions, no S3, no other AWS services
-- ✅ If Worker credentials leak, damage limited to fake query events (not analytics or financial data)
+- ✓ Only `PutItem` (can't read existing data or delete)
+- ✓ Only on Query Events table (can't access Analytics table)
+- ✓ No Lambda permissions, no S3, no other AWS services
+- ✓ If Worker credentials leak, damage limited to fake query events (not analytics or financial data)
 
-### Setting Cloudflare Worker Secrets
+### Setting Cloudflare Worker Encrypted Secrets
 
 ```bash
 # Set AWS IAM credentials (encrypted by Cloudflare)
 wrangler secret put AWS_ACCESS_KEY_ID
-# Enter: AKIA... (IAM access key)
+# Enter: AKIA... (IAM access key) - value is encrypted, not stored locally
 
 wrangler secret put AWS_SECRET_ACCESS_KEY
-# Enter: (40-character secret key)
+# Enter: (40-character secret key) - encrypted by Cloudflare
 
 wrangler secret put AWS_REGION
 # Enter: us-east-1
@@ -382,10 +388,10 @@ export default {
     
     // Write analytics event to AWS DynamoDB (fire-and-forget)
     const dynamodb = new DynamoDBClient({
-      region: env.AWS_REGION,
+      region: env.AWS_REGION,  // From encrypted secrets
       credentials: {
-        accessKeyId: env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+        accessKeyId: env.AWS_ACCESS_KEY_ID,  // Decrypted at runtime only
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,  // Decrypted at runtime only
       },
     });
     
@@ -408,19 +414,36 @@ export default {
 
 **Key security practices:**
 
-- **Environment variables, not hardcoded:** Never commit AWS credentials to git. Use `wrangler secret put` to encrypt and store in Cloudflare's infrastructure.
+- **Encrypted secrets, not hardcoded:** Never commit AWS credentials to git. Use `wrangler secret put` to encrypt and store in Cloudflare's infrastructure. These are not plain environment variables.
 - **Fire-and-forget pattern:** Worker doesn't wait for DynamoDB response. If write fails, logs error but doesn't block user response. Acceptable for analytics (occasional missing events OK).
 - **IAM key rotation:** Rotate AWS IAM keys every 90 days. Update Cloudflare secrets via `wrangler secret put` (zero downtime).
 - **Monitor failed writes:** CloudWatch Logs captures DynamoDB `PutItem` failures. Alert if failure rate exceeds 1% (indicates credential or network issues).
 
-### Why Not AWS Cognito or OIDC?
+### Advanced: Beyond Long-lived Credentials
 
-**Alternative:** AWS Cognito Identity Pools or OIDC token exchange could avoid long-lived IAM keys. But:
+While encrypted secrets are secure, **long-lived IAM user keys still pose a risk** if somehow leaked. Consider these advanced patterns:
 
-- ❌ **Latency:** Token exchange adds 50-100ms (unacceptable for 12ms Worker)
-- ❌ **Complexity:** Requires Cognito setup, token refresh logic, error handling
-- ❌ **Cost:** Cognito Identity Pool charges per token exchange
-- ✅ **IAM credentials:** Simple, zero latency, £0 cost, acceptable risk with least privilege
+**Option 1: Cloudflare Access Service Tokens**
+
+- Generate short-lived tokens (15-60 minutes)
+- Worker exchanges token for AWS credentials via a secure endpoint
+
+**Option 2: AWS IAM Roles Anywhere (if available)**
+
+- Uses X.509 certificates for authentication
+- Eliminates long-lived access keys entirely
+
+**Option 3: Token Service Pattern**
+
+```typescript
+// Worker calls a secure endpoint for temporary credentials
+const creds = await fetch('https://token-service.internal/aws-creds', {
+  headers: { 'Authorization': `Bearer ${env.INTERNAL_AUTH_TOKEN}` }
+});
+// Returns: { accessKeyId, secretAccessKey, sessionToken, expiration }
+```
+
+**Trade-off:** These patterns add 50-100ms latency (unacceptable for 12ms Worker). The encrypted IAM credentials with least privilege represent an acceptable risk-benefit trade-off for analytics workloads.
 
 **Risk mitigation:** If IAM credentials leak, attacker can only write fake events to Query Events table. Can't read Analytics table, can't access other AWS services, can't escalate privileges. DynamoDB TTL (24 hours) limits damage. Monitor CloudWatch Logs for unusual write patterns (e.g., 10,000 events in 1 minute).
 
@@ -497,6 +520,67 @@ resource "google_cloudfunctions_function" "webhook_receiver" {
   
   # ... other configuration
 }
+```
+
+### Workload Identity Federation (Recommended for GitHub Actions)
+
+Instead of service account keys, use Workload Identity Federation for GitHub Actions. This eliminates long-lived credentials:
+
+```hcl
+# Create Workload Identity Pool for GitHub
+resource "google_iam_workload_identity_pool" "github_pool" {
+  workload_identity_pool_id = "github-pool"
+  display_name              = "GitHub Actions Pool"
+  description               = "Identity pool for GitHub Actions CI/CD"
+}
+
+# Create OIDC provider for GitHub
+resource "google_iam_workload_identity_pool_provider" "github_provider" {
+  workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
+  workload_identity_pool_provider_id = "github-provider"
+  
+  attribute_mapping = {
+    "google.subject"       = "assertion.sub"
+    "attribute.actor"      = "assertion.actor"
+    "attribute.repository" = "assertion.repository"
+  }
+  
+  oidc {
+    issuer_uri = "https://token.actions.githubusercontent.com"
+  }
+}
+
+# Allow GitHub repository to impersonate service account
+resource "google_service_account_iam_member" "github_actions_sa" {
+  service_account_id = google_service_account.webhook_receiver.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/your-org/your-repo"
+}
+```
+
+**GitHub Actions workflow:**
+
+```yaml
+name: Deploy to GCP
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC
+      contents: read
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - id: auth
+      uses: google-github-actions/auth@v1
+      with:
+        workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+        service_account: 'webhook-receiver@project-id.iam.gserviceaccount.com'
+    
+    - run: gcloud functions deploy webhook-receiver --runtime go121
 ```
 
 ### Service Account Keys: Why to Avoid
@@ -767,33 +851,28 @@ resource "aws_sqs_queue_policy" "processor_queue_policy" {
 
 ```mermaid
 sequenceDiagram
-    participant LAMBDA as Lambda Function<br/>(Processor)
-    participant STS as AWS STS<br/>(Security Token Service)
+    participant LAMBDA as Lambda Function\n(Processor)
+    participant STS as AWS STS\n(Security Token Service)
     participant SQS as SQS Queue
     participant DDB as DynamoDB Table
     participant CW as CloudWatch Logs
     
-    LAMBDA->>STS: AssumeRole<br/>(Lambda execution role)
-    STS->>STS: Validate trust policy<br/>(Lambda service principal)
-    STS->>LAMBDA: Temporary credentials<br/>(Access Key + Secret + Token)
+    LAMBDA->>STS: AssumeRole\n(Lambda execution role)
+    STS->>STS: Validate trust policy\n(Lambda service principal)
+    STS->>LAMBDA: Temporary credentials\n(Access Key + Secret + Token)
     
-    LAMBDA->>SQS: ReceiveMessage<br/>(using temp credentials)
-    SQS->>SQS: Check IAM policy<br/>(sqs:ReceiveMessage allowed?)
+    LAMBDA->>SQS: ReceiveMessage\n(using temp credentials)
+    SQS->>SQS: Check IAM policy\n(sqs:ReceiveMessage allowed?)
     SQS->>LAMBDA: Return messages
     
-    LAMBDA->>DDB: PutItem<br/>(using temp credentials)
-    DDB->>DDB: Check IAM policy<br/>(dynamodb:PutItem allowed?)
+    LAMBDA->>DDB: PutItem\n(using temp credentials)
+    DDB->>DDB: Check IAM policy\n(dynamodb:PutItem allowed?)
     DDB->>LAMBDA: Success
     
-    LAMBDA->>CW: PutLogEvents<br/>(using temp credentials)
+    LAMBDA->>CW: PutLogEvents\n(using temp credentials)
     CW->>LAMBDA: Success
     
-    Note over LAMBDA,CW: Credentials expire<br/>after function completes
-    
-    style STS fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style SQS fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style DDB fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style CW fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    Note over LAMBDA,CW: Credentials expire\nafter function completes
 ```
 
 ---
@@ -807,7 +886,7 @@ Microservices across 3 clouds need credentials and shared secrets. These must be
 **Three types of secrets:**
 
 1. **Cross-cloud shared secrets:** HMAC webhook secret (AWS Secrets Manager + GCP Secret Manager)
-2. **Cloud-specific credentials:** Cloudflare Worker IAM keys (environment variables), AWS IAM access keys, GCP service account keys
+2. **Cloud-specific credentials:** Cloudflare Worker IAM keys (encrypted secrets), AWS IAM access keys, GCP service account keys
 3. **CI/CD secrets:** GitHub Secrets for deployment automation (stores credentials for all 3 clouds)
 
 ### AWS Secrets Manager (Runtime Secrets)
@@ -864,22 +943,22 @@ gcloud secrets add-iam-policy-binding webhook-shared-secret \
   --role="roles/secretmanager.secretAccessor"
 ```
 
-### Cloudflare Worker Secrets (Environment Variables)
+### Cloudflare Worker Encrypted Secrets
 
 **CV Chatbot Worker needs:**
 
 1. **AWS IAM Credentials** (for DynamoDB writes)
    - Variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
-   - Used by: Worker to write query events to DynamoDB
+   - Important: These are **encrypted secrets**, not plain environment variables
    - IAM Policy: Least privilege (only `dynamodb:PutItem` on Query Events table)
 
-**Setting Cloudflare Worker secrets:**
+**Setting Cloudflare Worker encrypted secrets:**
 
 ```bash
-# Set environment variables (encrypted by Cloudflare)
-wrangler secret put AWS_ACCESS_KEY_ID
-wrangler secret put AWS_SECRET_ACCESS_KEY
-wrangler secret put AWS_REGION
+# Set encrypted environment variables (encrypted by Cloudflare)
+wrangler secret put AWS_ACCESS_KEY_ID  # Value encrypted, not stored locally
+wrangler secret put AWS_SECRET_ACCESS_KEY  # Encrypted by Cloudflare
+wrangler secret put AWS_REGION  # Encrypted by Cloudflare
 ```
 
 ### GitHub Secrets (CI/CD Deployment)
@@ -1032,20 +1111,16 @@ service-account-*.json # Specific pattern
 1. **Generate new credentials:**
    - AWS Console → IAM → Users → Security credentials → Create access key
    - Copy new `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-
 2. **Update GitHub Secrets:**
    - Repository → Settings → Secrets → Edit `AWS_ACCESS_KEY_ID`
    - Paste new value → Update secret
    - Repeat for `AWS_SECRET_ACCESS_KEY`
-
 3. **Test deployment:**
    - Trigger workflow manually or push commit
    - Verify deployment succeeds with new credentials
-
 4. **Deactivate old credentials:**
    - AWS Console → IAM → Users → Security credentials
    - Find old access key → Make inactive → Delete
-
 5. **Document rotation:**
    - Record date in internal documentation
    - Set reminder for next rotation (90 days)
@@ -1426,6 +1501,214 @@ resource "aws_dynamodb_table" "analytics" {
 
 ---
 
+## Security Headers and Additional Protections
+
+### Security Headers for Web Applications
+
+The React dashboard needs additional security headers to protect against common web vulnerabilities:
+
+**Enhanced Firebase Hosting configuration:**
+
+```json
+{
+  "hosting": {
+    "public": "dist",
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com; frame-ancestors 'none';"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "X-XSS-Protection",
+            "value": "1; mode=block"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=()"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Security Headers Explained:**
+
+1. **Content-Security-Policy (CSP):** Prevents XSS attacks by restricting resources the browser can load
+2. **X-Content-Type-Options:** Prevents MIME type sniffing attacks
+3. **X-Frame-Options:** Prevents clickjacking by disallowing iframe embedding
+4. **X-XSS-Protection:** Enables browser's built-in XSS protection
+5. **Referrer-Policy:** Controls how much referrer information is sent
+6. **Permissions-Policy:** Restricts browser features (camera, microphone, geolocation)
+
+### Rate Limiting and DDoS Protection
+
+**For Cloud Functions and Public Endpoints:**
+
+**GCP Cloud Armor:**
+
+```hcl
+# Terraform: Create security policy with rate limiting
+resource "google_compute_security_policy" "webhook_policy" {
+  name = "webhook-security-policy"
+  
+  rule {
+    action   = "throttle"
+    priority = 1000
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    throttle {
+      rate_limit_interval_sec = 60
+      rate_limit_threshold_count = 100
+    }
+    description = "Rate limit webhook requests"
+  }
+  
+  rule {
+    action   = "allow"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "default rule"
+  }
+}
+```
+
+**AWS WAF Rate Limiting:**
+
+```hcl
+resource "aws_wafv2_web_acl" "api_acl" {
+  name  = "api-rate-limiting"
+  scope = "REGIONAL"
+  
+  default_action {
+    allow {}
+  }
+  
+  rule {
+    name     = "RateLimit"
+    priority = 1
+    
+    action {
+      block {}
+    }
+    
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+    
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "RateLimit"
+      sampled_requests_enabled   = true
+    }
+  }
+}
+```
+
+### Dependency Security Scanning
+
+**GitHub Actions workflow for security scanning:**
+
+```yaml
+name: Security Scanning
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Node.js Dependency Audit
+        run: npm audit --audit-level=high
+      
+      - name: Go Vulnerability Check
+        if: contains(github.repository, '-go-')
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+      
+      - name: Snyk Security Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      
+      - name: Check for hardcoded secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Incident Response Plan
+
+**Basic incident response procedures:**
+
+1. **Detection:** Monitor alerts for:
+   - HMAC validation failures (>10/hour from same IP)
+   - IAM AccessDenied errors (should be 0)
+   - Unusual traffic patterns (10x normal volume)
+2. **Containment:**
+   - Block attacking IPs via Cloud Armor/WAF
+   - Rotate potentially compromised secrets
+   - Disable affected services temporarily
+3. **Investigation:**
+   - Review CloudWatch/Cloud Logging for attack patterns
+   - Check secret access logs
+   - Identify compromised components
+4. **Recovery:**
+   - Deploy clean versions of affected services
+   - Verify all security controls are functioning
+   - Update monitoring thresholds based on attack patterns
+5. **Post-mortem:**
+   - Document timeline and impact
+   - Identify root cause
+   - Update security controls and procedures
+   - Schedule security audit
+
+---
+
 ## Audit Logging and Monitoring
 
 ### Why Audit Logging Matters
@@ -1682,7 +1965,7 @@ Implement automated anomaly detection for unusual patterns:
 
 ### Implementation Priority
 
-**Phase 1: Authentication (Week 1)**
+**Phase 1: Authentication (Week 1)**  
 
 ✓ Implement HMAC signature validation for all webhooks  
 ✓ Use constant-time comparison (`hmac.Equal()` in Go)  
@@ -1690,7 +1973,7 @@ Implement automated anomaly detection for unusual patterns:
 ✓ Log failed validation attempts with IP addresses  
 ✓ Return generic error messages (don't leak information)
 
-**Phase 2: Authorization (Week 2)**
+**Phase 2: Authorization (Week 2)**  
 
 ✓ Create dedicated service accounts for each service (GCP) or Lambda execution roles (AWS)  
 ✓ Grant minimum required permissions (least privilege)  
@@ -1698,7 +1981,7 @@ Implement automated anomaly detection for unusual patterns:
 ✓ Test IAM policies with actual service operations  
 ✓ Document why each permission is needed
 
-**Phase 3: Secrets Management (Week 3)**
+**Phase 3: Secrets Management (Week 3)**  
 
 ✓ Store all credentials in GitHub Secrets  
 ✓ Add `.env`, `*.key`, `*.json` to `.gitignore`  
@@ -1706,13 +1989,20 @@ Implement automated anomaly detection for unusual patterns:
 ✓ Rotate secrets every 90 days  
 ✓ Test secret rotation process before production
 
-**Phase 4: Monitoring (Week 4)**
+**Phase 4: Monitoring (Week 4)**  
 
 ✓ Enable structured logging in all services  
 ✓ Create CloudWatch alarms for authentication failures  
 ✓ Set up log retention policies (30-90 days)  
 ✓ Configure security alerts (SNS topics, email notifications)  
 ✓ Define incident response procedures
+
+**Phase 5: Additional Protections (Week 5)**  
+
+✓ Implement security headers (CSP, HSTS, etc.)  
+✓ Configure rate limiting for public endpoints  
+✓ Set up dependency security scanning in CI/CD  
+✓ Create security incident response plan
 
 ### What Not to Do
 
@@ -1736,6 +2026,9 @@ Default encryption (AES-256) is free and requires no configuration. Disabling it
 
 ✗ **Don't skip timestamp validation**  
 HMAC signatures without timestamps are vulnerable to replay attacks. Validate timestamps (< 5 minutes old).
+
+✗ **Don't use plain environment variables for credentials**  
+Always use encrypted secrets (Cloudflare Secrets, AWS Secrets Manager, GCP Secret Manager).
 
 ### Security Metrics to Monitor
 
@@ -1800,6 +2093,7 @@ HMAC signatures without timestamps are vulnerable to replay attacks. Validate ti
 - Customer-managed keys (KMS API calls: $0.03 per 10,000 requests)
 - VPC endpoints ($0.01 per hour + $0.01 per GB processed)
 - Cloud Armor (DDoS protection: $5 per policy + $1 per million requests)
+- AWS WAF ($5 per web ACL + $1 per million requests)
 - Extended log retention (CloudWatch: $0.50 per GB stored)
 - Security auditing tools (third-party services)
 
@@ -1850,11 +2144,23 @@ firebase init emulators
 firebase emulators:exec --only firestore "npm test"
 ```
 
+**Security headers test:**
+
+```bash
+# Test security headers are present
+curl -I https://your-dashboard.com
+
+# Should return headers like:
+# Strict-Transport-Security: max-age=31536000; includeSubDomains
+# Content-Security-Policy: default-src 'self'; ...
+# X-Content-Type-Options: nosniff
+```
+
 ---
 
 ## What's Next
 
-**Part 4: Infrastructure as Code with Terraform**
+**Part 4: Infrastructure as Code with Terraform**  
 
 Security patterns established. Now: how to provision all this infrastructure consistently across GCP and AWS.
 
@@ -1875,3 +2181,6 @@ Part 4 covers:
 - [OWASP Webhook Security](https://cheatsheetseries.owasp.org/cheatsheets/Webhook_Security_Cheat_Sheet.html)
 - [GCP IAM Best Practices](https://cloud.google.com/iam/docs/best-practices)
 - [AWS IAM Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
+- [OWASP Security Headers](https://owasp.org/www-project-secure-headers/)
+- [Cloudflare Workers Security](https://developers.cloudflare.com/workers/platform/security/)
+- [GitHub Actions Security](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)

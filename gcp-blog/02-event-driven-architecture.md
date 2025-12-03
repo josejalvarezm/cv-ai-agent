@@ -2,6 +2,8 @@
 
 *Breaking synchronous coupling through DynamoDB Streams, SQS FIFO queues, Firestore WebSocket listeners, and event correlation, enabling independent service operation across Cloudflare, AWS, and GCP.*
 
+## Contents
+
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)
 - [Synchronous vs Asynchronous: The Coupling Problem](#synchronous-vs-asynchronous-the-coupling-problem)
@@ -347,10 +349,6 @@ sequenceDiagram
     DS->>DS: Rerender UI
     
     Note over GH,DS: Total latency: 200-500ms<br/>No polling required
-    
-    style CF fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style FS fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style DS fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
 ```
 
 ---
@@ -500,7 +498,7 @@ AWS CloudWatch tracks Lambda invocations, errors, and duration. Key metrics for 
 
 **Errors:** Failed invocations (target: <1%)
 
-**Duration:** Processing time per batch (target: <3 seconds)
+**Duration:** Processing time per batch (target: < 3 seconds)
 
 **Throttles:** Lambda concurrent execution limit reached (target: 0)
 
@@ -515,26 +513,20 @@ sequenceDiagram
     participant SQS as SQS FIFO Queue<br/>(14-day retention)
     participant LAMBDA as Lambda Processor<br/>(Node.js)
     participant AGG as DynamoDB<br/>(Aggregated Table)
-    
+
     WH->>DB: PutItem<br/>({repo, query, timestamp})
     DB->>STREAM: Stream record<br/>(NEW_IMAGE)
     STREAM->>EB: Stream event
     EB->>SQS: Send message<br/>(filtered by rule)
-    
+
     Note over SQS,LAMBDA: Wait for batch<br/>(10 messages or 5 min)
-    
+
     SQS->>LAMBDA: Poll batch<br/>(10 messages)
     LAMBDA->>LAMBDA: Process analytics<br/>(parallel)
     LAMBDA->>AGG: Write results<br/>({date, count, keywords})
     LAMBDA->>SQS: Delete messages<br/>(on success)
-    
+
     Note over WH,AGG: Total latency: 2-5 seconds<br/>Eventual consistency
-    
-    style DB fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style STREAM fill:#e1f5fe,stroke:#0277bd,stroke-width:3px
-    style SQS fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style LAMBDA fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
-    style AGG fill:#fff3e0,stroke:#f57c00,stroke-width:3px
 ```
 
 ---
@@ -889,16 +881,6 @@ Each component needs monitoring, configuration, and maintenance. More complexity
 
 **Documentation:** Architecture diagrams (like those in this post) explain data flow. Runbooks document failure recovery procedures.
 
-### When NOT to Use Event-Driven Patterns
-
-**Simple CRUD applications:** If you're building a basic to-do list app with one database and one API, event-driven architecture is overkill. Direct database calls are simpler.
-
-**Real-time collaboration:** If users expect instant feedback (Google Docs, Figma), synchronous HTTP or WebSockets are better. Event queues add latency.
-
-**Strong consistency requirements:** If you need transactions spanning multiple operations (bank transfers, inventory updates), use a database with ACID guarantees and synchronous calls.
-
-**Small teams with limited ops experience:** Event-driven systems require understanding of queues, streams, retries, idempotency, and distributed tracing. If your team isn't ready, start simpler.
-
 ### Synchronous HTTP: Still Valid for Simple Cases
 
 Event-driven architecture isn't always the answer. Synchronous HTTP works well for:
@@ -921,22 +903,18 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
    - SQS buffers events when consumers are slow or down
    - Batching reduces Lambda invocations (cost optimization)
    - Dead letter queues prevent poison messages from blocking the queue
-
 2. **Use event streams for state change capture**
    - DynamoDB Streams log all table changes
    - Multiple consumers can read the same stream
    - 24-hour retention enables replay after failures
-
 3. **Use pub/sub for real-time updates**
    - Firestore WebSocket listeners eliminate polling
    - Dashboard updates instantly when data changes
    - Scales to thousands of concurrent clients
-
 4. **Implement correlation IDs**
    - Track events across distributed services
    - Enables debugging and distributed tracing
    - Use natural IDs (GitHub issue numbers) when available
-
 5. **Design for idempotency**
    - SQS delivers messages at least once (possibly twice)
    - Use message IDs or database constraints to prevent duplicate processing
@@ -980,11 +958,24 @@ Event-driven architecture isn't always the answer. Synchronous HTTP works well f
 
 **Don't use it for:**
 
-- ✗ Simple CRUD applications
-- ✗ Real-time collaboration (Google Docs-style)
-- ✗ Strong consistency requirements (financial transactions)
-- ✗ Prototypes and MVPs (start simple, refactor later)
-- ✗ Teams without distributed systems experience
+- **✗ Simple CRUD apps**  
+  If it’s a single database with straightforward operations, event‑driven adds unnecessary complexity.
+- **✗ Real‑time collaboration**  
+  If you need ultra‑low latency and strict ordering (e.g., Google Docs‑style), synchronous or CRDT‑based approaches are better.
+- **✗ Strong consistency core paths**  
+  For atomic correctness (e.g., financial transactions), use synchronous transactions; keep events for side effects.
+- **✗ Prototypes and MVPs**  
+  When speed of delivery matters more than resilience, start simple and refactor later.
+- **✗ Limited team experience**  
+  Without solid foundations in retries, idempotency, and observability, event‑driven may introduce operational risk.
+
+Real‑time collaboration (Google Docs‑style) → If ultra‑low latency and strict ordering are required, direct synchronous or CRDT‑based approaches are better.
+
+Strong consistency requirements (financial transactions) → If correctness must be immediate and atomic, use synchronous transactions for the critical path, and event‑driven only for side effects.
+
+Prototypes and MVPs → If speed of delivery matters more than resilience, start simple with synchronous calls, then refactor to event‑driven later.
+
+Teams without distributed systems experience → If your team isn’t familiar with retries, idempotency, and correlation IDs, event‑driven may introduce operational risk.
 
 ---
 

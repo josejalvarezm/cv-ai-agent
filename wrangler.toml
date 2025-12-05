@@ -1,4 +1,4 @@
-name = "cv-ai-agent-private-dev"
+name = "cv-assistant-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -36,7 +36,6 @@ vars = { ENVIRONMENT = "development" }
 
 # Production configuration
 [env.production]
-name = "cv-ai-agent-private"
 vars = { ENVIRONMENT = "production", CACHE_TTL = "7200", VECTORIZE_FALLBACK = "true", AI_REPLY_ENABLED = "true" }
 # Secrets are automatically inherited from global secrets set via wrangler secret put:
 #   - TURNSTILE_SECRET_KEY

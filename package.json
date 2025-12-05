@@ -1,5 +1,5 @@
 {
-  "name": "cv-ai-agent-private",
+  "name": "cv-assistant-worker",
   "version": "1.0.0",
   "description": "CV Assistant with semantic search using Cloudflare Workers, D1, Vectorize, and Workers AI",
   "main": "src/index.ts",
@@ -20,7 +20,7 @@
     "kv:create": "wrangler kv:namespace create CV_VECTORS",
     "vectorize:create": "wrangler vectorize create cv-skills-index --dimensions=768 --metric=cosine",
     "index:remote": "node scripts/index-vectors.js",
-    "health": "curl https://cv-ai-agent-private.{YOUR_WORKERS_SUBDOMAIN}/health",
+    "health": "curl https://cv-ai-agent.{YOUR_DOMAIN}/health",
     "reseed": "pwsh -File scripts/reseed-ai-data.ps1",
     "reseed:force": "pwsh -File scripts/reseed-ai-data.ps1 -Force",
     "reseed:local": "pwsh -File scripts/reseed-ai-data.ps1 -Environment local",

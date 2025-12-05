@@ -222,21 +222,21 @@ export async function handleTestUpsert(request: Request, env: FullEnv): Promise<
     }
 
     const services = createServiceContainer(env);
-    
+
     // Fetch the technology from D1
     const allTech = await services.d1Repository.getTechnology(100, 0);
     const found = allTech.results?.find((t: any) => t.id === id);
     if (!found) {
       return Response.json({ error: `Technology ${id} not found` }, { status: 404 });
     }
-    
+
     const item = found;
-    
+
     // Generate embedding
     const text = `${item.name} ${item.experience || ''} ${item.summary || ''} ${item.action || ''}`;
     const embeddingResult = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: [text] }) as { data: number[][] };
     const embedding = embeddingResult.data[0];
-    
+
     // Try direct Vectorize upsert
     const vectorId = `technology-${item.id}`;
     const vector = {
@@ -244,12 +244,12 @@ export async function handleTestUpsert(request: Request, env: FullEnv): Promise<
       values: embedding,
       metadata: { id: item.id, name: item.name, version: 999 }
     };
-    
+
     console.log(`Test upsert: ${vectorId}, embedding length: ${embedding.length}`);
-    
+
     // Direct upsert to Vectorize
     await env.VECTORIZE.upsert([vector]);
-    
+
     return Response.json({
       success: true,
       vectorId,
@@ -259,7 +259,7 @@ export async function handleTestUpsert(request: Request, env: FullEnv): Promise<
     });
   } catch (error) {
     logger.error('Test upsert failed', error);
-    return Response.json({ 
+    return Response.json({
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });

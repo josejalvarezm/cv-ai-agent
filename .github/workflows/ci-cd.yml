@@ -104,7 +104,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
-      url: https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}
+      url: https://cv-ai-agent-private.{YOUR_WORKERS_SUBDOMAIN}
 
     steps:
       - name: Wait to avoid Cloudflare rate limits
@@ -137,10 +137,10 @@ jobs:
       - name: Run health check
         run: |
           sleep 5
-          curl -f https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}/health || exit 1
+          curl -f https://cv-ai-agent-private.{YOUR_WORKERS_SUBDOMAIN}/health || exit 1
 
       - name: Notify deployment success
         run: |
           echo "✅ Production deployment successful!"
-          echo "🌐 Dev: https://cv-assistant-worker.{YOUR_WORKERS_SUBDOMAIN}"
-          echo "🌐 Prod: https://cv-assistant-worker-production.{YOUR_WORKERS_SUBDOMAIN}"
+          echo "🌐 Dev: https://cv-ai-agent-private-dev.{YOUR_WORKERS_SUBDOMAIN}"
+          echo "🌐 Prod: https://cv-ai-agent-private.{YOUR_WORKERS_SUBDOMAIN}"

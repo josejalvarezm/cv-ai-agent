@@ -2,6 +2,12 @@
 
 *Infrastructure as code isn’t one‑size‑fits‑all. This post shows how Terraform and CloudFormation can coexist — balancing portability with native AWS features. Hybrid deployment patterns let teams evolve without lock‑in, while still staying at £0/month within the free‑tier.*
 
+> **Update (December 2025):** This post documents the original hybrid approach. 
+> The system has since evolved to **pure Terraform** across all 7 Terraform Cloud 
+> workspaces. See [Part V: Terraform Multi-Cloud](https://blog.{YOUR_DOMAIN}/blog/gcp-cv-analytics-4) for the current architecture.
+> The migration eliminated CloudFormation entirely, consolidating all infrastructure 
+> in Terraform Cloud for simpler disaster recovery and consistent tooling.
+
 ## Contents
 
 - [Contents](#contents)

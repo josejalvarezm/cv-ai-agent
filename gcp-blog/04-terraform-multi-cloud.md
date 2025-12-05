@@ -1,6 +1,6 @@
 # Multi-Cloud Infrastructure as Code: Terraform for GCP and AWS (GCP Series: Real-time Analytics & Firestore, Part V)
 
-*Managing eleven microservices across Cloudflare, AWS, and GCP with 2,000+ lines of Terraform configuration across 7 Terraform Cloud workspaces, eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
+*Managing eleven microservices across Cloudflare, AWS, and GCP with 2,000+ lines of Terraform configuration across 9 Terraform Cloud workspaces, eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
 
 ## Contents
 
@@ -22,7 +22,7 @@
 ## Quick Summary
 
 - ✓ **100% infrastructure-as-code** eliminates manual configuration drift
-- ✓ **7 Terraform Cloud workspaces** managing 11 services across 3 clouds
+- ✓ **9 Terraform Cloud workspaces** managing 11 services across 3 clouds
 - ✓ **Multi-cloud Terraform** provisions Cloudflare Pages/Workers, GCP Cloud Functions, Firestore, AWS Lambda, DynamoDB
 - ✓ **Remote state management** with Terraform Cloud enables team collaboration
 - ✓ **Disaster recovery** - entire infrastructure reproducible from Terraform definitions
@@ -36,7 +36,7 @@ Clicking through cloud consoles works until it doesn't. You provision a Cloud Fu
 
 Infrastructure-as-code (IaC) solves this problem. Terraform describes infrastructure in declarative configuration files. You define what you want (Lambda function with specific memory, DynamoDB table with specific capacity), and Terraform figures out how to create it. Changes are versioned in git. Deployments are reproducible. Team members see exactly what's running in production.
 
-CV Analytics uses Terraform to provision 100% of its infrastructure across **three clouds** (Cloudflare, AWS, GCP). Eleven microservices, multiple databases (D1×2, DynamoDB×2, Firestore), Cloudflare Pages projects, Workers, KV namespaces, Vectorize indexes, SQS queues, EventBridge schedulers, all IAM roles—all defined in 2,000+ lines of Terraform configuration across 7 Terraform Cloud workspaces. No manual clicking. No configuration drift. No "works on my machine" problems.
+CV Analytics uses Terraform to provision 100% of its infrastructure across **three clouds** (Cloudflare, AWS, GCP). Eleven microservices, multiple databases (D1×2, DynamoDB×2, Firestore), Cloudflare Pages projects, Workers, KV namespaces, Vectorize indexes, SQS queues, EventBridge schedulers, all IAM roles—all defined in 2,000+ lines of Terraform configuration across 9 Terraform Cloud workspaces. No manual clicking. No configuration drift. No "works on my machine" problems.
 
 **The cross-cloud challenge:** AWS Lambda needs to call GCP Cloud Function URL (output from `google_cloudfunctions_function` resource). Terraform handles this dependency automatically across providers. When GCP Cloud Function deploys, its URL becomes available to AWS Lambda configuration.
 
@@ -44,7 +44,7 @@ This post explains how Terraform manages multi-cloud infrastructure: how provide
 
 **What you'll learn:**
 
-- ✓ How Terraform Cloud workspaces organize multi-cloud infrastructure (7 workspaces, 3 clouds)
+- ✓ How Terraform Cloud workspaces organize multi-cloud infrastructure (9 workspaces, 3 clouds)
 - ✓ How Terraform providers abstract GCP, AWS, and Cloudflare APIs (multi-cloud in one codebase)
 - ✓ How to handle cross-cloud dependencies (AWS Lambda → GCP Cloud Function)
 - ✓ How to structure multi-cloud Terraform configurations (3 clouds, 11 services)
@@ -56,17 +56,19 @@ This post explains how Terraform manages multi-cloud infrastructure: how provide
 
 ## Terraform Cloud Workspaces
 
-CV Analytics uses **7 Terraform Cloud workspaces** to organize infrastructure by cloud provider and service boundary:
+CV Analytics uses **9 Terraform Cloud workspaces** to organize infrastructure by cloud provider and service boundary:
 
 | Workspace | Cloud | Purpose | Resources |
 |-----------|-------|---------|-----------|
 | `cloudflare-d1-cv-main` | Cloudflare | Portfolio API | D1 database, Worker, KV namespace |
 | `cv-admin-worker` | Cloudflare | Admin API | D1 database, Worker, custom domain |
+| `cv-admin-cloudflare` | Cloudflare | Admin infrastructure | Additional admin resources |
 | `cloudflare-pages` | Cloudflare | Frontend apps | 3 Pages projects, custom domains |
 | `cv-analytics-gcp` | GCP | Analytics ingestion | Cloud Functions, Firestore, Firebase Hosting |
 | `cv-analytics-processor` | AWS | Batch processing | Lambda, SQS, DynamoDB, IAM roles |
 | `cv-analytics-reporter` | AWS | Email reports | Lambda, EventBridge, SES permissions |
 | `cv-analytics-worker` | AWS | Worker support | Additional Lambda infrastructure |
+| `aws-chatbot-analytics` | AWS | Chatbot analytics | Legacy/additional analytics resources |
 
 **Why separate workspaces?**
 
@@ -86,6 +88,18 @@ terraform {
     }
   }
 }
+```
+
+---
+
+## Terraform Fundamentals
+
+### Declarative Configuration
+
+Terraform uses HashiCorp Configuration Language (HCL) to describe infrastructure. You declare what you want, not how to create it.
+
+**Imperative (bash script):**
+
 ```bash
 # Create Lambda function
 aws lambda create-function \
@@ -119,11 +133,15 @@ Terraform handles create vs. update logic automatically. If the function doesn't
 
 Providers are Terraform plugins that interact with cloud APIs. Each provider translates HCL resources into API calls.
 
-**CV Analytics providers:**
+**CV Analytics providers (3 clouds):**
 
 ```hcl
 terraform {
   required_providers {
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
     google = {
       source  = "hashicorp/google"
       version = "~> 5.0"
@@ -133,6 +151,10 @@ terraform {
       version = "~> 5.0"
     }
   }
+}
+
+provider "cloudflare" {
+  # API token from CLOUDFLARE_API_TOKEN env var
 }
 
 provider "google" {
@@ -968,6 +990,157 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
 - `*` = month (every month)
 - `MON` = day of week (Monday)
 - `*` = year (every year)
+
+---
+
+## Cloudflare Infrastructure
+
+Cloudflare resources are managed across three Terraform workspaces, handling D1 databases, custom domains, and Pages projects.
+
+### Cloudflare Provider Configuration
+
+```hcl
+terraform {
+  cloud {
+    organization = "josejalvarezmterraform"
+
+    workspaces {
+      name = "cloudflare-pages"  # or cloudflare-d1-cv-main, cv-admin-cloudflare
+    }
+  }
+
+  required_providers {
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "cloudflare" {
+  # Credentials from environment variable: CLOUDFLARE_API_TOKEN
+}
+
+# Get account info dynamically
+data "cloudflare_accounts" "main" {}
+
+locals {
+  account_id = data.cloudflare_accounts.main.accounts[0].id
+}
+```
+
+**Key pattern:** Using `data.cloudflare_accounts.main` to dynamically get account ID rather than hardcoding it.
+
+### D1 Database
+
+Cloudflare D1 is a serverless SQLite database. Terraform creates the database; Wrangler CLI handles schema migrations and bindings.
+
+```hcl
+# CV API Database (Portfolio API)
+resource "cloudflare_d1_database" "cv_database" {
+  account_id = local.account_id
+  name       = "cv-database"
+}
+
+# Admin Staging Database (Admin Worker)
+resource "cloudflare_d1_database" "admin_staging" {
+  account_id = local.account_id
+  name       = "cv-admin-staging-db"
+}
+```
+
+**Separation of concerns:**
+- **Terraform:** Creates D1 database resource
+- **Wrangler:** Manages D1 bindings to Workers, schema migrations, and data
+
+### Custom Domain Routes
+
+Workers can be accessed via custom domains. Two approaches exist:
+
+```hcl
+# Approach 1: Worker Route (pattern-based)
+# Used by: d1-cv-private (Portfolio API)
+resource "cloudflare_worker_route" "cv_api" {
+  zone_id     = data.cloudflare_zone.main.id
+  pattern     = "api.{YOUR_DOMAIN}/*"
+  script_name = "cv-api-worker"
+}
+
+# Approach 2: Workers Domain (direct domain)
+# Used by: cv-admin-worker-private
+resource "cloudflare_workers_domain" "admin_api" {
+  account_id = local.account_id
+  hostname   = "api.admin.{YOUR_DOMAIN}"
+  service    = "cv-admin-worker"
+  zone_id    = data.cloudflare_zone.main.id
+}
+```
+
+**Worker Route vs Workers Domain:**
+- `cloudflare_worker_route`: Pattern-based routing (`domain/*`)
+- `cloudflare_workers_domain`: Direct hostname mapping (cleaner, preferred for new projects)
+
+### Cloudflare Pages Projects
+
+Pages projects host static frontend applications. Terraform manages project configuration and custom domains; GitHub Actions handles deployments.
+
+```hcl
+# Chatbot Widget - Angular application
+resource "cloudflare_pages_project" "chatbot" {
+  account_id        = local.account_id
+  name              = "cv-chatbot-private"
+  production_branch = "main"
+
+  deployment_configs {
+    production {
+      compatibility_date = "2025-10-14"
+    }
+    preview {
+      compatibility_date = "2025-10-14"
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      source,
+      build_config,
+      deployment_configs,
+    ]
+  }
+}
+
+# Custom domain for Pages project
+resource "cloudflare_pages_domain" "chatbot" {
+  account_id   = local.account_id
+  project_name = cloudflare_pages_project.chatbot.name
+  domain       = "chatbot.ui.{YOUR_DOMAIN}"
+}
+```
+
+**lifecycle.ignore_changes:** Critical for Pages projects. Build config is managed via Cloudflare dashboard and GitHub integration. Terraform shouldn't overwrite these settings.
+
+**CV Analytics suite Pages projects:**
+- `cv-chatbot-private` → chatbot.ui.{YOUR_DOMAIN}
+- `cv-admin-portal-private` → admin.{YOUR_DOMAIN}  
+- `portfolio-cv-private` → {YOUR_DOMAIN} (main portfolio)
+
+### Terraform vs Wrangler Responsibility Split
+
+Cloudflare Workers have a unique management pattern:
+
+| Aspect | Terraform | Wrangler |
+|--------|-----------|----------|
+| D1 database creation | ✓ | |
+| D1 schema migrations | | ✓ |
+| D1 bindings to Worker | | ✓ |
+| Custom domain routes | ✓ | |
+| Worker deployment | | ✓ |
+| Durable Objects | | ✓ |
+| Secrets | | ✓ |
+| KV namespaces | ✓ | |
+| Vectorize indexes | ✓ | |
+
+**Why this split?** Wrangler handles the deployment lifecycle (bundling, uploading, migrations). Terraform handles the infrastructure that exists independent of deployments (databases, routes, namespaces).
 
 ---
 

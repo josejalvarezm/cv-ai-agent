@@ -1,6 +1,6 @@
 # CV Analytics: Multi-Cloud Microservices at £0/Month (GCP Series: Real-time Analytics & Firestore, Part I)
 
-*Six independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics, all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
+*Eleven independent microservices across Cloudflare, AWS, and GCP, processing 3,000 queries per month with real-time analytics, all running at £0.00/month by exploiting free tiers and architectural patterns that scale.*
 
 ## Contents
 
@@ -35,28 +35,35 @@ What remained was harder but more valuable: patterns that work regardless of bud
 
 ## What This Series Covers
 
-### Part 1: Pure Microservices Architecture (6 Services, 3 Clouds)
+### Part 1: Pure Microservices Architecture (11 Services, 3 Clouds)
 
 I called my system "microservices" because it had multiple services across three clouds. Then I measured it.
 
-**The 6 services:**
+**The 11 services:**
 
-1. **Angular CV Site** (user-facing portfolio) - Cloudflare Pages
-2. **Cloudflare Worker** (chatbot API, 1.87s P95 end-to-end) - Edge compute
-3. **AWS Lambda Processor** (analytics aggregation) - Batch processing
-4. **AWS Lambda Reporter** (weekly email reports) - Scheduled task
-5. **GCP Cloud Function** (webhook receiver) - Real-time ingestion
-6. **React Dashboard** (Firebase Hosting) - Live visualization
+| # | Service | Purpose | Cloud |
+|---|---------|---------|-------|
+| 1 | **Portfolio CV** | User-facing portfolio | Cloudflare Pages |
+| 2 | **CV Chatbot Widget** | Embeddable chat UI | Cloudflare Pages |
+| 3 | **Admin Portal** | Content management dashboard | Cloudflare Pages |
+| 4 | **D1 CV Worker** | Portfolio data API + D1 database | Cloudflare Workers |
+| 5 | **Admin Worker** | Admin API + D1 database | Cloudflare Workers |
+| 6 | **AI Agent** | Chatbot API with semantic search | Cloudflare Workers |
+| 7 | **Analytics Dashboard** | Real-time visualization | Firebase Hosting (GCP) |
+| 8 | **Webhook Receiver** | Event ingestion | GCP Cloud Functions |
+| 9 | **Analytics Processor** | Batch aggregation | AWS Lambda |
+| 10 | **Analytics Reporter** | Weekly email reports | AWS Lambda |
+| 11 | **Infrastructure** | Terraform IaC (meta-project) | All clouds |
 
 Shared databases? Services couldn't deploy independently. Synchronous API calls? Cloudflare Worker timeouts. Coupled deployments? "Microservices" in name only.
 
 **The scoring system forced honesty:**
 
-- Can services deploy independently? (Yes: 6 separate deployment pipelines)
+- Can services deploy independently? (Yes: 11 separate deployment pipelines)
 - Do services own their data? (Mostly: AWS DynamoDB shared between Processor/Reporter)
 - Are failures isolated? (Yes: Dashboard works even if AWS Lambda fails)
 - Can services use different clouds? (Yes: Cloudflare + AWS + GCP)
-- Can services use different technologies? (Yes: Angular, Go, TypeScript, Node.js)
+- Can services use different technologies? (Yes: Angular, React, Go, TypeScript, Node.js)
 
 **Result:** 87.5% purity score. Not perfect, but honest about trade-offs.
 
@@ -347,24 +354,31 @@ Using three clouds costs the same as using one (£0), but leverages each platfor
 
 ## Repository Structure
 
-All code is public and production-ready:
+All code is production-ready across 11 repositories:
 
-| Repository | Purpose | Tech Stack |
-|------------|---------|------------|
-| `cv-analytics-dashboard-private` | Real-time frontend | React, TypeScript, Firestore |
-| `cv-analytics-webhook-receiver-private` | Event ingestion | Go, Cloud Functions, Firestore |
-| `cv-analytics-processor-private` | Analytics processing | Node.js, Lambda, DynamoDB |
-| `cv-analytics-reporter-private` | Weekly email reports | Node.js, Lambda, AWS SES |
-| `cv-analytics-infrastructure-private` | IaC automation | Terraform (GCP + AWS) |
+| Repository | Purpose | Tech Stack | Cloud |
+|------------|---------|------------|-------|
+| `portfolio-cv-private` | Main portfolio website | Angular 19, TypeScript | Cloudflare Pages |
+| `cv-chatbot-private` | Embeddable chat widget | Angular 19, TypeScript | Cloudflare Pages |
+| `cv-admin-portal-private` | Admin dashboard | React, Vite, TypeScript | Cloudflare Pages |
+| `d1-cv-private` | Portfolio data API | TypeScript, Hono, D1 | Cloudflare Workers |
+| `cv-admin-worker-private` | Admin API | TypeScript, Hono, D1 | Cloudflare Workers |
+| `cv-ai-agent-private` | AI chatbot with semantic search | TypeScript, Vectorize, Workers AI | Cloudflare Workers |
+| `cv-analytics-dashboard-private` | Real-time analytics frontend | React, TypeScript, Firestore | Firebase Hosting |
+| `cv-analytics-webhook-receiver-private` | Event ingestion | Go, Cloud Functions, Firestore | GCP |
+| `cv-analytics-processor-private` | Analytics batch processing | Node.js, Lambda, DynamoDB | AWS |
+| `cv-analytics-reporter-private` | Weekly email reports | Node.js, Lambda, SES | AWS |
+| `cv-analytics-infrastructure-private` | IaC automation | Terraform, 7 workspaces | All clouds |
 
 **Architecture metrics:**
 
-- 6 independent services
+- 11 independent services
 - 87.5% microservices purity score
-- 4 programming languages/runtimes
-- 2 cloud providers (GCP + AWS)
-- 100% infrastructure-as-code
-- Automated CI/CD for all services
+- 5 programming languages/runtimes (TypeScript, Go, Node.js, Angular, React)
+- 3 cloud providers (Cloudflare, AWS, GCP)
+- 100% infrastructure-as-code via Terraform Cloud
+- 7 Terraform Cloud workspaces managing all infrastructure
+- 11 independent CI/CD pipelines via GitHub Actions
 
 ---
 

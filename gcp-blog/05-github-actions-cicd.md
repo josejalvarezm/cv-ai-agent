@@ -1,6 +1,6 @@
 # Automated Deployments with GitHub Actions: Multi-Cloud CI/CD (GCP Series: Real-time Analytics & Firestore, Part VI)
 
-*Six independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2, with automated testing, secrets management, and zero-downtime deployments across three clouds.*
+*Eleven independent CI/CD pipelines deploying to Cloudflare Pages, Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, and AWS Lambda×2, with automated testing, secrets management, and zero-downtime deployments across three clouds.*
 
 ## Contents
 
@@ -19,19 +19,19 @@
 
 ## Quick Summary
 
-- ✓ **6 independent CI/CD pipelines** for dashboard, webhook, processor, reporter, Angular CV site, Cloudflare Worker
+- ✓ **11 independent CI/CD pipelines** for all services across 3 clouds
 - ✓ **GitHub Actions workflows** automate testing, building, deploying across 3 clouds
-- ✓ **Multi-cloud deployments** to Cloudflare Pages (Angular), Cloudflare Workers, Firebase Hosting, GCP Cloud Functions, AWS Lambda×2
-- ✓ **Secrets management** with GitHub Secrets (12+ secrets across 6 repos, 3 clouds)
+- ✓ **Multi-cloud deployments** to Cloudflare Pages×3, Cloudflare Workers×3, Firebase Hosting, GCP Cloud Functions, AWS Lambda×2
+- ✓ **Secrets management** with GitHub Secrets (20+ secrets across 11 repos, 3 clouds)
 - ✓ **Zero-downtime deployments** with serverless platforms (Cloudflare, GCP, AWS)
 
 ---
 
 ## Introduction
 
-Manual deployments don't scale. In January 2024, I deployed CV Analytics updates 47 times across six services and three clouds. Each manual deployment took 15 minutes (checkout code, build, test, deploy, verify). That's 11.75 hours of repetitive work, with human error on every deployment.
+Manual deployments don't scale. In January 2024, I deployed CV Analytics updates 47 times across eleven services and three clouds. Each manual deployment took 15 minutes (checkout code, build, test, deploy, verify). That's 11.75 hours of repetitive work, with human error on every deployment.
 
-After automating with GitHub Actions, every git push triggers tested deployments to Cloudflare Pages (Angular), Cloudflare Workers, Firebase Hosting (React), GCP Cloud Functions (Go), and AWS Lambda×2 (Node.js). Zero manual intervention. Zero forgotten steps. Zero "works on my machine" deployments.
+After automating with GitHub Actions, every git push triggers tested deployments to Cloudflare Pages (Angular×2, React), Cloudflare Workers×3, Firebase Hosting (React), GCP Cloud Functions (Go), and AWS Lambda×2 (Node.js). Zero manual intervention. Zero forgotten steps. Zero "works on my machine" deployments.
 
 This post explains how CV Analytics uses GitHub Actions for multi-cloud CI/CD across three clouds:
 
@@ -81,14 +81,21 @@ GitHub Actions integrates directly with your repository. No external CI/CD platf
 
 **How independent pipelines enable velocity:**
 
-CV Analytics runs 6 separate workflows across 3 clouds:
+CV Analytics runs 11 separate workflows across 3 clouds:
 
-1. **Angular CV site pipeline**: Angular build → Cloudflare Pages
-2. **Cloudflare Worker pipeline**: TypeScript build → Cloudflare Workers
-3. **React Dashboard pipeline**: React build → Firebase Hosting
-4. **Webhook receiver pipeline**: Go build → GCP Cloud Functions
-5. **Processor pipeline**: Node.js → AWS Lambda
-6. **Reporter pipeline**: Node.js → AWS Lambda
+| # | Pipeline | Build | Deploy Target |
+|---|----------|-------|---------------|
+| 1 | **Portfolio CV** | Angular 19 | Cloudflare Pages |
+| 2 | **CV Chatbot** | Angular 19 | Cloudflare Pages |
+| 3 | **Admin Portal** | React/Vite | Cloudflare Pages |
+| 4 | **D1 CV Worker** | TypeScript | Cloudflare Workers |
+| 5 | **Admin Worker** | TypeScript | Cloudflare Workers |
+| 6 | **AI Agent** | TypeScript | Cloudflare Workers |
+| 7 | **Analytics Dashboard** | React | Firebase Hosting |
+| 8 | **Webhook Receiver** | Go | GCP Cloud Functions |
+| 9 | **Processor** | Node.js | AWS Lambda |
+| 10 | **Reporter** | Node.js | AWS Lambda |
+| 11 | **Infrastructure** | Terraform | All clouds (via Terraform Cloud) |
 
 Services deploy independently. No coordinated releases. Angular site updates don't wait for Cloudflare Worker changes. React dashboard updates don't wait for GCP webhook changes. Each service (even within same cloud) moves at its own pace.
 

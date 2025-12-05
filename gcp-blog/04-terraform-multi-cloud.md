@@ -1,14 +1,16 @@
 # Multi-Cloud Infrastructure as Code: Terraform for GCP and AWS (GCP Series: Real-time Analytics & Firestore, Part V)
 
-*Managing six microservices across Cloudflare, AWS, and GCP with 1,200 lines of Terraform configuration, eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
+*Managing eleven microservices across Cloudflare, AWS, and GCP with 2,000+ lines of Terraform configuration across 7 Terraform Cloud workspaces, eliminating manual provisioning, handling cross-cloud dependencies, and enabling reproducible infrastructure with remote state management.*
 
 ## Contents
 
 - [Quick Summary](#quick-summary)
 - [Introduction](#introduction)
+- [Terraform Cloud Workspaces](#terraform-cloud-workspaces)
 - [Terraform Fundamentals](#terraform-fundamentals)
 - [GCP Infrastructure](#gcp-infrastructure)
 - [AWS Infrastructure](#aws-infrastructure)
+- [Cloudflare Infrastructure](#cloudflare-infrastructure)
 - [Remote State Management](#remote-state-management)
 - [Secrets Handling](#secrets-handling)
 - [Deployment Workflow](#deployment-workflow)
@@ -20,9 +22,10 @@
 ## Quick Summary
 
 - ✓ **100% infrastructure-as-code** eliminates manual configuration drift
-- ✓ **Multi-cloud Terraform** provisions GCP Cloud Functions, Firestore, AWS Lambda, DynamoDB
+- ✓ **7 Terraform Cloud workspaces** managing 11 services across 3 clouds
+- ✓ **Multi-cloud Terraform** provisions Cloudflare Pages/Workers, GCP Cloud Functions, Firestore, AWS Lambda, DynamoDB
 - ✓ **Remote state management** with Terraform Cloud enables team collaboration
-- ✓ **Rollback strategies** protect against failed deployments
+- ✓ **Disaster recovery** - entire infrastructure reproducible from Terraform definitions
 - ✓ **Cost: £0/month** using free tier optimization patterns
 
 ---
@@ -33,31 +36,56 @@ Clicking through cloud consoles works until it doesn't. You provision a Cloud Fu
 
 Infrastructure-as-code (IaC) solves this problem. Terraform describes infrastructure in declarative configuration files. You define what you want (Lambda function with specific memory, DynamoDB table with specific capacity), and Terraform figures out how to create it. Changes are versioned in git. Deployments are reproducible. Team members see exactly what's running in production.
 
-CV Analytics uses Terraform to provision 100% of its infrastructure across **three clouds** (Cloudflare, AWS, GCP). Six microservices (Angular app, Cloudflare Worker, AWS Lambda×2, GCP Cloud Function, React Dashboard), three databases (DynamoDB×2, Firestore), SQS queue, EventBridge scheduler, all IAM roles, all defined in 1,200 lines of Terraform configuration. No manual clicking. No configuration drift. No "works on my machine" problems.
+CV Analytics uses Terraform to provision 100% of its infrastructure across **three clouds** (Cloudflare, AWS, GCP). Eleven microservices, multiple databases (D1×2, DynamoDB×2, Firestore), Cloudflare Pages projects, Workers, KV namespaces, Vectorize indexes, SQS queues, EventBridge schedulers, all IAM roles—all defined in 2,000+ lines of Terraform configuration across 7 Terraform Cloud workspaces. No manual clicking. No configuration drift. No "works on my machine" problems.
 
 **The cross-cloud challenge:** AWS Lambda needs to call GCP Cloud Function URL (output from `google_cloudfunctions_function` resource). Terraform handles this dependency automatically across providers. When GCP Cloud Function deploys, its URL becomes available to AWS Lambda configuration.
 
-This post explains how Terraform manages multi-cloud infrastructure: how providers abstract GCP and AWS APIs, how to handle cross-cloud dependencies (AWS Lambda needs GCP webhook URL), how remote state enables team collaboration across clouds, how to manage secrets securely in three cloud providers, and how rollback strategies protect against failed deployments.
+This post explains how Terraform manages multi-cloud infrastructure: how providers abstract GCP, AWS, and Cloudflare APIs, how to handle cross-cloud dependencies (AWS Lambda needs GCP webhook URL), how remote state enables team collaboration across clouds, how to manage secrets securely in three cloud providers, and how rollback strategies protect against failed deployments.
 
 **What you'll learn:**
 
-- ✓ How Terraform providers abstract GCP and AWS APIs (multi-cloud in one codebase)
+- ✓ How Terraform Cloud workspaces organize multi-cloud infrastructure (7 workspaces, 3 clouds)
+- ✓ How Terraform providers abstract GCP, AWS, and Cloudflare APIs (multi-cloud in one codebase)
 - ✓ How to handle cross-cloud dependencies (AWS Lambda → GCP Cloud Function)
-- ✓ How to structure multi-cloud Terraform configurations (3 clouds, 6 services)
+- ✓ How to structure multi-cloud Terraform configurations (3 clouds, 11 services)
 - ✓ How remote state management enables team collaboration across clouds
 - ✓ How to handle secrets securely across three providers (AWS, GCP, Cloudflare)
 - ✓ How rollback strategies protect against deployment failures
 
 ---
 
-## Terraform Fundamentals
+## Terraform Cloud Workspaces
 
-### Declarative Configuration
+CV Analytics uses **7 Terraform Cloud workspaces** to organize infrastructure by cloud provider and service boundary:
 
-Terraform uses HashiCorp Configuration Language (HCL) to describe infrastructure. You declare what you want, not how to create it.
+| Workspace | Cloud | Purpose | Resources |
+|-----------|-------|---------|-----------|
+| `cloudflare-d1-cv-main` | Cloudflare | Portfolio API | D1 database, Worker, KV namespace |
+| `cv-admin-worker` | Cloudflare | Admin API | D1 database, Worker, custom domain |
+| `cloudflare-pages` | Cloudflare | Frontend apps | 3 Pages projects, custom domains |
+| `cv-analytics-gcp` | GCP | Analytics ingestion | Cloud Functions, Firestore, Firebase Hosting |
+| `cv-analytics-processor` | AWS | Batch processing | Lambda, SQS, DynamoDB, IAM roles |
+| `cv-analytics-reporter` | AWS | Email reports | Lambda, EventBridge, SES permissions |
+| `cv-analytics-worker` | AWS | Worker support | Additional Lambda infrastructure |
 
-**Imperative (bash script):**
+**Why separate workspaces?**
 
+1. **Blast radius control** - A failed Cloudflare deployment doesn't affect AWS infrastructure
+2. **Independent deployments** - Each workspace can be applied independently
+3. **Team permissions** - Different teams can manage different workspaces
+4. **State isolation** - No accidental cross-cloud resource deletion
+
+```hcl
+# Example: cloudflare-pages workspace backend
+terraform {
+  cloud {
+    organization = "josejalvarezmterraform"
+    
+    workspaces {
+      name = "cloudflare-pages"
+    }
+  }
+}
 ```bash
 # Create Lambda function
 aws lambda create-function \

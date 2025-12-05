@@ -13,7 +13,6 @@ import { createServiceContainer } from '../services/container';
 import { getLogger, createContext, Timer } from '../utils/logger';
 import { errorToResponse, ValidationError } from '../types/errors';
 import { type FullEnv } from '../types/env';
-import { generateEmbedding } from '../services/embeddingService';
 
 interface ApplyOperation {
     inserts: TechnologyInsert[];

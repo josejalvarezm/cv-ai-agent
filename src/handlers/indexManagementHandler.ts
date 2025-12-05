@@ -213,7 +213,6 @@ export async function handleDebugVector(env: FullEnv): Promise<Response> {
  * POST /debug/test-upsert - Test vector upsert with a single technology
  */
 export async function handleTestUpsert(request: Request, env: FullEnv): Promise<Response> {
-  const requestId = crypto.randomUUID();
   const logger = getLogger();
 
   try {

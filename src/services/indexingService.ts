@@ -43,6 +43,7 @@ export interface IndexingResponse {
   itemType: string;
   nextOffset?: number;
   hasMore?: boolean;
+  errors?: string[];
 }
 
 /**

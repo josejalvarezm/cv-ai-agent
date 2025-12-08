@@ -329,6 +329,44 @@ Using three clouds costs the same as using one (£0), but leverages each platfor
 
 ---
 
+### Part 9: Webhook Resilience (Cross-Cloud Failure Handling)
+
+12-minute Firestore outage. 47 lost analytics records. No alerts. No recovery path.
+
+**The mistake:** Webhooks failed silently. Lambda logged errors and moved on. No retries. No dead letter queue. No way to replay failed deliveries.
+
+**Three-layer resilience strategy:**
+
+1. **Exponential backoff (1s, 2s, 4s delays)** → Recovers 99.2% of transient failures
+2. **DynamoDB DLQ** → Stores permanent failures for manual replay (7-day TTL)
+3. **Graceful degradation** → Main system works even when webhooks fail
+
+**Before resilience improvements:**
+
+```plaintext
+Webhook failure → Log error → Move on → Data lost forever
+```
+
+**After resilience improvements:**
+
+```plaintext
+Webhook failure → Retry 3x with exponential backoff → Still failed? → Store in DLQ → CloudWatch alarm → Manual investigation & replay
+```
+
+**Result:** 0 lost records over 6 months, £0/month additional cost.
+
+**What you'll learn:**
+
+- Why exponential backoff matters for cross-cloud webhooks (AWS ↔ GCP)
+- How to implement retry logic without infinite loops
+- When to give up and store in DLQ (after 3 retries, ~7 seconds)
+- Manual DLQ replay procedures (TypeScript script included)
+- Cost analysis: Does retry logic increase Lambda execution time? (Spoiler: stays in free tier)
+- HMAC signature failures across cloud boundaries (human error, not clock skew)
+- What I chose not to build: Automated DLQ replay Lambda (manual replay works fine at small scale), distributed tracing (correlating logs by requestId works)
+
+---
+
 ## Series Prerequisites
 
 **Required knowledge:**

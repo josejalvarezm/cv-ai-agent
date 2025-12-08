@@ -365,6 +365,7 @@ async function indexTechnology(
 
 /**
  * Send webhook callback to admin worker with HMAC signature
+ * Implements retry logic with exponential backoff (P2)
  */
 async function sendWebhookCallback(
     url: string,
@@ -378,14 +379,17 @@ async function sendWebhookCallback(
     },
     webhookSecret?: string
 ): Promise<void> {
-    try {
-        const body = JSON.stringify(payload);
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-        };
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 1000;
 
-        // Sign with HMAC if secret is configured
-        if (webhookSecret) {
+    const body = JSON.stringify(payload);
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+    };
+
+    // Sign with HMAC if secret is configured
+    if (webhookSecret) {
+        try {
             const encoder = new TextEncoder();
             const key = await crypto.subtle.importKey(
                 'raw',
@@ -399,14 +403,35 @@ async function sendWebhookCallback(
                 .map((b) => b.toString(16).padStart(2, '0'))
                 .join('');
             headers['X-Webhook-Signature'] = signatureHex;
+        } catch (err) {
+            console.error('Failed to sign webhook payload:', err);
         }
+    }
 
-        await fetch(url, {
-            method: 'POST',
-            headers,
-            body,
-        });
-    } catch (err) {
-        console.error('Webhook callback failed:', err);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body,
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+
+            // Success
+            return;
+        } catch (err: any) {
+            const isLastAttempt = attempt === MAX_RETRIES;
+            console.error(`Webhook callback attempt ${attempt}/${MAX_RETRIES} failed:`, err.message || err);
+
+            if (!isLastAttempt) {
+                const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                console.error('All webhook callback attempts failed.');
+            }
+        }
     }
 }

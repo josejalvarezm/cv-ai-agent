@@ -111,6 +111,10 @@ describe('Rate Limiter', () => {
       const ip = '1.2.3.4';
       const request = createMockRequest(ip);
       
+      // Mock Date.now to prevent minute boundary crossing during test
+      const fixedTime = 1700000000000; // Fixed timestamp mid-minute
+      vi.spyOn(Date, 'now').mockReturnValue(fixedTime);
+      
       // Make 3 requests
       await checkRateLimit(request, mockKV);
       await checkRateLimit(request, mockKV);
@@ -120,6 +124,9 @@ describe('Rate Limiter', () => {
       expect(status.minuteCount).toBe(3);
       expect(status.minuteLimit).toBe(10);
       expect(status.hourLimit).toBe(50);
+      
+      // Restore Date.now
+      vi.restoreAllMocks();
     });
   });
 
@@ -127,6 +134,10 @@ describe('Rate Limiter', () => {
     it('should reset rate limit for IP', async () => {
       const ip = '1.2.3.4';
       const request = createMockRequest(ip);
+      
+      // Mock Date.now to prevent minute boundary crossing during test
+      const fixedTime = 1700000000000; // Fixed timestamp mid-minute
+      vi.spyOn(Date, 'now').mockReturnValue(fixedTime);
       
       // Make 5 requests
       for (let i = 0; i < 5; i++) {
@@ -143,6 +154,9 @@ describe('Rate Limiter', () => {
       // Verify reset
       status = await getRateLimitStatus(ip, mockKV);
       expect(status.minuteCount).toBe(0);
+      
+      // Restore Date.now
+      vi.restoreAllMocks();
     });
   });
 });

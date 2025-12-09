@@ -125,6 +125,27 @@ AI_REPLY_ENABLED = "true"
 - **Workers AI** - Embedding generation and LLM responses
 - **Vectorize** - Vector similarity search (optional)
 - **TypeScript** - Type-safe development
+- **Vitest** - Unit testing framework
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run with coverage
+npm run test:coverage
+```
+
+**Test Coverage:**
+- Service layer tests (QuestionValidator, ResponseValidator, ProjectDetector)
+- Error handling and type utilities
+- 156 test cases with comprehensive edge case coverage
 
 ## 📖 Learn More
 

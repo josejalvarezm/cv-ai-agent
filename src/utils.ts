@@ -77,15 +77,16 @@ export async function validateTurnstileToken(
     });
 
     const result = await response.json() as { success: boolean; 'error-codes'?: string[] };
-    
+
     if (!result.success) {
       console.warn('Turnstile validation failed:', result['error-codes']);
       return { success: false, error: result['error-codes']?.join(', ') || 'Validation failed' };
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Turnstile validation error:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: errorMessage };
   }
 }

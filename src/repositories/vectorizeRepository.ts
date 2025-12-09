@@ -18,8 +18,19 @@ export interface VectorMatch {
   metadata: VectorMetadata;
 }
 
+export interface VectorRecord {
+  id: string;
+  values: number[];
+  metadata: VectorMetadata;
+}
+
+export interface VectorizeInfo {
+  type: string;
+  dimension: number;
+}
+
 export class VectorizeRepository {
-  constructor(private vectorize: Vectorize) {}
+  constructor(private vectorize: Vectorize) { }
 
   /**
    * Query vectors by embedding
@@ -40,14 +51,20 @@ export class VectorizeRepository {
   /**
    * Upsert vectors into the index
    */
-  async upsert(vectors: Array<{ id: string; values: number[]; metadata: any }>): Promise<void> {
-    await this.vectorize.upsert(vectors as any);
+  async upsert(vectors: VectorRecord[]): Promise<void> {
+    // Vectorize API expects a specific format - cast metadata to compatible type
+    const vectorizeVectors = vectors.map(v => ({
+      id: v.id,
+      values: v.values,
+      metadata: v.metadata as unknown as Record<string, VectorizeVectorMetadata>,
+    }));
+    await this.vectorize.upsert(vectorizeVectors);
   }
 
   /**
    * Get index info (if supported)
    */
-  async getInfo(): Promise<any> {
+  async getInfo(): Promise<VectorizeInfo> {
     // Vectorize doesn't have a getInfo method, but we can return basic info
     return {
       type: 'vectorize',

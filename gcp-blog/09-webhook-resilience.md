@@ -1268,3 +1268,54 @@ This concludes the CV Analytics series on building multi-cloud microservices at 
 *This post documents production experience building resilient cross-cloud webhooks. All code is running in production, all metrics are measured, and all costs are verified.*
 
 **Total cost of resilience improvements: £0.00/month**
+
+---
+
+## Appendix: Deployment Lessons Learned
+
+### Lambda Function Naming Convention Issue
+
+During deployment, we discovered a critical CI/CD issue that had been silently failing for months:
+
+**Problem:**
+
+- Terraform created Lambda function: `cv-analytics-processor`
+- CI/CD workflow targeted: `cv-analytics-processor-production`
+- Function handler was `index.handler` but zip structure was `dist/index.js`
+
+**Root Cause:**
+
+- The original working function was created via CloudFormation
+- When we migrated to Terraform, we used different naming conventions
+- CI/CD had **never actually deployed code** - it was failing silently
+- The original function was processing events but never received updates
+
+**Resolution:**
+
+1. **Fixed naming:** Updated CI/CD to target `cv-analytics-processor`
+2. **Fixed handler:** Updated Terraform to use `dist/index.handler`
+3. **Imported existing function:** Used `terraform import` instead of creating new
+4. **Cleaned up orphaned resources:** Deleted duplicate `-prod` function
+
+**Post-deployment issue discovered:** The Terraform IAM policy was missing permissions for the `cv-analytics-analytics` table, causing silent failures where query events worked but response events failed. Fixed by:
+
+1. **Updated IAM policy:** Added `cv-analytics-analytics` table permissions to Lambda role
+2. **Added missing environment variable:** `WEBHOOK_SECRET` was missing from Lambda configuration
+3. **Updated Terraform code:** Fixed both issues in infrastructure-as-code to prevent recurrence
+
+**Key Lesson:** **CI/CD success ≠ Deployment success**
+
+Monitor not just CI/CD pipeline status, but actual resource state. In our case:
+
+- ✅ CI/CD showed "success"
+- ❌ Code was never actually deployed
+- ✅ System worked because original function existed
+- ❌ Webhook resilience updates weren't active
+
+**Prevention:**
+
+- Use CloudTrail to verify Lambda code updates
+- Check `LastModified` timestamp after deployments
+- Test actual functionality, not just pipeline status
+
+This deployment issue didn't affect the resilience design, but it highlights the importance of end-to-end testing in multi-service architectures.
